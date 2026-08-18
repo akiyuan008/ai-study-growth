@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# pre-commit：格式 + 静态检查门禁（与 CI 对齐）
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+echo "[pre-commit] dart format check..."
+dart format --output=none --set-exit-if-changed lib test
+
+echo "[pre-commit] flutter analyze..."
+flutter analyze --no-fatal-infos
+
+echo "[pre-commit] OK"
