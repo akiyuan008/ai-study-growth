@@ -310,7 +310,7 @@ class _FollowUpPanelState extends ConsumerState<_FollowUpPanel> {
                   ),
                   decoration: BoxDecoration(
                     color: mine
-                        ? GrowthColors.seed.withValues(alpha: 0.16)
+                        ? GrowthColors.primary.withValues(alpha: 0.16)
                         : GrowthColors.glassLight,
                     borderRadius: BorderRadius.circular(GrowthRadii.field),
                   ),
@@ -437,7 +437,7 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
                             label: _items[i].difficulty.isEmpty
                                 ? '练习 ${i + 1}'
                                 : _items[i].difficulty,
-                            color: GrowthColors.flow,
+                            color: GrowthColors.abilityFocus,
                           ),
                         ],
                       ),
@@ -453,7 +453,7 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
                       Text(
                         '答案：${_items[i].answer}\n${_items[i].explanation}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: GrowthColors.growth,
+                              color: GrowthColors.success,
                             ),
                       ),
                     ],

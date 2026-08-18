@@ -9,16 +9,19 @@ import '../../learning/learning_providers.dart';
 
 /// 专注启动页：选模式、选时长、可选关联题目
 class FocusPage extends ConsumerStatefulWidget {
-  const FocusPage({super.key, this.questionId});
+  const FocusPage({super.key, this.questionId, this.initialMode});
 
   final String? questionId;
+
+  /// 路由预选模式（focus?mode=abyss）
+  final FocusMode? initialMode;
 
   @override
   ConsumerState<FocusPage> createState() => _FocusPageState();
 }
 
 class _FocusPageState extends ConsumerState<FocusPage> {
-  FocusMode _mode = FocusMode.normal;
+  late FocusMode _mode = widget.initialMode ?? FocusMode.normal;
   int _minutes = 25;
   bool _starting = false;
 
@@ -85,7 +88,7 @@ class _FocusPageState extends ConsumerState<FocusPage> {
                       child: Row(
                         children: [
                           const Icon(Icons.flag_rounded,
-                              color: GrowthColors.flow),
+                              color: GrowthColors.abilityFocus),
                           const SizedBox(width: GrowthSpacing.sm),
                           Expanded(
                             child: Text(
@@ -187,12 +190,13 @@ class _ModeCard extends StatelessWidget {
           padding: const EdgeInsets.all(GrowthSpacing.md),
           decoration: BoxDecoration(
             color: selected
-                ? GrowthColors.seed.withValues(alpha: 0.12)
+                ? GrowthColors.primary.withValues(alpha: 0.12)
                 : GrowthColors.glassLight,
             borderRadius: BorderRadius.circular(GrowthRadii.card),
             border: Border.all(
-              color:
-                  selected ? GrowthColors.seed : GrowthColors.glassBorderLight,
+              color: selected
+                  ? GrowthColors.primary
+                  : GrowthColors.glassBorderLight,
               width: selected ? 1.6 : 1,
             ),
           ),
@@ -202,7 +206,7 @@ class _ModeCard extends StatelessWidget {
               Text(
                 title,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: selected ? GrowthColors.seed : null,
+                      color: selected ? GrowthColors.primary : null,
                     ),
               ),
               const SizedBox(height: GrowthSpacing.xs),

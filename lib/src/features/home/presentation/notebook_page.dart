@@ -8,6 +8,10 @@ import '../../../data/local/app_database.dart';
 import '../../../data/repositories/question_repository.dart';
 import '../../learning/learning_providers.dart';
 
+final _notebookDueCountProvider = FutureProvider<int>((ref) async {
+  return ref.watch(reviewRepositoryProvider).dueCount();
+});
+
 final notebookListProvider = FutureProvider.autoDispose
     .family<List<QuestionRecord>, ({String subject, String keyword})>(
         (ref, filter) async {
@@ -39,18 +43,32 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
     final listAsync = ref.watch(
       notebookListProvider((subject: _subject, keyword: _keyword)),
     );
+    final dueCount = ref.watch(_notebookDueCountProvider).valueOrNull ?? 0;
+
+    // 复习快捷入口（Prompt A2）：右上角，带到期数量角标
+    final reviewShortcut = IconButton(
+      tooltip: '今日复习',
+      onPressed: () => context.push('/review'),
+      icon: Badge(
+        isLabelVisible: dueCount > 0,
+        label: Text('$dueCount'),
+        child: const Icon(Icons.replay_rounded),
+      ),
+    );
 
     return Scaffold(
       appBar: widget.embedded
-          ? AppBar(title: const Text('错题本'))
+          ? AppBar(title: const Text('错题本'), actions: [reviewShortcut])
           : AppBar(
               title: const Text('错题本'),
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded),
                 onPressed: () => context.pop(),
               ),
+              actions: [reviewShortcut],
             ),
-      body: Column(
+      body: GrowthBackground(
+          child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -95,7 +113,6 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
                     message: _keyword.isEmpty && _subject.isEmpty
                         ? '错题本还是空的\n点下方「拍题」，把第一道错题变成成长资产'
                         : '没有匹配的题目',
-                    icon: Icons.menu_book_rounded,
                   );
                 }
                 return ListView.separated(
@@ -110,7 +127,7 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
             ),
           ),
         ],
-      ),
+      )),
     );
   }
 }
@@ -176,18 +193,18 @@ class _MasteryBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (level) {
-      >= 5 => ('已掌握', GrowthColors.growth),
+      >= 5 => ('已掌握', GrowthColors.success),
       4 => ('稳定', GrowthColors.abilityLearning),
       3 => ('长期记忆', GrowthColors.abilityFocus),
-      2 => ('巩固中', GrowthColors.flow),
+      2 => ('巩固中', GrowthColors.abilityFocus),
       1 => ('初学', GrowthColors.caution),
-      _ => ('新题', GrowthColors.seed),
+      _ => ('新题', GrowthColors.primary),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(GrowthRadii.chip),
+        borderRadius: BorderRadius.circular(GrowthRadii.icon),
       ),
       child: Text(
         label,

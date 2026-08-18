@@ -21,13 +21,13 @@ class GrowthChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = color ?? GrowthColors.seed;
+    final base = color ?? GrowthColors.primary;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(GrowthRadii.chip),
+        borderRadius: BorderRadius.circular(GrowthRadii.icon),
         child: AnimatedContainer(
           duration: GrowthMotion.fast,
           padding: const EdgeInsets.symmetric(
@@ -36,7 +36,7 @@ class GrowthChip extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: selected ? base : base.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(GrowthRadii.chip),
+            borderRadius: BorderRadius.circular(GrowthRadii.icon),
             border: Border.all(
               color: selected ? base : base.withValues(alpha: 0.35),
             ),
@@ -75,36 +75,6 @@ class AbilityDot extends StatelessWidget {
         const SizedBox(width: GrowthSpacing.xs),
         Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
-    );
-  }
-}
-
-/// 空状态占位（列表无数据时的温和提示）
-class GrowthEmptyState extends StatelessWidget {
-  const GrowthEmptyState({
-    super.key,
-    required this.message,
-    this.icon = Icons.spa_outlined,
-  });
-
-  final String message;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: GrowthSpacing.xl),
-      child: Column(
-        children: [
-          Icon(icon, size: 44, color: GrowthColors.seed.withValues(alpha: 0.5)),
-          const SizedBox(height: GrowthSpacing.md),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
     );
   }
 }

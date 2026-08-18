@@ -54,7 +54,8 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
                 onPressed: () => context.pop(),
               ),
             ),
-      body: sessionAsync.when(
+      body: GrowthBackground(
+          child: sessionAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('加载失败：$e')),
         data: (items) {
@@ -63,7 +64,6 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
               message: _doneCount > 0
                   ? '今日复习全部完成，成长 +$_doneCount 步\n去拍几道新题，或休息一下吧'
                   : '暂无到期复习\n拍题入库后，记忆曲线会自动为你安排',
-              icon: Icons.verified_rounded,
             );
           }
 
@@ -152,8 +152,8 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
                     children: [
                       for (final (rating, label, color) in [
                         (Rating.again, '忘记', GrowthColors.caution),
-                        (Rating.hard, '困难', GrowthColors.flow),
-                        (Rating.good, '记得', GrowthColors.growth),
+                        (Rating.hard, '困难', GrowthColors.primary),
+                        (Rating.good, '记得', GrowthColors.success),
                         (Rating.easy, '简单', GrowthColors.abilityLearning),
                       ])
                         Expanded(
@@ -173,7 +173,7 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
             ),
           );
         },
-      ),
+      )),
     );
   }
 }

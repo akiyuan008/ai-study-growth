@@ -41,33 +41,33 @@ final themeModeProvider =
   return ThemeModeNotifier(ref.watch(sharedPreferencesProvider));
 });
 
-/// 从 Design Tokens 构建 ThemeData
+/// 从 Design Tokens 构建 ThemeData（app_theme）
 ThemeData buildGrowthTheme(Brightness brightness) {
   final isLight = brightness == Brightness.light;
   final scheme = ColorScheme.fromSeed(
-    seedColor: GrowthColors.seed,
+    seedColor: GrowthColors.primary,
     brightness: brightness,
   );
 
-  final surface =
-      isLight ? GrowthColors.surfaceLight : GrowthColors.surfaceDark;
-  final onSurface = isLight ? const Color(0xFF1C2230) : const Color(0xFFEDF0F7);
+  final surface = isLight ? GrowthColors.gray1 : GrowthColors.surfaceDark;
+  final onSurface = isLight ? GrowthColors.gray6 : const Color(0xFFEDF0F7);
 
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme.copyWith(
       surface: surface,
       onSurface: onSurface,
-      primary: GrowthColors.seed,
+      primary: GrowthColors.primary,
     ),
     scaffoldBackgroundColor: surface,
     textTheme: ThemeData(brightness: brightness).textTheme.copyWith(
-          displayLarge: GrowthType.display,
-          headlineMedium: GrowthType.headline.copyWith(color: onSurface),
-          titleLarge: GrowthType.title.copyWith(color: onSurface),
+          headlineMedium: GrowthType.pageTitle.copyWith(color: onSurface),
+          titleLarge: GrowthType.cardTitle.copyWith(color: onSurface),
           bodyMedium: GrowthType.body.copyWith(color: onSurface),
           bodySmall: GrowthType.caption.copyWith(
-            color: onSurface.withValues(alpha: 0.62),
+            color: isLight
+                ? GrowthColors.gray5
+                : onSurface.withValues(alpha: 0.62),
           ),
         ),
     cardTheme: CardThemeData(
@@ -87,7 +87,7 @@ ThemeData buildGrowthTheme(Brightness brightness) {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(GrowthRadii.chip),
+        borderRadius: BorderRadius.circular(GrowthRadii.icon),
       ),
     ),
   );
@@ -96,10 +96,8 @@ ThemeData buildGrowthTheme(Brightness brightness) {
 /// 调试用：导出当前 tokens 摘要（开发面板）
 String describeTokens() => jsonEncode({
       'colors': {
-        'seed': GrowthColors.seed.toARGB32().toRadixString(16),
-        'growth': GrowthColors.growth.toARGB32().toRadixString(16),
-        'flow': GrowthColors.flow.toARGB32().toRadixString(16),
-        'caution': GrowthColors.caution.toARGB32().toRadixString(16),
+        'primary': GrowthColors.primary.toARGB32().toRadixString(16),
+        'actionAccent': GrowthColors.actionAccent.toARGB32().toRadixString(16),
       },
       'glass': {'blurSigma': GrowthGlass.blurSigma},
       'motion': {'base': GrowthMotion.base.inMilliseconds},

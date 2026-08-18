@@ -17,7 +17,7 @@ class FlowCountdown extends StatefulWidget {
     required this.onFinished,
     this.onLeave,
     this.title = '专注中',
-    this.accent = GrowthColors.flow,
+    this.accent = GrowthColors.abilityFocus,
   });
 
   /// 总时长

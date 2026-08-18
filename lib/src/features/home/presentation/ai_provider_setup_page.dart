@@ -194,7 +194,7 @@ class _AiProviderSetupPageState extends ConsumerState<AiProviderSetupPage> {
               child: Text(
                 _status!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: GrowthColors.seed,
+                      color: GrowthColors.primary,
                     ),
               ),
             ),

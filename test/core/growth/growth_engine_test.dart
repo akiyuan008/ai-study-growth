@@ -108,6 +108,43 @@ void main() {
     }
   });
 
+  group('GrowthCalculator hasAnyActivity（Prompt B 规则）', () {
+    test('全零输入：无活动标志，环图应进新用户态', () {
+      final result = GrowthEngine.calculate(base());
+      expect(result.hasAnyActivity, isFalse);
+      expect(result.scores.focus, 0);
+      expect(result.scores.persistence, 0);
+    });
+
+    test('单能力非零（只有专注）：判定为有活动', () {
+      final result = GrowthEngine.calculate(base(focusMs: 10 * 60 * 1000));
+      expect(result.hasAnyActivity, isTrue);
+      expect(result.scores.focus, greaterThan(0));
+    });
+
+    test('全部非零：判定为有活动', () {
+      final result = GrowthEngine.calculate(base(
+        focusMs: 60 * 60 * 1000,
+        distractionCount: 3,
+        distractionRecoveries: 3,
+        reviewDone: 5,
+        reviewDue: 5,
+        newQuestions: 2,
+        masteryGains: 1,
+        streak: 4,
+      ));
+      expect(result.hasAnyActivity, isTrue);
+      for (final v in [
+        result.scores.learning,
+        result.scores.focus,
+        result.scores.persistence,
+        result.scores.recovery,
+      ]) {
+        expect(v, greaterThan(0));
+      }
+    });
+  });
+
   test('最强能力识别', () {
     final scores = GrowthEngine.compute(base(
       focusMs: 130 * 60 * 1000,

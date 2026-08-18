@@ -102,9 +102,9 @@ class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
               spacing: GrowthSpacing.md,
               runSpacing: GrowthSpacing.md,
               children: [
-                _swatch('种子', GrowthColors.seed),
-                _swatch('生长', GrowthColors.growth),
-                _swatch('心流', GrowthColors.flow),
+                _swatch('种子', GrowthColors.primary),
+                _swatch('生长', GrowthColors.success),
+                _swatch('行动强调', GrowthColors.actionAccent),
                 _swatch('警示', GrowthColors.caution),
                 _swatch('学习', GrowthColors.abilityLearning),
                 _swatch('专注', GrowthColors.abilityFocus),

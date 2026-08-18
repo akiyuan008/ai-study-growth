@@ -89,7 +89,7 @@ class _CapturePageState extends ConsumerState<CapturePage> {
               Icon(
                 Icons.document_scanner_rounded,
                 size: 88,
-                color: GrowthColors.seed.withValues(alpha: 0.6),
+                color: GrowthColors.primary.withValues(alpha: 0.6),
               ),
               const SizedBox(height: GrowthSpacing.lg),
               Text(

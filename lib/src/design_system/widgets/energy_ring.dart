@@ -33,6 +33,8 @@ class EnergyRing extends StatefulWidget {
     this.strokeWidth = 14,
     this.centerWidget,
     this.animate = true,
+    this.idle = false,
+    this.onTap,
   });
 
   final List<AbilityArc> arcs;
@@ -40,6 +42,12 @@ class EnergyRing extends StatefulWidget {
   final double strokeWidth;
   final Widget? centerWidget;
   final bool animate;
+
+  /// 新用户态（Prompt B）：不绘制任何彩色弧，只显示全灰轨道
+  final bool idle;
+
+  /// 点按环体（弹出能力明细）
+  final VoidCallback? onTap;
 
   @override
   State<EnergyRing> createState() => _EnergyRingState();
@@ -53,6 +61,7 @@ class _EnergyRingState extends State<EnergyRing> {
       painter: _EnergyRingPainter(
         arcs: widget.arcs,
         strokeWidth: widget.strokeWidth,
+        idle: widget.idle,
         trackColor: Theme.of(context).brightness == Brightness.light
             ? const Color(0x14101828)
             : const Color(0x29FFFFFF),
@@ -76,7 +85,11 @@ class _EnergyRingState extends State<EnergyRing> {
       ),
     );
 
-    if (!widget.animate) return content;
+    final tappable = widget.onTap == null
+        ? content
+        : GestureDetector(onTap: widget.onTap, child: content);
+
+    if (!widget.animate) return tappable;
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
@@ -88,7 +101,7 @@ class _EnergyRingState extends State<EnergyRing> {
           child: Transform.scale(scale: 0.92 + 0.08 * t, child: child),
         );
       },
-      child: content,
+      child: tappable,
     );
   }
 }
@@ -133,22 +146,37 @@ class _EnergyRingPainter extends CustomPainter {
     required this.arcs,
     required this.strokeWidth,
     required this.trackColor,
+    this.idle = false,
   });
 
   final List<AbilityArc> arcs;
   final double strokeWidth;
   final Color trackColor;
+  final bool idle;
 
   static const double _gapDegrees = 16;
   static const double _segmentDegrees = 90 - _gapDegrees;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (arcs.isEmpty) return;
-
     final center = size.center(Offset.zero);
     final radius = (size.shortestSide - strokeWidth) / 2;
     final rect = Rect.fromCircle(center: center, radius: radius);
+
+    // 新用户态：只画一圈全灰轨道，不画任何彩色弧（Prompt B 规则 1）
+    if (idle || arcs.isEmpty) {
+      canvas.drawArc(
+        rect,
+        0,
+        2 * math.pi,
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..color = trackColor,
+      );
+      return;
+    }
 
     // 从正上方开始，顺时针排布
     double startAngle = -90 + _gapDegrees / 2;
@@ -168,9 +196,9 @@ class _EnergyRingPainter extends CustomPainter {
         trackPaint,
       );
 
-      // 能力填充
+      // 能力填充（Prompt B 规则 2：得分为 0 一律不画彩色弧，杜绝零值残弧）
       final value = arc.value.clamp(0.0, 1.0);
-      if (value > 0.01) {
+      if (value > 0) {
         final fillPaint = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = strokeWidth
@@ -195,5 +223,6 @@ class _EnergyRingPainter extends CustomPainter {
   bool shouldRepaint(covariant _EnergyRingPainter oldDelegate) =>
       oldDelegate.arcs != arcs ||
       oldDelegate.strokeWidth != strokeWidth ||
-      oldDelegate.trackColor != trackColor;
+      oldDelegate.trackColor != trackColor ||
+      oldDelegate.idle != idle;
 }

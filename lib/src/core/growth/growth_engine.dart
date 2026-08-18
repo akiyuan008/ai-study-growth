@@ -58,9 +58,29 @@ class GrowthScores {
   double get overall => (learning + focus + persistence + recovery) / 400;
 }
 
+/// GrowthCalculator 输出：四能力分数 + 今日是否有过任何活动
+class GrowthCalcResult {
+  const GrowthCalcResult({required this.scores, required this.hasAnyActivity});
+
+  final GrowthScores scores;
+  final bool hasAnyActivity;
+}
+
 abstract final class GrowthEngine {
   /// 专注目标：每日 120 分钟 = 满分
   static const int focusTargetMs = 120 * 60 * 1000;
+
+  /// 完整计算：分数 + hasAnyActivity 标志（Prompt B 规则）
+  static GrowthCalcResult calculate(GrowthInput input) {
+    final hasAnyActivity = input.focusMs > 0 ||
+        input.reviewDone > 0 ||
+        input.newQuestions > 0 ||
+        input.distractionCount > 0;
+    return GrowthCalcResult(
+      scores: compute(input),
+      hasAnyActivity: hasAnyActivity,
+    );
+  }
 
   static GrowthScores compute(GrowthInput input) {
     return GrowthScores(

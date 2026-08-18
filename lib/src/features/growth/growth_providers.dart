@@ -13,6 +13,7 @@ import '../../data/local/app_database.dart';
 class GrowthHomeData {
   const GrowthHomeData({
     required this.scores,
+    required this.hasAnyActivity,
     required this.identity,
     required this.strongest,
     required this.streak,
@@ -20,16 +21,45 @@ class GrowthHomeData {
     required this.missions,
     required this.moments,
     required this.dueReviewCount,
+    required this.reviewCompletedToday,
+    required this.reviewDueTotal,
+    required this.focusMinutesToday,
+    required this.distractionCount,
+    required this.recoveryCount,
+    required this.newQuestionsToday,
   });
 
   final GrowthScores scores;
+
+  /// 今日是否有任何活动（Prompt B：空状态判定）
+  final bool hasAnyActivity;
   final String identity;
   final String strongest;
   final int streak;
   final NextStep nextStep;
   final List<Mission> missions;
   final List<GrowthMoment> moments;
+
+  /// 当前仍未到期的复习卡数
   final int dueReviewCount;
+
+  /// 今日已完成的复习次数
+  final int reviewCompletedToday;
+
+  /// 今日应复习总数（已完成 + 当前到期），用于「复习已清空」判定
+  final int reviewDueTotal;
+
+  final int focusMinutesToday;
+  final int distractionCount;
+  final int recoveryCount;
+  final int newQuestionsToday;
+
+  /// 复习状态文案（Prompt B 规则 3）
+  String get reviewStatusLabel {
+    if (reviewDueTotal == 0) return '暂无复习安排';
+    if (reviewCompletedToday >= reviewDueTotal) return '复习已清空';
+    return '$dueReviewCount 道题待复习';
+  }
 }
 
 /// 成长首页数据聚合：生成任务 → 评估任务 → 聚合事实 → 计算四能力 → 快照落库
@@ -63,8 +93,9 @@ final growthHomeProvider =
     missedYesterday: raw['missedYesterday'] as bool,
   );
 
-  // 4) 计算四能力
-  final scores = GrowthEngine.compute(input);
+  // 4) 计算四能力（calculate 同时给出 hasAnyActivity）
+  final calc = GrowthEngine.calculate(input);
+  final scores = calc.scores;
 
   // 5) 快照落库（growth_metrics 每日快照，成长趋势的数据源）
   await _upsertSnapshot(db, now, scores, input);
@@ -76,6 +107,7 @@ final growthHomeProvider =
 
   return GrowthHomeData(
     scores: scores,
+    hasAnyActivity: calc.hasAnyActivity,
     identity: GrowthIdentity.describe(scores),
     strongest: GrowthIdentity.strongest(scores),
     streak: streak,
@@ -83,6 +115,12 @@ final growthHomeProvider =
     missions: missions,
     moments: moments,
     dueReviewCount: dueCards.length,
+    reviewCompletedToday: input.reviewDone,
+    reviewDueTotal: dueCards.length + input.reviewDone,
+    focusMinutesToday: input.focusMs ~/ 60000,
+    distractionCount: input.distractionCount,
+    recoveryCount: input.distractionRecoveries,
+    newQuestionsToday: input.newQuestions,
   );
 });
 

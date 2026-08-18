@@ -4,10 +4,29 @@ import 'package:flutter/material.dart';
 
 import '../tokens.dart';
 
-/// 玻璃拟物卡片：背景模糊 + 半透明着色 + 高光描边 + 柔和投影。
+/// 页面背景：低饱和渐变，衬出玻璃质感
+class GrowthBackground extends StatelessWidget {
+  const GrowthBackground({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: isLight ? GrowthBackgrounds.light : GrowthBackgrounds.dark,
+      ),
+      child: child,
+    );
+  }
+}
+
+/// GlassCard —— 玻璃拟物卡片（Prompt C 规范）：
+/// 半透明底 + BackdropFilter 模糊 + 1px 内描边高光 + 柔和投影。
 /// 系统内所有信息容器的标准载体。
-class GrowthCard extends StatelessWidget {
-  const GrowthCard({
+class GlassCard extends StatelessWidget {
+  const GlassCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(GrowthSpacing.lg),
@@ -45,12 +64,14 @@ class GrowthCard extends StatelessWidget {
                       ? GrowthColors.glassLight
                       : GrowthColors.glassDark,
                   borderRadius: BorderRadius.circular(GrowthRadii.card),
+                  // 1px 内描边高光
                   border: Border.all(
+                    width: GrowthGlass.innerBorderWidth,
                     color: isLight
                         ? GrowthColors.glassBorderLight
                         : GrowthColors.glassBorderDark,
                   ),
-                  boxShadow: GrowthGlass.shadow,
+                  boxShadow: GrowthShadows.soft,
                 ),
                 foregroundDecoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(GrowthRadii.card),
@@ -88,3 +109,6 @@ class GrowthSectionHeader extends StatelessWidget {
     );
   }
 }
+
+/// 兼容别名：旧代码中的 GrowthCard 一律指 GlassCard
+typedef GrowthCard = GlassCard;

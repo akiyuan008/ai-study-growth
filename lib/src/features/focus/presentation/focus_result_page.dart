@@ -56,7 +56,7 @@ class FocusResultPage extends ConsumerWidget {
                 Text(
                   '$focusMin',
                   style: GrowthType.display.copyWith(
-                    color: GrowthColors.flow,
+                    color: GrowthColors.abilityFocus,
                     fontSize: 96,
                   ),
                 ),

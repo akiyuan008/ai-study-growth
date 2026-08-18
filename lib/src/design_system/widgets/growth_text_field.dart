@@ -77,7 +77,7 @@ class GrowthTextField extends StatelessWidget {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(GrowthRadii.field),
               borderSide:
-                  const BorderSide(color: GrowthColors.seed, width: 1.6),
+                  const BorderSide(color: GrowthColors.primary, width: 1.6),
             ),
           ),
         ),

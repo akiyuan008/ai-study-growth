@@ -48,7 +48,6 @@ class AnalysisJobsPage extends ConsumerWidget {
           if (jobs.isEmpty) {
             return const GrowthEmptyState(
               message: '暂无解析任务\n去拍一道题试试',
-              icon: Icons.hourglass_empty_rounded,
             );
           }
           return ListView.separated(
@@ -80,11 +79,11 @@ class _JobCard extends ConsumerWidget {
   }
 
   (String, Color) get _statusInfo => switch (job.status) {
-        'pending' => ('排队中', GrowthColors.seed),
-        'splitting' => ('正在拆题…', GrowthColors.flow),
-        'analyzing' => ('正在解析…', GrowthColors.flow),
-        'waiting_confirm' => ('待确认保存', GrowthColors.growth),
-        'saved' => ('已保存', GrowthColors.growth),
+        'pending' => ('排队中', GrowthColors.primary),
+        'splitting' => ('正在拆题…', GrowthColors.primary),
+        'analyzing' => ('正在解析…', GrowthColors.primary),
+        'waiting_confirm' => ('待确认保存', GrowthColors.success),
+        'saved' => ('已保存', GrowthColors.success),
         'abandoned' => ('已放弃', GrowthColors.caution),
         _ => ('失败', GrowthColors.caution),
       };
@@ -105,7 +104,7 @@ class _JobCard extends ConsumerWidget {
             children: [
               if (File(job.imagePath).existsSync())
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(GrowthRadii.chip),
+                  borderRadius: BorderRadius.circular(GrowthRadii.icon),
                   child: Image.file(
                     File(job.imagePath),
                     width: 56,
@@ -205,7 +204,7 @@ class _CandidateRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final icon = switch (candidate.status) {
       CandidateStatus.success => const Icon(Icons.check_circle_rounded,
-          color: GrowthColors.growth, size: 18),
+          color: GrowthColors.success, size: 18),
       CandidateStatus.failed =>
         const Icon(Icons.error_rounded, color: GrowthColors.caution, size: 18),
       CandidateStatus.analyzing => const SizedBox(
@@ -213,8 +212,8 @@ class _CandidateRow extends ConsumerWidget {
           height: 14,
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
-      CandidateStatus.pending =>
-        const Icon(Icons.schedule_rounded, color: GrowthColors.seed, size: 18),
+      CandidateStatus.pending => const Icon(Icons.schedule_rounded,
+          color: GrowthColors.primary, size: 18),
     };
 
     final title = candidate.status == CandidateStatus.success

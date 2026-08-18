@@ -9,7 +9,7 @@ void main() {
   group('buildGrowthTheme', () {
     test('浅色模式使用纸感底色', () {
       final theme = buildGrowthTheme(Brightness.light);
-      expect(theme.scaffoldBackgroundColor, GrowthColors.surfaceLight);
+      expect(theme.scaffoldBackgroundColor, GrowthColors.gray1);
     });
 
     test('深色模式使用深空底色', () {

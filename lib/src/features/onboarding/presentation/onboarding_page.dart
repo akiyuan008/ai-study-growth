@@ -88,7 +88,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                         Icon(
                           icon,
                           size: 96,
-                          color: GrowthColors.seed.withValues(alpha: 0.7),
+                          color: GrowthColors.primary.withValues(alpha: 0.7),
                         ),
                         const SizedBox(height: GrowthSpacing.xl),
                         Text(
@@ -121,8 +121,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                     height: 7,
                     decoration: BoxDecoration(
                       color: i == _page
-                          ? GrowthColors.seed
-                          : GrowthColors.seed.withValues(alpha: 0.25),
+                          ? GrowthColors.primary
+                          : GrowthColors.primary.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(GrowthRadii.pill),
                     ),
                   ),

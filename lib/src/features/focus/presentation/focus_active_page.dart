@@ -157,8 +157,8 @@ class _FocusActivePageState extends ConsumerState<FocusActivePage> {
                       const EdgeInsets.symmetric(horizontal: GrowthSpacing.xl),
                   padding: const EdgeInsets.all(GrowthSpacing.sm),
                   decoration: BoxDecoration(
-                    color: GrowthColors.flow.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(GrowthRadii.chip),
+                    color: GrowthColors.abilityFocus.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(GrowthRadii.icon),
                   ),
                   child: Text(
                     _banner!,
@@ -215,9 +215,9 @@ class _PhaseChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (phase) {
-      FocusPhase.focusing => ('专注中', GrowthColors.growth),
+      FocusPhase.focusing => ('专注中', GrowthColors.success),
       FocusPhase.distracted => ('已分心，回来吧', GrowthColors.caution),
-      FocusPhase.locked => ('等待回归', GrowthColors.flow),
+      FocusPhase.locked => ('等待回归', GrowthColors.abilityFocus),
     };
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -272,7 +272,7 @@ class _FocusRingPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = strokeWidth
           ..strokeCap = StrokeCap.round
-          ..color = GrowthColors.flow,
+          ..color = GrowthColors.abilityFocus,
       );
     }
   }

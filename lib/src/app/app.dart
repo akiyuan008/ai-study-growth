@@ -13,6 +13,7 @@ import '../features/home/presentation/question_detail_page.dart';
 import '../features/home/presentation/review_page.dart';
 import '../features/onboarding/presentation/onboarding_page.dart';
 import '../features/focus/presentation/focus_active_page.dart';
+import '../features/focus/focus_providers.dart' show FocusMode;
 import '../features/focus/presentation/focus_page.dart';
 import '../features/focus/presentation/focus_result_page.dart';
 
@@ -57,6 +58,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/focus',
         builder: (context, state) => FocusPage(
           questionId: state.uri.queryParameters['questionId'],
+          initialMode: state.uri.queryParameters['mode'] == 'abyss'
+              ? FocusMode.abyss
+              : null,
         ),
       ),
       GoRoute(

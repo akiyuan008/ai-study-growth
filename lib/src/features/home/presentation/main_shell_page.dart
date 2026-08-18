@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../design_system/design_system.dart';
+import '../../focus/presentation/focus_home_page.dart';
 import '../../growth/presentation/growth_home_page.dart';
 import '../../learning/learning_providers.dart';
 import 'notebook_page.dart';
-import 'review_page.dart';
 
 /// 主壳：错题本 / 复习 / 我的 + 中央拍题入口
 class MainShellPage extends ConsumerWidget {
@@ -17,8 +17,9 @@ class MainShellPage extends ConsumerWidget {
     return Scaffold(
       body: const _ShellBody(),
       bottomNavigationBar: const _ShellNav(),
+      // 拍题 FAB —— 行动强调色（橙）的合法载体，居中悬浮于错题本与专注之间
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: GrowthColors.flow,
+        backgroundColor: GrowthColors.actionAccent,
         foregroundColor: Colors.white,
         onPressed: () => context.push('/capture'),
         icon: const Icon(Icons.camera_alt_rounded),
@@ -38,7 +39,7 @@ class _ShellBody extends ConsumerWidget {
     return switch (tab) {
       0 => const _GrowthTab(),
       1 => const _NotebookTab(),
-      2 => const _ReviewTabEntry(),
+      2 => const FocusHomePage(embedded: true),
       _ => const _MeTab(),
     };
   }
@@ -52,7 +53,6 @@ class _ShellNav extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tab = ref.watch(_shellTabProvider);
-    final dueCount = ref.watch(_dueCountProvider).valueOrNull ?? 0;
 
     return NavigationBar(
       selectedIndex: tab,
@@ -67,13 +67,9 @@ class _ShellNav extends ConsumerWidget {
           icon: Icon(Icons.menu_book_rounded),
           label: '错题本',
         ),
-        NavigationDestination(
-          icon: Badge(
-            isLabelVisible: dueCount > 0,
-            label: Text('$dueCount'),
-            child: const Icon(Icons.replay_rounded),
-          ),
-          label: '复习',
+        const NavigationDestination(
+          icon: Icon(Icons.self_improvement_rounded),
+          label: '专注',
         ),
         const NavigationDestination(
           icon: Icon(Icons.person_rounded),
@@ -83,10 +79,6 @@ class _ShellNav extends ConsumerWidget {
     );
   }
 }
-
-final _dueCountProvider = FutureProvider<int>((ref) async {
-  return ref.watch(reviewRepositoryProvider).dueCount();
-});
 
 class _NotebookTab extends ConsumerWidget {
   const _NotebookTab();
@@ -103,15 +95,6 @@ class _GrowthTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return const GrowthHomePage(embedded: true);
-  }
-}
-
-class _ReviewTabEntry extends ConsumerWidget {
-  const _ReviewTabEntry();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return const ReviewSessionPage(embedded: true);
   }
 }
 
@@ -137,7 +120,8 @@ class _MeTabState extends ConsumerState<_MeTab> {
             onTap: () => context.push('/settings/ai-provider'),
             child: Row(
               children: [
-                const Icon(Icons.smart_toy_rounded, color: GrowthColors.seed),
+                const Icon(Icons.smart_toy_rounded,
+                    color: GrowthColors.primary),
                 const SizedBox(width: GrowthSpacing.md),
                 Expanded(
                   child: Column(
@@ -163,7 +147,7 @@ class _MeTabState extends ConsumerState<_MeTab> {
             child: Row(
               children: [
                 const Icon(Icons.hourglass_top_rounded,
-                    color: GrowthColors.flow),
+                    color: GrowthColors.actionAccent),
                 const SizedBox(width: GrowthSpacing.md),
                 Expanded(
                   child: Text('解析任务队列',
