@@ -11,6 +11,9 @@ import '../features/home/presentation/main_shell_page.dart';
 import '../features/home/presentation/notebook_page.dart';
 import '../features/home/presentation/question_detail_page.dart';
 import '../features/home/presentation/review_page.dart';
+import '../features/focus/presentation/focus_active_page.dart';
+import '../features/focus/presentation/focus_page.dart';
+import '../features/focus/presentation/focus_result_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -42,6 +45,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/review',
         builder: (context, state) => const ReviewSessionPage(),
+      ),
+      GoRoute(
+        path: '/focus',
+        builder: (context, state) => FocusPage(
+          questionId: state.uri.queryParameters['questionId'],
+        ),
+      ),
+      GoRoute(
+        path: '/focus/active',
+        builder: (context, state) => const FocusActivePage(),
+      ),
+      GoRoute(
+        path: '/focus/result',
+        builder: (context, state) => const FocusResultPage(),
       ),
       GoRoute(
         path: '/settings/ai-provider',

@@ -163,6 +163,14 @@ class _DetailBody extends ConsumerWidget {
           expanded: true,
           onPressed: () => _openExercises(context, ref),
         ),
+        const SizedBox(height: GrowthSpacing.sm),
+        GrowthButton(
+          label: '专注攻克这道题',
+          icon: Icons.self_improvement_rounded,
+          variant: GrowthButtonVariant.secondary,
+          expanded: true,
+          onPressed: () => context.push('/focus?questionId=${question.id}'),
+        ),
       ],
     );
   }
