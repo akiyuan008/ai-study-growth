@@ -1,0 +1,12 @@
+/// 设计系统：「极简心流 + 玻璃拟物」设计语言的全部公共出口。
+library;
+
+export 'growth_theme.dart';
+export 'tokens.dart';
+export 'widgets/energy_ring.dart';
+export 'widgets/flow_countdown.dart';
+export 'widgets/growth_button.dart';
+export 'widgets/growth_card.dart';
+export 'widgets/growth_chip.dart';
+export 'widgets/growth_dialog.dart';
+export 'widgets/growth_text_field.dart';

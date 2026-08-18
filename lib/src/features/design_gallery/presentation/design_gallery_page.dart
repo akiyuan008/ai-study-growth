@@ -1,0 +1,296 @@
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../design_system/design_system.dart';
+
+/// 设计系统画廊 —— P1 验收页：全部组件与令牌的可视化清单。
+class DesignGalleryPage extends ConsumerStatefulWidget {
+  const DesignGalleryPage({super.key});
+
+  @override
+  ConsumerState<DesignGalleryPage> createState() => _DesignGalleryPageState();
+}
+
+class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
+  final _rng = Random();
+
+  // 能量环示例数据（P4 起由成长引擎真实供给）
+  List<AbilityArc> _demoArcs = const [
+    AbilityArc(label: '学习', value: 0.72, color: GrowthColors.abilityLearning),
+    AbilityArc(label: '专注', value: 0.58, color: GrowthColors.abilityFocus),
+    AbilityArc(
+        label: '坚持', value: 0.83, color: GrowthColors.abilityPersistence),
+    AbilityArc(label: '恢复', value: 0.36, color: GrowthColors.abilityRecovery),
+  ];
+
+  bool _chipSelected = true;
+  bool _buttonLoading = false;
+
+  void _shuffleArcs() {
+    setState(() {
+      _demoArcs = _demoArcs
+          .map((a) => AbilityArc(
+                label: a.label,
+                value: 0.15 + _rng.nextDouble() * 0.8,
+                color: a.color,
+              ))
+          .toList();
+    });
+  }
+
+  Future<void> _enterFlowDemo() async {
+    await Navigator.of(context).push<void>(
+      PageRouteBuilder(
+        fullscreenDialog: true,
+        pageBuilder: (_, __, ___) => FlowCountdown(
+          total: const Duration(seconds: 10),
+          title: '心流体验',
+          onFinished: () => Navigator.of(context).pop(),
+          onLeave: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('设计系统画廊'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(GrowthSpacing.lg),
+        children: [
+          _section('主题管理'),
+          GrowthCard(
+            child: Row(
+              children: [
+                for (final mode in ThemeMode.values)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: GrowthSpacing.xs),
+                      child: GrowthButton(
+                        label: switch (mode) {
+                          ThemeMode.system => '跟随系统',
+                          ThemeMode.light => '浅色',
+                          ThemeMode.dark => '深色',
+                        },
+                        variant: themeMode == mode
+                            ? GrowthButtonVariant.primary
+                            : GrowthButtonVariant.ghost,
+                        onPressed: () =>
+                            ref.read(themeModeProvider.notifier).set(mode),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          _section('色彩令牌'),
+          GrowthCard(
+            child: Wrap(
+              spacing: GrowthSpacing.md,
+              runSpacing: GrowthSpacing.md,
+              children: [
+                _swatch('种子', GrowthColors.seed),
+                _swatch('生长', GrowthColors.growth),
+                _swatch('心流', GrowthColors.flow),
+                _swatch('警示', GrowthColors.caution),
+                _swatch('学习', GrowthColors.abilityLearning),
+                _swatch('专注', GrowthColors.abilityFocus),
+                _swatch('坚持', GrowthColors.abilityPersistence),
+                _swatch('恢复', GrowthColors.abilityRecovery),
+              ],
+            ),
+          ),
+          _section('字体规范'),
+          GrowthCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('headline 28/w700',
+                    style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: GrowthSpacing.sm),
+                Text('title 20/w600',
+                    style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: GrowthSpacing.sm),
+                Text('body 15/w400 —— 大量留白，注意力聚焦当前任务',
+                    style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: GrowthSpacing.sm),
+                Text('caption 13 —— 辅助说明',
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+          _section('按钮'),
+          GrowthCard(
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: GrowthButton(
+                        label: '主要',
+                        onPressed: () {},
+                      ),
+                    ),
+                    const SizedBox(width: GrowthSpacing.sm),
+                    Expanded(
+                      child: GrowthButton(
+                        label: '玻璃',
+                        variant: GrowthButtonVariant.secondary,
+                        onPressed: () {},
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: GrowthSpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GrowthButton(
+                        label: '幽灵',
+                        variant: GrowthButtonVariant.ghost,
+                        onPressed: () {},
+                      ),
+                    ),
+                    const SizedBox(width: GrowthSpacing.sm),
+                    Expanded(
+                      child: GrowthButton(
+                        label: '危险',
+                        variant: GrowthButtonVariant.danger,
+                        onPressed: () {},
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: GrowthSpacing.md),
+                GrowthButton(
+                  label: _buttonLoading ? '解析中' : '加载态演示',
+                  loading: _buttonLoading,
+                  expanded: true,
+                  onPressed: () async {
+                    setState(() => _buttonLoading = true);
+                    await Future<void>.delayed(const Duration(seconds: 2));
+                    if (mounted) setState(() => _buttonLoading = false);
+                  },
+                ),
+              ],
+            ),
+          ),
+          _section('标签 Chip'),
+          GrowthCard(
+            child: Wrap(
+              spacing: GrowthSpacing.sm,
+              runSpacing: GrowthSpacing.sm,
+              children: [
+                GrowthChip(
+                  label: '压强',
+                  selected: _chipSelected,
+                  onTap: () => setState(() => _chipSelected = !_chipSelected),
+                ),
+                const GrowthChip(label: '力学', color: GrowthColors.abilityFocus),
+                const GrowthChip(
+                    label: '自由落体', color: GrowthColors.abilityPersistence),
+                const GrowthChip(label: '待巩固', color: GrowthColors.caution),
+              ],
+            ),
+          ),
+          _section('输入框'),
+          GrowthCard(
+            child: GrowthTextField(
+              label: '给 MOSS 伴读留言',
+              hint: '例如：今天想先复习物理错题…',
+            ),
+          ),
+          _section('成长能量环'),
+          GrowthCard(
+            child: Column(
+              children: [
+                EnergyRing(arcs: _demoArcs),
+                const SizedBox(height: GrowthSpacing.md),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (final arc in _demoArcs)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: GrowthSpacing.sm),
+                        child: AbilityDot(label: arc.label, color: arc.color),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: GrowthSpacing.md),
+                GrowthButton(
+                  label: '模拟一次能力涨落',
+                  variant: GrowthButtonVariant.secondary,
+                  icon: Icons.autorenew_rounded,
+                  onPressed: _shuffleArcs,
+                ),
+              ],
+            ),
+          ),
+          _section('心流倒计时'),
+          GrowthCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '单核模式：进入后全屏沉浸，只剩时间与环。',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: GrowthSpacing.md),
+                GrowthButton(
+                  label: '进入 10 秒心流演示',
+                  icon: Icons.center_focus_strong_rounded,
+                  expanded: true,
+                  onPressed: _enterFlowDemo,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: GrowthSpacing.xl),
+        ],
+      ),
+    );
+  }
+
+  Widget _section(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        top: GrowthSpacing.lg,
+        bottom: GrowthSpacing.sm,
+      ),
+      child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+    );
+  }
+
+  Widget _swatch(String label, Color color) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+          ),
+        ),
+        const SizedBox(height: GrowthSpacing.xs),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
+    );
+  }
+}
