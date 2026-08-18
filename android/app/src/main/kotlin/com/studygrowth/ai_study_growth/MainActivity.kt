@@ -1,10 +1,15 @@
 package com.studygrowth.ai_study_growth
 
+import android.Manifest
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Process
 import android.provider.Settings
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.studygrowth.ai_study_growth.monitor.BehaviorEventBus
 import com.studygrowth.ai_study_growth.monitor.LockScreenActivity
 import com.studygrowth.ai_study_growth.monitor.UsageMonitorService
@@ -56,6 +61,26 @@ class MainActivity : FlutterActivity() {
                     "openUsageAccessSettings" -> {
                         startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
                         result.success(true)
+                    }
+                    "requestNotificationPermission" -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            if (ContextCompat.checkSelfPermission(
+                                    this,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                ) == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                result.success(true)
+                            } else {
+                                ActivityCompat.requestPermissions(
+                                    this,
+                                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                                    3001
+                                )
+                                result.success(false)
+                            }
+                        } else {
+                            result.success(true)
+                        }
                     }
                     else -> result.notImplemented()
                 }

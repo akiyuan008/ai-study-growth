@@ -11,17 +11,24 @@ import '../features/home/presentation/main_shell_page.dart';
 import '../features/home/presentation/notebook_page.dart';
 import '../features/home/presentation/question_detail_page.dart';
 import '../features/home/presentation/review_page.dart';
+import '../features/onboarding/presentation/onboarding_page.dart';
 import '../features/focus/presentation/focus_active_page.dart';
 import '../features/focus/presentation/focus_page.dart';
 import '../features/focus/presentation/focus_result_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final onboarded = prefs.getBool('onboarding_done') ?? false;
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: onboarded ? '/' : '/onboarding',
     routes: [
       GoRoute(
         path: '/',
         builder: (context, state) => const MainShellPage(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingPage(),
       ),
       GoRoute(
         path: '/notebook',

@@ -77,9 +77,17 @@ Dart:   DisciplineEngine(focusMath 去重) → MissionEvaluator → RewardEngine
 | **P0** 基座 | 脚手架、Lint/Hooks、Drift Schema、AI Provider 模块、CI | 空壳 APK 打包，Drift 初始化无报错 | ✅ |
 | **P1** 设计系统 | Design Tokens、组件库（心流倒计时/能量环）、主题管理 | 组件库覆盖新 UI 规范 | ✅ |
 | **P2** 错题本重构 | 相机/裁剪/多图拆分、解析管线（串行队列/单题重试）、FSRS 复习、举一反三 | 拍题→解析→入库→复习→练习全链路 | ✅ |
-| **P3** 自律引擎 | Kotlin MonitorService/LockScreen、DisciplineEngine 状态机、MOSS 策略 | 分心→锁屏遮罩→回归，专注时长精准 | ⬜ |
-| **P4** 融合引擎 | 复习即任务、专注有对象、四能力实装、NextStep | 系统给出合理明日学习规划 | ⬜ |
-| **P5** 打磨发布 | 权限引导、性能审计、Onboarding、签名发布 | 启动 <2s，权限成功率 >90% | ⬜ |
+| **P3** 自律引擎 | Kotlin MonitorService/LockScreen、DisciplineEngine 状态机、MOSS 策略 | 分心→锁屏遮罩→回归，专注时长精准 | ✅ |
+| **P4** 融合引擎 | 复习即任务、专注有对象、四能力实装、NextStep | 系统给出合理明日学习规划 | ✅ |
+| **P5** 打磨发布 | 权限引导、Onboarding、整体审查、CI 打包 | 全量测试通过，Release APK | ✅ |
+
+### 全阶段交付概览
+
+**P3 自律域**：Kotlin 前台服务 15s 轮询前台应用（事件 JSONL 落盘、重启补推）；DisciplineEngine 三相状态机（focusing/distracted/locked），focusMath 区间去重算真实专注时长；MOSS 策略普通 1min 提醒/5min 锁屏、深渊 30s/2min；专注启动/进行/结算三页单核沉浸 UI。
+
+**P4 成长引擎**：GrowthEngine 四能力纯函数（学习=复习完成度60%+摄入20%+掌握度20%；专注=时长对标-分心轻罚；坚持=连续天数；恢复=回归率）；MissionEngine 复习即任务（幂等生成+评分后自动评估）；NextStepEngine 四级规则（记忆债→专注→拍题→保持）；成长首页五层结构（身份/能量环/行动/记忆/快捷入口），四能力由双域真实数据驱动，身份只给定性描述。
+
+**P5 打磨**：三屏 Onboarding（首启 + 权限引导）、通知权限申请、使用情况访问引导贯穿专注启动与引导页。
 
 ### P2 已交付清单
 

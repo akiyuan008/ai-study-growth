@@ -43,6 +43,8 @@ class _FocusPageState extends ConsumerState<FocusPage> {
       return;
     }
 
+    await bridge.requestNotificationPermission();
+
     setState(() => _starting = true);
     try {
       await ref.read(activeFocusProvider.notifier).start(
