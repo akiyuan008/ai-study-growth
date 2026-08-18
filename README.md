@@ -81,6 +81,18 @@ Dart:   DisciplineEngine(focusMath 去重) → MissionEvaluator → RewardEngine
 | **P4** 融合引擎 | 复习即任务、专注有对象、四能力实装、NextStep | 系统给出合理明日学习规划 | ✅ |
 | **P5** 打磨发布 | 权限引导、Onboarding、整体审查、CI 打包 | 全量测试通过，Release APK | ✅ |
 
+### v0.4.0 双域融合大版本（Part 0-4）
+
+**Part 1 · IA v2**：五 Tab（成长|错题本|复习|专注|设置），删全局 FAB，拍题入口语境化（错题本右上大按钮/空状态 CTA/成长页快捷）；复习 Tab 完整 FSRS 流（对错判定+下次复习时间预览+专注攻克入口）；统计子页（统计卡+知识点掌握度柱状图 fl_chart）；内容契约落地（成长页只读、专注页只执行）；四条融合全通（REVIEW Mission、专注绑定题目、复习驱动学习弧、NextStep 深链）。
+
+**自律域对账**：docs/DISCIPLINE_RECONCILIATION.md 输出 15 项核销；补缺手动任务（MANUAL 来源+专注达标评估）、MOSS 伴读对话、LEVEL1-3 干预映射、里程碑成就并入成长记忆；课表/每日复盘延后 v0.5（见文档原因）。
+
+**Part 2 · 录入重构**：应用内相机（camera 包自建取景框+三分线+连拍缩略图条，不拉系统相机）；Kotlin OpenCV 文档提取（四边形检测+透视拉正+匀光，失败回落手动裁剪）；统一编辑屏（四角拖拽+旋转+一键自动校准）；相册导入与快门并排；CaptureSource 枚举（camera/album/futureShare 预留）。不做：智能分题、手写擦除。
+
+**Part 3 · AI 角色收敛**：AI 严禁生成解析内容——录入时仅输出知识点标签供确认；复习 FSRS 确定性排期 + AI 智能优先级重排（失败回落）；AI 知识点规划生成学习路径建议（统计页展示+注入 NextStep）；举一反三 L1-L4 来源体系（个人真题库优先检索/AI 真题引用强制出处/来源待核实/AI 拟题），每题 UI 显示来源标签；question_bank 题库飞轮（拍题入库+用题回写+未用优先）。
+
+**其他**：App 图标按提供 SVG 1:1 重绘（错题本+橙X+蓝星芒，全密度+adaptive）。
+
 ### v0.3.2 AI 配置页修复 + 底栏一体化（Prompt G/H）
 
 **Prompt G · AI 配置页**：新建 AiConfigRepository（hydrate 回填 + Key 掩码、非敏感字段 Drift 持久化、密钥 secure storage）；获取模型只校验 URL+Key 解除死锁，loading + 错误分级 toast（401/超时/地址无效），成功弹模型选择 BottomSheet；Base URL 自动补 https:// 与尾斜杠规范化；测试连接明确反馈；保存 toast 返回；灰色 helper 校验文案；Key 输入密文 + 眼睛切换。

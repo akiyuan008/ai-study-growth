@@ -8,10 +8,6 @@ import '../../../data/local/app_database.dart';
 import '../../../data/repositories/question_repository.dart';
 import '../../learning/learning_providers.dart';
 
-final _notebookDueCountProvider = FutureProvider<int>((ref) async {
-  return ref.watch(reviewRepositoryProvider).dueCount();
-});
-
 final notebookListProvider = FutureProvider.autoDispose
     .family<List<QuestionRecord>, ({String subject, String keyword})>(
         (ref, filter) async {
@@ -43,16 +39,13 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
     final listAsync = ref.watch(
       notebookListProvider((subject: _subject, keyword: _keyword)),
     );
-    final dueCount = ref.watch(_notebookDueCountProvider).valueOrNull ?? 0;
-
-    // 复习快捷入口（Prompt A2）：右上角，带到期数量角标
-    final reviewShortcut = IconButton(
-      tooltip: '今日复习',
-      onPressed: () => context.push('/review'),
-      icon: Badge(
-        isLabelVisible: dueCount > 0,
-        label: Text('$dueCount'),
-        child: const Icon(Icons.replay_rounded),
+    // Part 1：拍题入口语境化——错题本页右上大按钮
+    final captureButton = Padding(
+      padding: const EdgeInsets.only(top: GrowthSpacing.sm),
+      child: GrowthButton(
+        label: '拍题',
+        icon: Icons.camera_alt_rounded,
+        onPressed: () => context.push('/capture'),
       ),
     );
 
@@ -62,7 +55,17 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
         title: '错题本',
         showBack: !widget.embedded,
         onBack: () => context.pop(),
-        actions: [reviewShortcut],
+        actions: [
+          IconButton(
+            tooltip: '学习统计',
+            onPressed: () => context.push('/stats'),
+            icon: const GrowthIcon(
+              type: GrowthIconType.chart,
+              size: 22,
+            ),
+          ),
+          captureButton,
+        ],
       ),
       body: GrowthBackground(
           child: Column(
@@ -106,10 +109,21 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
               error: (e, _) => Center(child: Text('加载失败：$e')),
               data: (questions) {
                 if (questions.isEmpty) {
-                  return GrowthEmptyState(
-                    message: _keyword.isEmpty && _subject.isEmpty
-                        ? '错题本还是空的\n点下方「拍题」，把第一道错题变成成长资产'
-                        : '没有匹配的题目',
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GrowthEmptyState(
+                        message: _keyword.isEmpty && _subject.isEmpty
+                            ? '错题本还是空的\n拍下第一道错题，把它变成成长资产'
+                            : '没有匹配的题目',
+                      ),
+                      if (_keyword.isEmpty && _subject.isEmpty)
+                        GrowthButton(
+                          label: '拍第一道题',
+                          icon: Icons.camera_alt_rounded,
+                          onPressed: () => context.push('/capture'),
+                        ),
+                    ],
                   );
                 }
                 return ListView.separated(

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import '../../domain/models/analysis_result.dart';
@@ -37,6 +38,19 @@ abstract interface class AiAnalysisGateway {
     required String questionContext,
     required List<AiMessage> history,
     required String question,
+  });
+
+  /// MOSS 伴读通用对话（流式，无题目上下文）
+  Stream<String> companionChat({
+    required List<AiMessage> history,
+    required String message,
+  });
+
+  /// 知识点分类（Part 3.1）：AI 仅输出结构化知识点标签列表。
+  /// 严禁生成题干/答案/错因等解析内容。
+  Future<List<String>> suggestKnowledgeTags({
+    required List<int> imageBytes,
+    String mimeType = 'image/jpeg',
   });
 }
 
@@ -130,6 +144,69 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
       maxTokens: 4096,
     );
     return parseExercises(raw);
+  }
+
+  @override
+  Future<List<String>> suggestKnowledgeTags({
+    required List<int> imageBytes,
+    String mimeType = 'image/jpeg',
+  }) async {
+    const system = '你是一个知识点分类器。只看题目图片，输出该题涉及的知识点标签。'
+        '规则：只输出 JSON 数组（如 ["高中物理","力学","牛顿第二定律"]），3-6 个，'
+        '从学科大类到具体知识点递进；不解题、不写答案、不输出任何其他文字。';
+    final raw = await _client.chat(
+      messages: [
+        const AiMessage(role: 'system', content: system),
+        userMessageWithImage(
+          text: '请输出知识点标签。',
+          imageBytes: imageBytes,
+          mimeType: mimeType,
+        ),
+      ],
+      temperature: 0.1,
+      maxTokens: 256,
+    );
+    final json = extractJsonObject(raw) ?? _tryParseArray(raw);
+    if (json == null) return const [];
+    final list = json['tags'];
+    if (list is List) {
+      return list.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+    }
+    return const [];
+  }
+
+  static Map<String, dynamic>? _tryParseArray(String raw) {
+    final start = raw.indexOf('[');
+    final end = raw.lastIndexOf(']');
+    if (start < 0 || end <= start) return null;
+    try {
+      final arr = jsonDecode(raw.substring(start, end + 1));
+      if (arr is List) return {'tags': arr};
+    } catch (_) {}
+    return null;
+  }
+
+  @override
+  Stream<String> companionChat({
+    required List<AiMessage> history,
+    required String message,
+  }) async* {
+    final messages = [
+      const AiMessage(
+        role: 'system',
+        content: '你是 MOSS，一个温和的数字伴读。用引导式、启发式的语气陪用户聊天：'
+            '聊学习状态、给节奏建议、帮忙拆解拖延。回答简短（2-4 句），不说教。',
+      ),
+      ...history,
+      AiMessage(role: 'user', content: message),
+    ];
+    await for (final chunk in _client.chatStream(
+      messages: messages,
+      temperature: 0.6,
+      maxTokens: 512,
+    )) {
+      if (chunk.delta.isNotEmpty) yield chunk.delta;
+    }
   }
 
   @override

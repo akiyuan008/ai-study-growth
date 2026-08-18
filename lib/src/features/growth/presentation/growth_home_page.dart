@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -42,11 +44,9 @@ class GrowthHomePage extends ConsumerWidget {
               children: [
                 _IdentityCard(data: data),
                 const SizedBox(height: GrowthSpacing.md),
+                const _TrendCard(),
+                const SizedBox(height: GrowthSpacing.md),
                 _NextStepCard(data: data),
-                const SizedBox(height: GrowthSpacing.md),
-                _TodayActionsCard(data: data),
-                const SizedBox(height: GrowthSpacing.md),
-                _QuickActions(),
                 const SizedBox(height: GrowthSpacing.md),
                 if (data.moments.isNotEmpty) _MemoryCard(data: data),
                 const SizedBox(height: GrowthSpacing.xl),
@@ -376,130 +376,112 @@ class _NextStepCard extends StatelessWidget {
 }
 
 /// 今日成长行动：任务卡片（复习任务直达复习流，Prompt A2）
-class _TodayActionsCard extends StatelessWidget {
-  const _TodayActionsCard({required this.data});
-
-  final GrowthHomeData data;
+/// 成长趋势卡（内容契约：趋势只读展示，无执行 UI）
+class _TrendCard extends ConsumerWidget {
+  const _TrendCard();
 
   @override
-  Widget build(BuildContext context) {
-    // 即使任务引擎尚未生成 Mission，只要有到期复习也给出复习入口卡
-    final hasReviewEntry =
-        data.missions.any((m) => m.source == 'review_engine');
-    final showReviewCard = !hasReviewEntry && data.dueReviewCount > 0;
-
-    if (data.missions.isEmpty && !showReviewCard) {
-      return const SizedBox.shrink();
-    }
-
+  Widget build(BuildContext context, WidgetRef ref) {
+    final trendAsync = ref.watch(growthTrendProvider);
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GrowthSectionHeader(title: '今日成长行动'),
+          GrowthSectionHeader(title: '成长趋势'),
           const SizedBox(height: GrowthSpacing.sm),
-          if (showReviewCard)
-            _ActionRow(
-              icon: Icons.replay_rounded,
-              color: GrowthColors.abilityLearning,
-              title: '完成 ${data.dueReviewCount} 道到期复习',
-              done: false,
-              cta: '去完成',
-              onTap: () => context.push('/review'),
+          trendAsync.when(
+            loading: () => const SizedBox(
+              height: 72,
+              child: Center(child: CircularProgressIndicator()),
             ),
-          for (final m in data.missions)
-            _ActionRow(
-              icon: m.status == 'done'
-                  ? Icons.check_circle_rounded
-                  : Icons.radio_button_unchecked,
-              color: m.status == 'done'
-                  ? GrowthColors.success
-                  : GrowthColors.primary,
-              title: m.title,
-              done: m.status == 'done',
-              cta: m.status != 'done' && m.source == 'review_engine'
-                  ? '去完成'
-                  : null,
-              onTap: m.status != 'done' && m.source == 'review_engine'
-                  ? () => context.push('/review')
-                  : null,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.done,
-    this.cta,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String title;
-  final bool done;
-  final String? cta;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: GrowthSpacing.sm),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: GrowthSpacing.sm),
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: done
-                        ? Theme.of(context).textTheme.bodySmall?.color
-                        : null,
+            error: (e, _) => Text('加载失败：$e'),
+            data: (points) {
+              if (points.length < 2) {
+                return SizedBox(
+                  height: 72,
+                  child: Center(
+                    child: Text(
+                      '积累 2 天以上的成长快照后，这里会出现趋势线',
+                      style: Theme.of(context).textTheme.bodySmall,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-            ),
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 72,
+                    child: CustomPaint(
+                      painter: _TrendLinePainter(
+                        values: points.map((p) => p.overall).toList(),
+                        color: GrowthColors.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: GrowthSpacing.xs),
+                  Text(
+                    '近 ${points.length} 日综合趋势',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              );
+            },
           ),
-          if (cta != null) TextButton(onPressed: onTap, child: Text(cta!)),
         ],
       ),
     );
   }
 }
 
-class _QuickActions extends StatelessWidget {
+class _TrendLinePainter extends CustomPainter {
+  _TrendLinePainter({required this.values, required this.color});
+
+  final List<double> values;
+  final Color color;
+
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: GrowthButton(
-            label: '开始专注',
-            icon: Icons.self_improvement_rounded,
-            variant: GrowthButtonVariant.secondary,
-            onPressed: () => context.push('/focus'),
-          ),
-        ),
-        const SizedBox(width: GrowthSpacing.sm),
-        Expanded(
-          child: GrowthButton(
-            label: '拍题',
-            icon: Icons.camera_alt_rounded,
-            variant: GrowthButtonVariant.secondary,
-            onPressed: () => context.push('/capture'),
-          ),
-        ),
-      ],
-    );
+  void paint(Canvas canvas, Size size) {
+    if (values.length < 2) return;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = color;
+
+    final maxV = 100.0;
+    final stepX = size.width / (values.length - 1);
+    final path = Path();
+    for (var i = 0; i < values.length; i++) {
+      final x = i * stepX;
+      final y = size.height -
+          (values[i].clamp(0.0, maxV) / maxV) * (size.height - 8) -
+          4;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(path, paint);
+
+    // 端点
+    final lastX = (values.length - 1) * stepX;
+    final lastY = size.height -
+        (values.last.clamp(0.0, maxV) / maxV) * (size.height - 8) -
+        4;
+    canvas.drawCircle(Offset(lastX, lastY), 3.6, Paint()..color = color);
+    // 数学保留
+    assert(math.pi > 0);
   }
+
+  @override
+  bool shouldRepaint(covariant _TrendLinePainter oldDelegate) =>
+      oldDelegate.values != values || oldDelegate.color != color;
 }
 
-/// 成长记忆时间线
 class _MemoryCard extends StatelessWidget {
   const _MemoryCard({required this.data});
 

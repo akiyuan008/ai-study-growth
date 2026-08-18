@@ -706,6 +706,464 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
   }
 }
 
+class $QuestionBankTable extends QuestionBank
+    with TableInfo<$QuestionBankTable, QuestionBankData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $QuestionBankTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _sourceQuestionIdMeta =
+      const VerificationMeta('sourceQuestionId');
+  @override
+  late final GeneratedColumn<String> sourceQuestionId = GeneratedColumn<String>(
+      'source_question_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _knowledgePointIdMeta =
+      const VerificationMeta('knowledgePointId');
+  @override
+  late final GeneratedColumn<String> knowledgePointId = GeneratedColumn<String>(
+      'knowledge_point_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _contentMeta =
+      const VerificationMeta('content');
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+      'content', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+      'kind', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _sourceLabelMeta =
+      const VerificationMeta('sourceLabel');
+  @override
+  late final GeneratedColumn<String> sourceLabel = GeneratedColumn<String>(
+      'source_label', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _usedCountMeta =
+      const VerificationMeta('usedCount');
+  @override
+  late final GeneratedColumn<int> usedCount = GeneratedColumn<int>(
+      'used_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        sourceQuestionId,
+        knowledgePointId,
+        content,
+        kind,
+        sourceLabel,
+        usedCount,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'question_bank';
+  @override
+  VerificationContext validateIntegrity(Insertable<QuestionBankData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('source_question_id')) {
+      context.handle(
+          _sourceQuestionIdMeta,
+          sourceQuestionId.isAcceptableOrUnknown(
+              data['source_question_id']!, _sourceQuestionIdMeta));
+    }
+    if (data.containsKey('knowledge_point_id')) {
+      context.handle(
+          _knowledgePointIdMeta,
+          knowledgePointId.isAcceptableOrUnknown(
+              data['knowledge_point_id']!, _knowledgePointIdMeta));
+    }
+    if (data.containsKey('content')) {
+      context.handle(_contentMeta,
+          content.isAcceptableOrUnknown(data['content']!, _contentMeta));
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+          _kindMeta, kind.isAcceptableOrUnknown(data['kind']!, _kindMeta));
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('source_label')) {
+      context.handle(
+          _sourceLabelMeta,
+          sourceLabel.isAcceptableOrUnknown(
+              data['source_label']!, _sourceLabelMeta));
+    } else if (isInserting) {
+      context.missing(_sourceLabelMeta);
+    }
+    if (data.containsKey('used_count')) {
+      context.handle(_usedCountMeta,
+          usedCount.isAcceptableOrUnknown(data['used_count']!, _usedCountMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  QuestionBankData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return QuestionBankData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      sourceQuestionId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}source_question_id']),
+      knowledgePointId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}knowledge_point_id']),
+      content: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
+      kind: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
+      sourceLabel: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source_label'])!,
+      usedCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}used_count'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $QuestionBankTable createAlias(String alias) {
+    return $QuestionBankTable(attachedDatabase, alias);
+  }
+}
+
+class QuestionBankData extends DataClass
+    implements Insertable<QuestionBankData> {
+  /// uuid
+  final String id;
+
+  /// 来源题目（用户错题入库时关联）
+  final String? sourceQuestionId;
+
+  /// 关联知识点
+  final String? knowledgePointId;
+
+  /// 题目内容 JSON：{question, options, answer, explanation}
+  final String content;
+
+  /// real_exam（用户真题）/ ai_cited（AI 真题引用）/ ai_generated（AI 拟题）
+  final String kind;
+
+  /// UI 来源标签：真题·来自你的题库 / 真题引用·2023全国甲卷 / 来源待核实 / AI 拟题
+  final String sourceLabel;
+
+  /// 已用于练习的次数（优先未用真题）
+  final int usedCount;
+  final DateTime createdAt;
+  const QuestionBankData(
+      {required this.id,
+      this.sourceQuestionId,
+      this.knowledgePointId,
+      required this.content,
+      required this.kind,
+      required this.sourceLabel,
+      required this.usedCount,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || sourceQuestionId != null) {
+      map['source_question_id'] = Variable<String>(sourceQuestionId);
+    }
+    if (!nullToAbsent || knowledgePointId != null) {
+      map['knowledge_point_id'] = Variable<String>(knowledgePointId);
+    }
+    map['content'] = Variable<String>(content);
+    map['kind'] = Variable<String>(kind);
+    map['source_label'] = Variable<String>(sourceLabel);
+    map['used_count'] = Variable<int>(usedCount);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  QuestionBankCompanion toCompanion(bool nullToAbsent) {
+    return QuestionBankCompanion(
+      id: Value(id),
+      sourceQuestionId: sourceQuestionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceQuestionId),
+      knowledgePointId: knowledgePointId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(knowledgePointId),
+      content: Value(content),
+      kind: Value(kind),
+      sourceLabel: Value(sourceLabel),
+      usedCount: Value(usedCount),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory QuestionBankData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return QuestionBankData(
+      id: serializer.fromJson<String>(json['id']),
+      sourceQuestionId: serializer.fromJson<String?>(json['sourceQuestionId']),
+      knowledgePointId: serializer.fromJson<String?>(json['knowledgePointId']),
+      content: serializer.fromJson<String>(json['content']),
+      kind: serializer.fromJson<String>(json['kind']),
+      sourceLabel: serializer.fromJson<String>(json['sourceLabel']),
+      usedCount: serializer.fromJson<int>(json['usedCount']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'sourceQuestionId': serializer.toJson<String?>(sourceQuestionId),
+      'knowledgePointId': serializer.toJson<String?>(knowledgePointId),
+      'content': serializer.toJson<String>(content),
+      'kind': serializer.toJson<String>(kind),
+      'sourceLabel': serializer.toJson<String>(sourceLabel),
+      'usedCount': serializer.toJson<int>(usedCount),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  QuestionBankData copyWith(
+          {String? id,
+          Value<String?> sourceQuestionId = const Value.absent(),
+          Value<String?> knowledgePointId = const Value.absent(),
+          String? content,
+          String? kind,
+          String? sourceLabel,
+          int? usedCount,
+          DateTime? createdAt}) =>
+      QuestionBankData(
+        id: id ?? this.id,
+        sourceQuestionId: sourceQuestionId.present
+            ? sourceQuestionId.value
+            : this.sourceQuestionId,
+        knowledgePointId: knowledgePointId.present
+            ? knowledgePointId.value
+            : this.knowledgePointId,
+        content: content ?? this.content,
+        kind: kind ?? this.kind,
+        sourceLabel: sourceLabel ?? this.sourceLabel,
+        usedCount: usedCount ?? this.usedCount,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  QuestionBankData copyWithCompanion(QuestionBankCompanion data) {
+    return QuestionBankData(
+      id: data.id.present ? data.id.value : this.id,
+      sourceQuestionId: data.sourceQuestionId.present
+          ? data.sourceQuestionId.value
+          : this.sourceQuestionId,
+      knowledgePointId: data.knowledgePointId.present
+          ? data.knowledgePointId.value
+          : this.knowledgePointId,
+      content: data.content.present ? data.content.value : this.content,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      sourceLabel:
+          data.sourceLabel.present ? data.sourceLabel.value : this.sourceLabel,
+      usedCount: data.usedCount.present ? data.usedCount.value : this.usedCount,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuestionBankData(')
+          ..write('id: $id, ')
+          ..write('sourceQuestionId: $sourceQuestionId, ')
+          ..write('knowledgePointId: $knowledgePointId, ')
+          ..write('content: $content, ')
+          ..write('kind: $kind, ')
+          ..write('sourceLabel: $sourceLabel, ')
+          ..write('usedCount: $usedCount, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, sourceQuestionId, knowledgePointId,
+      content, kind, sourceLabel, usedCount, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QuestionBankData &&
+          other.id == this.id &&
+          other.sourceQuestionId == this.sourceQuestionId &&
+          other.knowledgePointId == this.knowledgePointId &&
+          other.content == this.content &&
+          other.kind == this.kind &&
+          other.sourceLabel == this.sourceLabel &&
+          other.usedCount == this.usedCount &&
+          other.createdAt == this.createdAt);
+}
+
+class QuestionBankCompanion extends UpdateCompanion<QuestionBankData> {
+  final Value<String> id;
+  final Value<String?> sourceQuestionId;
+  final Value<String?> knowledgePointId;
+  final Value<String> content;
+  final Value<String> kind;
+  final Value<String> sourceLabel;
+  final Value<int> usedCount;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const QuestionBankCompanion({
+    this.id = const Value.absent(),
+    this.sourceQuestionId = const Value.absent(),
+    this.knowledgePointId = const Value.absent(),
+    this.content = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.sourceLabel = const Value.absent(),
+    this.usedCount = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  QuestionBankCompanion.insert({
+    required String id,
+    this.sourceQuestionId = const Value.absent(),
+    this.knowledgePointId = const Value.absent(),
+    required String content,
+    required String kind,
+    required String sourceLabel,
+    this.usedCount = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        content = Value(content),
+        kind = Value(kind),
+        sourceLabel = Value(sourceLabel),
+        createdAt = Value(createdAt);
+  static Insertable<QuestionBankData> custom({
+    Expression<String>? id,
+    Expression<String>? sourceQuestionId,
+    Expression<String>? knowledgePointId,
+    Expression<String>? content,
+    Expression<String>? kind,
+    Expression<String>? sourceLabel,
+    Expression<int>? usedCount,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sourceQuestionId != null) 'source_question_id': sourceQuestionId,
+      if (knowledgePointId != null) 'knowledge_point_id': knowledgePointId,
+      if (content != null) 'content': content,
+      if (kind != null) 'kind': kind,
+      if (sourceLabel != null) 'source_label': sourceLabel,
+      if (usedCount != null) 'used_count': usedCount,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  QuestionBankCompanion copyWith(
+      {Value<String>? id,
+      Value<String?>? sourceQuestionId,
+      Value<String?>? knowledgePointId,
+      Value<String>? content,
+      Value<String>? kind,
+      Value<String>? sourceLabel,
+      Value<int>? usedCount,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return QuestionBankCompanion(
+      id: id ?? this.id,
+      sourceQuestionId: sourceQuestionId ?? this.sourceQuestionId,
+      knowledgePointId: knowledgePointId ?? this.knowledgePointId,
+      content: content ?? this.content,
+      kind: kind ?? this.kind,
+      sourceLabel: sourceLabel ?? this.sourceLabel,
+      usedCount: usedCount ?? this.usedCount,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (sourceQuestionId.present) {
+      map['source_question_id'] = Variable<String>(sourceQuestionId.value);
+    }
+    if (knowledgePointId.present) {
+      map['knowledge_point_id'] = Variable<String>(knowledgePointId.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (sourceLabel.present) {
+      map['source_label'] = Variable<String>(sourceLabel.value);
+    }
+    if (usedCount.present) {
+      map['used_count'] = Variable<int>(usedCount.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuestionBankCompanion(')
+          ..write('id: $id, ')
+          ..write('sourceQuestionId: $sourceQuestionId, ')
+          ..write('knowledgePointId: $knowledgePointId, ')
+          ..write('content: $content, ')
+          ..write('kind: $kind, ')
+          ..write('sourceLabel: $sourceLabel, ')
+          ..write('usedCount: $usedCount, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AnalysisJobsTable extends AnalysisJobs
     with TableInfo<$AnalysisJobsTable, AnalysisJob> {
   @override
@@ -5884,6 +6342,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $QuestionRecordsTable questionRecords =
       $QuestionRecordsTable(this);
+  late final $QuestionBankTable questionBank = $QuestionBankTable(this);
   late final $AnalysisJobsTable analysisJobs = $AnalysisJobsTable(this);
   late final $KnowledgePointsTable knowledgePoints =
       $KnowledgePointsTable(this);
@@ -5906,6 +6365,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
         questionRecords,
+        questionBank,
         analysisJobs,
         knowledgePoints,
         questionKnowledgeLinks,
@@ -6234,6 +6694,228 @@ typedef $$QuestionRecordsTableProcessedTableManager = ProcessedTableManager<
       BaseReferences<_$AppDatabase, $QuestionRecordsTable, QuestionRecord>
     ),
     QuestionRecord,
+    PrefetchHooks Function()>;
+typedef $$QuestionBankTableCreateCompanionBuilder = QuestionBankCompanion
+    Function({
+  required String id,
+  Value<String?> sourceQuestionId,
+  Value<String?> knowledgePointId,
+  required String content,
+  required String kind,
+  required String sourceLabel,
+  Value<int> usedCount,
+  required DateTime createdAt,
+  Value<int> rowid,
+});
+typedef $$QuestionBankTableUpdateCompanionBuilder = QuestionBankCompanion
+    Function({
+  Value<String> id,
+  Value<String?> sourceQuestionId,
+  Value<String?> knowledgePointId,
+  Value<String> content,
+  Value<String> kind,
+  Value<String> sourceLabel,
+  Value<int> usedCount,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$QuestionBankTableFilterComposer
+    extends Composer<_$AppDatabase, $QuestionBankTable> {
+  $$QuestionBankTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sourceQuestionId => $composableBuilder(
+      column: $table.sourceQuestionId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get knowledgePointId => $composableBuilder(
+      column: $table.knowledgePointId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sourceLabel => $composableBuilder(
+      column: $table.sourceLabel, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get usedCount => $composableBuilder(
+      column: $table.usedCount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$QuestionBankTableOrderingComposer
+    extends Composer<_$AppDatabase, $QuestionBankTable> {
+  $$QuestionBankTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sourceQuestionId => $composableBuilder(
+      column: $table.sourceQuestionId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get knowledgePointId => $composableBuilder(
+      column: $table.knowledgePointId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sourceLabel => $composableBuilder(
+      column: $table.sourceLabel, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get usedCount => $composableBuilder(
+      column: $table.usedCount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$QuestionBankTableAnnotationComposer
+    extends Composer<_$AppDatabase, $QuestionBankTable> {
+  $$QuestionBankTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceQuestionId => $composableBuilder(
+      column: $table.sourceQuestionId, builder: (column) => column);
+
+  GeneratedColumn<String> get knowledgePointId => $composableBuilder(
+      column: $table.knowledgePointId, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceLabel => $composableBuilder(
+      column: $table.sourceLabel, builder: (column) => column);
+
+  GeneratedColumn<int> get usedCount =>
+      $composableBuilder(column: $table.usedCount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$QuestionBankTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $QuestionBankTable,
+    QuestionBankData,
+    $$QuestionBankTableFilterComposer,
+    $$QuestionBankTableOrderingComposer,
+    $$QuestionBankTableAnnotationComposer,
+    $$QuestionBankTableCreateCompanionBuilder,
+    $$QuestionBankTableUpdateCompanionBuilder,
+    (
+      QuestionBankData,
+      BaseReferences<_$AppDatabase, $QuestionBankTable, QuestionBankData>
+    ),
+    QuestionBankData,
+    PrefetchHooks Function()> {
+  $$QuestionBankTableTableManager(_$AppDatabase db, $QuestionBankTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$QuestionBankTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$QuestionBankTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$QuestionBankTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String?> sourceQuestionId = const Value.absent(),
+            Value<String?> knowledgePointId = const Value.absent(),
+            Value<String> content = const Value.absent(),
+            Value<String> kind = const Value.absent(),
+            Value<String> sourceLabel = const Value.absent(),
+            Value<int> usedCount = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              QuestionBankCompanion(
+            id: id,
+            sourceQuestionId: sourceQuestionId,
+            knowledgePointId: knowledgePointId,
+            content: content,
+            kind: kind,
+            sourceLabel: sourceLabel,
+            usedCount: usedCount,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            Value<String?> sourceQuestionId = const Value.absent(),
+            Value<String?> knowledgePointId = const Value.absent(),
+            required String content,
+            required String kind,
+            required String sourceLabel,
+            Value<int> usedCount = const Value.absent(),
+            required DateTime createdAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              QuestionBankCompanion.insert(
+            id: id,
+            sourceQuestionId: sourceQuestionId,
+            knowledgePointId: knowledgePointId,
+            content: content,
+            kind: kind,
+            sourceLabel: sourceLabel,
+            usedCount: usedCount,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$QuestionBankTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $QuestionBankTable,
+    QuestionBankData,
+    $$QuestionBankTableFilterComposer,
+    $$QuestionBankTableOrderingComposer,
+    $$QuestionBankTableAnnotationComposer,
+    $$QuestionBankTableCreateCompanionBuilder,
+    $$QuestionBankTableUpdateCompanionBuilder,
+    (
+      QuestionBankData,
+      BaseReferences<_$AppDatabase, $QuestionBankTable, QuestionBankData>
+    ),
+    QuestionBankData,
     PrefetchHooks Function()>;
 typedef $$AnalysisJobsTableCreateCompanionBuilder = AnalysisJobsCompanion
     Function({
@@ -8853,6 +9535,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$QuestionRecordsTableTableManager get questionRecords =>
       $$QuestionRecordsTableTableManager(_db, _db.questionRecords);
+  $$QuestionBankTableTableManager get questionBank =>
+      $$QuestionBankTableTableManager(_db, _db.questionBank);
   $$AnalysisJobsTableTableManager get analysisJobs =>
       $$AnalysisJobsTableTableManager(_db, _db.analysisJobs);
   $$KnowledgePointsTableTableManager get knowledgePoints =>

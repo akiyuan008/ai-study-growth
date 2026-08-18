@@ -29,8 +29,7 @@ abstract final class MissionEngine {
     if (dueCards.isNotEmpty) {
       final exists = await (db.select(db.missions)
             ..where((t) =>
-                t.source.equals('review_engine') &
-                t.scheduledFor.equals(today)))
+                t.source.equals('REVIEW') & t.scheduledFor.equals(today)))
           .get();
       if (exists.isEmpty) {
         final id = _uuid.v4();
@@ -38,7 +37,7 @@ abstract final class MissionEngine {
               MissionsCompanion.insert(
                 id: id,
                 title: '完成 ${dueCards.length} 道到期复习',
-                source: const Value('review_engine'),
+                source: const Value('REVIEW'),
                 scheduledFor: today,
                 requirement: Value(jsonEncode({
                   'type': 'review_done',
@@ -51,6 +50,29 @@ abstract final class MissionEngine {
       }
     }
     return created;
+  }
+
+  /// 手动创建任务（source=MANUAL，自律域对账补缺）
+  static Future<String> createManualMission(
+    AppDatabase db, {
+    required String title,
+    required DateTime at,
+    int focusMinutes = 0,
+  }) async {
+    final id = _uuid.v4();
+    await db.into(db.missions).insert(
+          MissionsCompanion.insert(
+            id: id,
+            title: title,
+            source: const Value('MANUAL'),
+            scheduledFor: _dateStr(at),
+            requirement: Value(focusMinutes > 0
+                ? jsonEncode({'type': 'focus', 'ms': focusMinutes * 60000})
+                : jsonEncode({'type': 'manual'})),
+            createdAt: at,
+          ),
+        );
+    return id;
   }
 
   /// 评估进行中的任务是否达标（每次复习评分后调用）
@@ -71,12 +93,20 @@ abstract final class MissionEngine {
         .get();
     final reviewDoneCount = reviewEvents.length;
 
+    // 今日专注总时长（focus 型手动任务评估用）
+    final sessions = await (db.select(db.focusSessions)
+          ..where((t) => t.startedAt.isBiggerOrEqualValue(dayStart)))
+        .get();
+    final focusMsToday = sessions.fold<int>(0, (sum, s) => sum + s.focusMs);
+
     var completed = 0;
     for (final mission in pending) {
       final req = _decodeRequirement(mission.requirement);
       final done = switch (req['type']) {
         'review_done' =>
           reviewDoneCount >= ((req['count'] as num?)?.toInt() ?? 0),
+        'focus' => focusMsToday >= ((req['ms'] as num?)?.toInt() ?? 0),
+        'manual' => false, // 手动勾选完成（UI 直接置 done）
         _ => false,
       };
       if (done) {

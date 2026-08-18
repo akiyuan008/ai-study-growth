@@ -30,7 +30,16 @@ class GrowthIcon extends StatelessWidget {
   }
 }
 
-enum GrowthIconType { sprout, book, camera, target, gear, backArrow }
+enum GrowthIconType {
+  sprout,
+  book,
+  camera,
+  target,
+  gear,
+  backArrow,
+  replay,
+  chart
+}
 
 class _IconPainter extends CustomPainter {
   _IconPainter({
@@ -68,6 +77,53 @@ class _IconPainter extends CustomPainter {
         _gear(canvas, size, stroke, fill);
       case GrowthIconType.backArrow:
         _backArrow(canvas, size, stroke);
+      case GrowthIconType.replay:
+        _replay(canvas, size, stroke, fill);
+      case GrowthIconType.chart:
+        _chart(canvas, size, stroke, fill);
+    }
+  }
+
+  void _chart(Canvas c, Size s, Paint stroke, Paint fill) {
+    final w = s.width;
+    final bars = [
+      (0.24, 0.42),
+      (0.46, 0.62),
+      (0.68, 0.5),
+    ];
+    for (final (x, h) in bars) {
+      final rect = Rect.fromLTWH(w * x, w * (0.82 - h), w * 0.12, w * h);
+      final rrect = RRect.fromRectAndRadius(rect, Radius.circular(w * 0.03));
+      if (filled) c.drawRRect(rrect, fill);
+      c.drawRRect(rrect, stroke);
+    }
+  }
+
+  void _replay(Canvas c, Size s, Paint stroke, Paint fill) {
+    final w = s.width;
+    final center = Offset(w * 0.5, w * 0.52);
+    final r = w * 0.3;
+    // 3/4 圆弧
+    c.drawArc(
+      Rect.fromCircle(center: center, radius: r),
+      -math.pi * 0.3,
+      math.pi * 1.6,
+      false,
+      stroke,
+    );
+    // 箭头（弧线开口处）
+    final tipAngle = -math.pi * 0.3;
+    final tip = Offset(
+      center.dx + math.cos(tipAngle) * r,
+      center.dy + math.sin(tipAngle) * r,
+    );
+    final arrow = Path()
+      ..moveTo(tip.dx - w * 0.1, tip.dy - w * 0.08)
+      ..lineTo(tip.dx + w * 0.06, tip.dy - w * 0.02)
+      ..lineTo(tip.dx - w * 0.04, tip.dy + w * 0.1);
+    c.drawPath(arrow, stroke);
+    if (filled) {
+      c.drawCircle(center, w * 0.08, fill);
     }
   }
 

@@ -23,9 +23,23 @@ class NextStep {
 ///
 /// 规则顺序即产品价值观：先还记忆债（复习），再练专注，再摄入新题。
 abstract final class NextStepEngine {
+  /// 外部注入的学习路径建议（Part 3.3：AI 知识点规划是 NextStep 核心数据源）
+  static String? injectedPathSuggestion;
+
   static Future<NextStep> suggest(AppDatabase db, {DateTime? at}) async {
     final now = at ?? DateTime.now();
     final dayStart = DateTime(now.year, now.month, now.day);
+
+    // 0) AI 学习路径建议（当日有效）优先级最高
+    final path = injectedPathSuggestion;
+    if (path != null && path.isNotEmpty) {
+      return NextStep(
+        title: '今日学习路径',
+        reason: path,
+        actionLabel: '去复习',
+        route: '/review',
+      );
+    }
 
     // 1) 到期复习优先
     final due = await (db.select(db.reviewCards)
@@ -109,8 +123,10 @@ abstract final class GrowthMemoryFeed {
         kind: e.eventType == 'mission_done' ? 'mission' : 'learning',
         label: switch (e.eventType) {
           'analysis_done' => '新题入库',
+          'question_saved' => '新题入库',
           'review_done' => '完成一次复习',
           'mission_done' => '完成一个任务',
+          'streak_milestone' => '连续学习里程碑达成',
           _ => e.eventType,
         },
       ));

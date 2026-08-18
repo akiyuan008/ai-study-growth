@@ -47,3 +47,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // OpenCV（Part 2 文档提取：四边形检测 + 透视拉正 + 匀光）
+    implementation("org.opencv:opencv:4.9.0")
+}

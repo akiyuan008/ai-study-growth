@@ -8,11 +8,15 @@ import '../features/design_gallery/presentation/design_gallery_page.dart';
 import '../features/home/presentation/ai_provider_setup_page.dart';
 import '../features/home/presentation/app_whitelist_page.dart';
 import '../features/home/presentation/analysis_jobs_page.dart';
-import '../features/home/presentation/capture_page.dart';
+import '../features/capture/presentation/camera_capture_page.dart';
+import '../features/capture/presentation/edit_screen_page.dart';
+import '../features/capture/presentation/question_save_page.dart';
+import '../core/bridge/scanner_bridge.dart' show CaptureSource;
 import '../features/home/presentation/main_shell_page.dart';
 import '../features/home/presentation/notebook_page.dart';
 import '../features/home/presentation/question_detail_page.dart';
 import '../features/home/presentation/review_page.dart';
+import '../features/home/presentation/stats_page.dart';
 import '../features/onboarding/presentation/onboarding_page.dart';
 import '../features/focus/presentation/focus_active_page.dart';
 import '../features/focus/focus_providers.dart' show FocusMode;
@@ -38,13 +42,37 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const NotebookListPage(),
       ),
       GoRoute(
+        path: '/stats',
+        builder: (context, state) => const StatsPage(),
+      ),
+      GoRoute(
         path: '/notebook/:id',
         builder: (context, state) =>
             QuestionDetailPage(questionId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/capture',
-        builder: (context, state) => const CapturePage(),
+        builder: (context, state) => const CameraCapturePage(),
+      ),
+      GoRoute(
+        path: '/capture/edit',
+        builder: (context, state) => EditScreenPage(
+          path: state.uri.queryParameters['path'] ?? '',
+          source: CaptureSource.values.firstWhere(
+            (s) => s.name == state.uri.queryParameters['source'],
+            orElse: () => CaptureSource.camera,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/capture/save',
+        builder: (context, state) => QuestionSavePage(
+          path: state.uri.queryParameters['path'] ?? '',
+          source: CaptureSource.values.firstWhere(
+            (s) => s.name == state.uri.queryParameters['source'],
+            orElse: () => CaptureSource.camera,
+          ),
+        ),
       ),
       GoRoute(
         path: '/analysis',

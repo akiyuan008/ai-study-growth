@@ -79,6 +79,21 @@ class FakeGateway implements AiAnalysisGateway {
   }) async* {
     yield 'ok';
   }
+
+  @override
+  Stream<String> companionChat({
+    required List<AiMessage> history,
+    required String message,
+  }) async* {
+    yield 'ok';
+  }
+
+  @override
+  Future<List<String>> suggestKnowledgeTags({
+    required List<int> imageBytes,
+    String mimeType = 'image/jpeg',
+  }) async =>
+      const ['测试知识点'];
 }
 
 Future<AnalysisJob> _getJob(AppDatabase db, String jobId) async {

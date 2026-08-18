@@ -71,8 +71,12 @@ abstract final class AiPrompts {
 - 返回纯 JSON，不要包含 markdown 代码块
 - 顶层只返回 generatedExercises 字段
 - generatedExercises 可以是 0 到 3 道；宁可少生成，也不要生成无关、错误或占位练习
-- 每道题字段包含 difficulty、question、options、answer、explanation
+- 每道题字段包含 difficulty、question、options、answer、explanation、sourceStatus、source
 - answer 使用选项字母，例如 "A"；没有选择题条件时也要尽量改写成选择题
+- sourceStatus 三选一：
+  * "cited"：你确定这道题出自真实考卷，source 必须给出 {year, region, examName}（年份+地区+考卷名），严禁编造出处
+  * "uncertain"：疑似真题但无法确认出处，source 置 null（将标注"来源待核实"）
+  * "generated"：你自行拟题，source 置 null（将标注"AI 拟题"）
 - 如果内容包含 LaTeX，所有反斜杠写成 JSON 转义形式，例如 \\frac、\\(x\\)
 
 返回格式：
@@ -83,7 +87,9 @@ abstract final class AiPrompts {
       "question": "题目",
       "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
       "answer": "A",
-      "explanation": "解析"
+      "explanation": "解析",
+      "sourceStatus": "cited",
+      "source": {"year": "2023", "region": "全国", "examName": "甲卷"}
     }
   ]
 }''';

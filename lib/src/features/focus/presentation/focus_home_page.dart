@@ -3,11 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/ai/ai_message.dart';
+import '../../../core/di/providers.dart';
+import '../../../core/growth/mission_engine.dart';
+
 import '../../../data/local/app_database.dart';
 import '../../../design_system/design_system.dart';
-import '../../../core/di/providers.dart';
 import '../../focus/focus_providers.dart';
 import '../../growth/growth_providers.dart';
+import '../../learning/learning_providers.dart' show aiGatewayProvider;
 import 'package:drift/drift.dart' hide Column, Table;
 
 /// 今日专注会话
@@ -52,7 +56,13 @@ class FocusHomePage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GrowthSectionHeader(title: '今日任务'),
+                    GrowthSectionHeader(
+                      title: '今日任务',
+                      trailing: TextButton(
+                        onPressed: () => _openCreateMission(context, ref),
+                        child: const Text('+ 创建'),
+                      ),
+                    ),
                     const SizedBox(height: GrowthSpacing.sm),
                     if (data.missions.isEmpty)
                       Text(
@@ -117,6 +127,33 @@ class FocusHomePage extends ConsumerWidget {
                     expanded: true,
                     onPressed: () => context.push('/focus?mode=abyss'),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: GrowthSpacing.md),
+
+            // ---- MOSS 伴读（自律域对账补缺） ----
+            GlassCard(
+              onTap: () => _openMossChat(context, ref),
+              child: Row(
+                children: [
+                  const Icon(Icons.smart_toy_rounded,
+                      color: GrowthColors.primary),
+                  const SizedBox(width: GrowthSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('MOSS 伴读',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        Text(
+                          '聊聊学习状态，帮你找回节奏',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded),
                 ],
               ),
             ),
@@ -190,6 +227,193 @@ class FocusHomePage extends ConsumerWidget {
             ),
             const SizedBox(height: GrowthSpacing.xl),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// 手动创建任务（source=MANUAL）
+  void _openCreateMission(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    var focusMinutes = 0;
+    showGrowthSheet<void>(
+      context: context,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('创建任务', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: GrowthSpacing.md),
+            GrowthTextField(
+              controller: controller,
+              label: '任务内容',
+              hint: '例如：整理物理错题 / 背 30 个单词',
+            ),
+            const SizedBox(height: GrowthSpacing.md),
+            Text('绑定专注时长（可选）', style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: GrowthSpacing.sm),
+            Wrap(
+              spacing: GrowthSpacing.sm,
+              children: [
+                for (final m in [0, 25, 45, 60])
+                  GrowthChip(
+                    label: m == 0 ? '不绑定' : '$m 分钟',
+                    selected: focusMinutes == m,
+                    onTap: () => setSheetState(() => focusMinutes = m),
+                  ),
+              ],
+            ),
+            const SizedBox(height: GrowthSpacing.lg),
+            GrowthButton(
+              label: '创建',
+              expanded: true,
+              onPressed: () async {
+                final title = controller.text.trim();
+                if (title.isEmpty) return;
+                await MissionEngine.createManualMission(
+                  ref.read(databaseProvider),
+                  title: title,
+                  at: DateTime.now(),
+                  focusMinutes: focusMinutes,
+                );
+                if (sheetContext.mounted) {
+                  Navigator.of(sheetContext).pop();
+                }
+                ref.invalidate(growthHomeProvider);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// MOSS 伴读对话（流式）
+  void _openMossChat(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    final history = <AiMessage>[];
+    var streaming = '';
+    var busy = false;
+
+    showGrowthSheet<void>(
+      context: context,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: Column(
+            children: [
+              Text('MOSS 伴读', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: GrowthSpacing.md),
+              Expanded(
+                child: ListView(
+                  children: [
+                    if (history.isEmpty && streaming.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(GrowthSpacing.lg),
+                        child: Text(
+                          '我是 MOSS。今天学得怎么样？要不要聊聊节奏？',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    for (final m in history)
+                      Align(
+                        alignment: m.role == 'user'
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: Container(
+                          margin:
+                              const EdgeInsets.only(bottom: GrowthSpacing.sm),
+                          padding: const EdgeInsets.all(GrowthSpacing.md),
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: m.role == 'user'
+                                ? GrowthColors.primary.withValues(alpha: 0.14)
+                                : GrowthColors.glassLight,
+                            borderRadius:
+                                BorderRadius.circular(GrowthRadii.field),
+                          ),
+                          child: Text(m.content,
+                              style: Theme.of(context).textTheme.bodyMedium),
+                        ),
+                      ),
+                    if (streaming.isNotEmpty)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          margin:
+                              const EdgeInsets.only(bottom: GrowthSpacing.sm),
+                          padding: const EdgeInsets.all(GrowthSpacing.md),
+                          decoration: BoxDecoration(
+                            color: GrowthColors.glassLight,
+                            borderRadius:
+                                BorderRadius.circular(GrowthRadii.field),
+                          ),
+                          child: Text(streaming,
+                              style: Theme.of(context).textTheme.bodyMedium),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: GrowthTextField(
+                      controller: controller,
+                      hint: '和 MOSS 聊聊…',
+                      onSubmitted: (_) {},
+                    ),
+                  ),
+                  const SizedBox(width: GrowthSpacing.sm),
+                  GrowthButton(
+                    label: '发送',
+                    loading: busy,
+                    onPressed: () async {
+                      final text = controller.text.trim();
+                      if (text.isEmpty || busy) return;
+                      controller.clear();
+                      setSheetState(() {
+                        busy = true;
+                        streaming = '';
+                        history.add(AiMessage(role: 'user', content: text));
+                      });
+                      final gateway = await ref.read(aiGatewayProvider.future);
+                      if (gateway == null) {
+                        setSheetState(() {
+                          busy = false;
+                          history.add(const AiMessage(
+                              role: 'assistant',
+                              content: '先配置 AI 服务商，我才能陪你聊天。'));
+                        });
+                        return;
+                      }
+                      final buffer = StringBuffer();
+                      try {
+                        await for (final delta in gateway.companionChat(
+                          history: history.sublist(0, history.length - 1),
+                          message: text,
+                        )) {
+                          buffer.write(delta);
+                          setSheetState(() => streaming = buffer.toString());
+                        }
+                      } catch (_) {}
+                      history.add(AiMessage(
+                          role: 'assistant',
+                          content: buffer.isEmpty ? '……' : buffer.toString()));
+                      setSheetState(() {
+                        busy = false;
+                        streaming = '';
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

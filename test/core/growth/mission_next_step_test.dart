@@ -64,7 +64,7 @@ void main() {
 
       final missions = await MissionEngine.todayMissions(db, at: now);
       expect(missions, hasLength(1));
-      expect(missions.first.source, 'review_engine');
+      expect(missions.first.source, 'REVIEW');
       expect(missions.first.title, contains('2 道'));
     });
 
@@ -109,6 +109,47 @@ void main() {
 
       final missions = await MissionEngine.todayMissions(db, at: now);
       expect(missions.first.status, 'active');
+    });
+  });
+
+  group('MissionEngine 手动任务（自律域对账补缺）', () {
+    test('创建 MANUAL 任务并落库', () async {
+      final id = await MissionEngine.createManualMission(
+        db,
+        title: '整理物理错题',
+        at: now,
+        focusMinutes: 25,
+      );
+      final missions = await MissionEngine.todayMissions(db, at: now);
+      expect(missions, hasLength(1));
+      expect(missions.first.id, id);
+      expect(missions.first.source, 'MANUAL');
+    });
+
+    test('focus 型任务：今日专注达标后自动完成', () async {
+      await MissionEngine.createManualMission(
+        db,
+        title: '专注 25 分钟',
+        at: now,
+        focusMinutes: 25,
+      );
+
+      // 未专注时不完成
+      var completed = await MissionEngine.evaluateMissions(db, at: now);
+      expect(completed, 0);
+
+      // 插入一条 25 分钟专注会话
+      await db.into(db.focusSessions).insert(
+            FocusSessionsCompanion.insert(
+              id: _uuid.v4(),
+              startedAt: now.subtract(const Duration(minutes: 30)),
+              endedAt: Value(now.subtract(const Duration(minutes: 5))),
+              status: const Value('completed'),
+              focusMs: const Value(25 * 60 * 1000),
+            ),
+          );
+      completed = await MissionEngine.evaluateMissions(db, at: now);
+      expect(completed, 1);
     });
   });
 

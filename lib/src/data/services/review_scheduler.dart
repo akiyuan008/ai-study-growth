@@ -47,6 +47,22 @@ class ReviewScheduler {
     );
   }
 
+  /// 预览四种评分的下次复习间隔（复习页按钮展示用）
+  Map<Rating, Duration> previewIntervals(Card card, {DateTime? now}) {
+    final at = (now ?? DateTime.now()).toUtc();
+    final result = <Rating, Duration>{};
+    for (final rating in Rating.values) {
+      try {
+        final preview =
+            _scheduler.reviewCard(card.copyWith(), rating, reviewDateTime: at);
+        result[rating] = preview.card.due.difference(at);
+      } catch (_) {
+        result[rating] = Duration.zero;
+      }
+    }
+    return result;
+  }
+
   /// 卡片当前可提取率（0-1），用于展示"记忆强度"
   double retrievability(Card card, {DateTime? now}) =>
       _scheduler.getCardRetrievability(

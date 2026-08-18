@@ -8,8 +8,10 @@ import '../../design_system/growth_theme.dart' show sharedPreferencesProvider;
 import '../../data/repositories/ai_config_repository.dart';
 import '../../data/repositories/ai_provider_repository.dart';
 import '../../data/repositories/exercise_repository.dart';
+import '../../data/repositories/question_bank_repository.dart';
 import '../../data/repositories/question_repository.dart';
 import '../../data/repositories/review_repository.dart';
+import '../../data/services/ai_learning_services.dart';
 import '../../data/services/settings_service.dart';
 import '../../data/services/analysis_pipeline.dart';
 
@@ -46,12 +48,30 @@ final settingsServiceProvider = Provider<SettingsService>((ref) {
   return SettingsService(ref.watch(sharedPreferencesProvider));
 });
 
+/// AI 复习规划（确定性兜底 + AI 智能重排）
+final aiReviewPlannerProvider = Provider<AiReviewPlanner>((ref) {
+  return AiReviewPlanner(ref.watch(aiProviderRepositoryProvider));
+});
+
+/// 知识点学习路径建议（Part 3.3，NextStep 核心数据源）
+final aiPathAdvisorProvider = Provider<AiPathAdvisor>((ref) {
+  return AiPathAdvisor(
+    ref.watch(aiProviderRepositoryProvider),
+    ref.watch(sharedPreferencesProvider),
+  );
+});
+
 final reviewRepositoryProvider = Provider<ReviewRepository>((ref) {
   return ReviewRepository(ref.watch(databaseProvider));
 });
 
 final exerciseRepositoryProvider = Provider<ExerciseRepository>((ref) {
   return ExerciseRepository(ref.watch(databaseProvider));
+});
+
+/// 题库飞轮仓储
+final questionBankRepositoryProvider = Provider<QuestionBankRepository>((ref) {
+  return QuestionBankRepository(ref.watch(databaseProvider));
 });
 
 /// 解析管线（全局单例，串行队列）

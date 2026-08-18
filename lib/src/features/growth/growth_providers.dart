@@ -7,7 +7,10 @@ import '../../core/di/providers.dart';
 import '../../core/growth/growth_engine.dart';
 import '../../core/growth/mission_engine.dart';
 import '../../core/growth/next_step.dart';
+import '../../design_system/growth_theme.dart' show sharedPreferencesProvider;
 import '../../data/local/app_database.dart';
+import '../../data/repositories/ai_provider_repository.dart';
+import '../../data/services/ai_learning_services.dart';
 
 /// 成长首页的全部数据
 class GrowthHomeData {
@@ -62,6 +65,43 @@ class GrowthHomeData {
   }
 }
 
+/// 成长趋势（近 7 日四能力快照，成长页趋势卡数据源）
+class GrowthTrendPoint {
+  const GrowthTrendPoint({
+    required this.date,
+    required this.learning,
+    required this.focus,
+    required this.persistence,
+    required this.recovery,
+  });
+
+  final String date;
+  final double learning;
+  final double focus;
+  final double persistence;
+  final double recovery;
+
+  double get overall => (learning + focus + persistence + recovery) / 4;
+}
+
+final growthTrendProvider =
+    FutureProvider.autoDispose<List<GrowthTrendPoint>>((ref) async {
+  final db = ref.watch(databaseProvider);
+  final rows = await (db.select(db.growthMetrics)
+        ..orderBy([(t) => OrderingTerm.desc(t.date)])
+        ..limit(7))
+      .get();
+  return rows.reversed
+      .map((r) => GrowthTrendPoint(
+            date: r.date,
+            learning: r.learningScore,
+            focus: r.focusScore,
+            persistence: r.persistenceScore,
+            recovery: r.recoveryScore,
+          ))
+      .toList();
+});
+
 /// 成长首页数据聚合：生成任务 → 评估任务 → 聚合事实 → 计算四能力 → 快照落库
 final growthHomeProvider =
     FutureProvider.autoDispose<GrowthHomeData>((ref) async {
@@ -100,7 +140,15 @@ final growthHomeProvider =
   // 5) 快照落库（growth_metrics 每日快照，成长趋势的数据源）
   await _upsertSnapshot(db, now, scores, input);
 
-  // 6) NextStep 与时间线
+  // 6) NextStep 与时间线（注入 AI 学习路径建议，Part 3.3）
+  NextStepEngine.injectedPathSuggestion = null;
+  try {
+    final advisor = AiPathAdvisor(
+      AiProviderRepository(db),
+      ref.watch(sharedPreferencesProvider),
+    );
+    NextStepEngine.injectedPathSuggestion = advisor.cachedSuggestion;
+  } catch (_) {}
   final nextStep = await NextStepEngine.suggest(db, at: now);
   final missions = await MissionEngine.todayMissions(db, at: now);
   final moments = await GrowthMemoryFeed.recent(db, at: now);

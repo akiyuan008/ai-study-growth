@@ -4,11 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/ai/ai_message.dart';
 import '../../../core/ai/prompts.dart';
+import '../../../core/di/providers.dart';
 import '../../../data/local/app_database.dart';
 import '../../../data/repositories/question_repository.dart';
 import '../../../design_system/design_system.dart';
 import '../../../domain/models/generated_exercise.dart';
-import '../../../core/di/providers.dart';
 import 'package:drift/drift.dart' hide Column, Table;
 import '../../learning/learning_providers.dart';
 
@@ -365,21 +365,63 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
       _error = null;
     });
     try {
-      final detail = QuestionRepository.decodeAnalysisDetail(
-          widget.question.analysisDetail);
-      final kps = (detail['knowledgePoints'] as List? ?? const [])
-          .map((e) => e.toString())
-          .toList();
-      final items = await ref.read(exerciseGeneratorProvider).generate(
-            stem: widget.question.stem,
-            answer: widget.question.answer ?? '',
-            steps: QuestionRepository.decodeSteps(widget.question.keySteps),
-            mistakeReason: widget.question.errorCause ?? '',
-            knowledgePoints: kps,
+      final db = ref.read(databaseProvider);
+      final bankRepo = ref.read(questionBankRepositoryProvider);
+
+      // L1：个人真题库同知识点检索（库内同知识点真题 ≥2 道时必须命中）
+      final links = await (db.select(db.questionKnowledgeLinks)
+            ..where((t) => t.questionId.equals(widget.question.id)))
+          .get();
+      final l1Items = <ExerciseItem>[];
+      final usedIds = <String>[];
+      for (final link in links) {
+        final found = await bankRepo.searchL1(
+          knowledgePointId: link.knowledgePointId,
+          limit: 3,
+        );
+        // 排除当前题目自身
+        found.removeWhere((e) =>
+            e.question.trim() == widget.question.stem.trim() &&
+            e.question.trim().isNotEmpty);
+        for (final item in found) {
+          if (l1Items.length >= 3) break;
+          l1Items.add(item);
+          if (item.bankId != null) usedIds.add(item.bankId!);
+        }
+        if (l1Items.length >= 3) break;
+      }
+      await bankRepo.markUsed(usedIds);
+
+      List<ExerciseItem> typed = l1Items;
+
+      // L1 不足时用 AI 补齐（L2 引用 / L3 待核实 / L4 拟题，均带来源标签）
+      if (typed.length < 2) {
+        final detail = QuestionRepository.decodeAnalysisDetail(
+            widget.question.analysisDetail);
+        final kps = (detail['knowledgePoints'] as List? ?? const [])
+            .map((e) => e.toString())
+            .toList();
+        final generated = await ref.read(exerciseGeneratorProvider).generate(
+              stem: widget.question.stem,
+              answer: widget.question.answer ?? '',
+              steps: QuestionRepository.decodeSteps(widget.question.keySteps),
+              mistakeReason: widget.question.errorCause ?? '',
+              knowledgePoints: kps,
+            );
+        final aiItems = generated.cast<ExerciseItem>();
+        // AI 生成的题也入题库（飞轮）
+        for (final item in aiItems) {
+          await bankRepo.ingestExercise(
+            item: item,
+            knowledgePointId:
+                links.isEmpty ? null : links.first.knowledgePointId,
           );
-      final typed = items.cast<ExerciseItem>();
+        }
+        typed = [...typed, ...aiItems].take(3).toList();
+      }
+
       if (typed.isEmpty) {
-        setState(() => _error = 'AI 暂时没有生成出合格的练习题，稍后再试');
+        setState(() => _error = '暂无可用练习：题库没有同知识点真题，AI 也没生成出合格题目');
       } else {
         await ref
             .read(exerciseRepositoryProvider)

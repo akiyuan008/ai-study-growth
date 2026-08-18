@@ -13,9 +13,10 @@ import '../../focus/presentation/focus_home_page.dart';
 import '../../growth/presentation/growth_home_page.dart';
 import '../../learning/learning_providers.dart';
 import 'notebook_page.dart';
+import 'review_page.dart';
 
-/// 主壳：成长 | 错题本 |（拍题 FAB）| 专注 | 设置
-/// Prompt H：GlassNavBar 玻璃底栏 + 托架切口 FAB 一体化
+/// 主壳（Part 1 IA v2）：成长 | 错题本 | 复习 | 专注 | 设置
+/// 全局悬浮 FAB 已删除，拍题入口语境化
 class MainShellPage extends ConsumerWidget {
   const MainShellPage({super.key});
 
@@ -28,10 +29,10 @@ class MainShellPage extends ConsumerWidget {
         selectedIndex: tab,
         onDestinationSelected: (i) =>
             ref.read(_shellTabProvider.notifier).state = i,
-        onCenterTap: () => context.push('/capture'),
         items: const [
           GlassNavItem(icon: GrowthIconType.sprout, label: '成长'),
           GlassNavItem(icon: GrowthIconType.book, label: '错题本'),
+          GlassNavItem(icon: GrowthIconType.replay, label: '复习'),
           GlassNavItem(icon: GrowthIconType.target, label: '专注'),
           GlassNavItem(icon: GrowthIconType.gear, label: '设置'),
         ],
@@ -49,7 +50,8 @@ class _ShellBody extends ConsumerWidget {
     return switch (tab) {
       0 => const _GrowthTab(),
       1 => const _NotebookTab(),
-      2 => const FocusHomePage(embedded: true),
+      2 => const _ReviewTab(),
+      3 => const FocusHomePage(embedded: true),
       _ => const _MeTab(),
     };
   }
@@ -72,6 +74,15 @@ class _GrowthTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return const GrowthHomePage(embedded: true);
+  }
+}
+
+class _ReviewTab extends ConsumerWidget {
+  const _ReviewTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return const ReviewSessionPage(embedded: true);
   }
 }
 

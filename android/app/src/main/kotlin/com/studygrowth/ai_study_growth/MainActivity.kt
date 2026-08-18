@@ -9,6 +9,8 @@ import android.os.Build
 import android.os.Process
 import android.provider.Settings
 import android.net.Uri
+import com.studygrowth.ai_study_growth.monitor.DocumentScanner
+import java.io.File
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.studygrowth.ai_study_growth.monitor.BehaviorEventBus
@@ -30,11 +32,53 @@ class MainActivity : FlutterActivity() {
     companion object {
         const val METHOD_CHANNEL = "studygrowth/monitor"
         const val EVENT_CHANNEL = "studygrowth/monitor/events"
+        const val SCANNER_CHANNEL = "studygrowth/scanner"
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         BehaviorEventBus.init(this)
+
+        // Part 2：文档扫描通道（Kotlin 产事实：四边形检测/透视拉正/匀光）
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SCANNER_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "scanDocument" -> {
+                        val path = call.argument<String>("path")
+                        if (path == null) {
+                            result.success(null)
+                        } else {
+                            val out = DocumentScanner.scan(path, File(filesDir, "scans"))
+                            result.success(out)
+                        }
+                    }
+                    "cropByPoints" -> {
+                        val path = call.argument<String>("path")
+                        val ntl = call.argument<DoubleArray>("tl")
+                        val ntr = call.argument<DoubleArray>("tr")
+                        val nbr = call.argument<DoubleArray>("br")
+                        val nbl = call.argument<DoubleArray>("bl")
+                        if (path == null || ntl == null || ntr == null || nbr == null || nbl == null) {
+                            result.success(null)
+                        } else {
+                            val out = DocumentScanner.cropByNormalizedPoints(
+                                path, File(filesDir, "scans"), ntl, ntr, nbr, nbl
+                            )
+                            result.success(out)
+                        }
+                    }
+                    "rotate90" -> {
+                        val path = call.argument<String>("path")
+                        if (path == null) {
+                            result.success(null)
+                        } else {
+                            val out = DocumentScanner.rotate90(path, File(filesDir, "scans"))
+                            result.success(out)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
             .setMethodCallHandler { call, result ->

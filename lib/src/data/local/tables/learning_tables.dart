@@ -141,6 +141,36 @@ class AiMessages extends Table {
   DateTimeColumn get createdAt => dateTime()();
 }
 
+/// 题库飞轮（Part 3.5）：拍题与用题均入库；
+/// 多轮举一反三每轮优先未用真题。
+class QuestionBank extends Table {
+  /// uuid
+  TextColumn get id => text()();
+
+  /// 来源题目（用户错题入库时关联）
+  TextColumn get sourceQuestionId => text().nullable()();
+
+  /// 关联知识点
+  TextColumn get knowledgePointId => text().nullable()();
+
+  /// 题目内容 JSON：{question, options, answer, explanation}
+  TextColumn get content => text()();
+
+  /// real_exam（用户真题）/ ai_cited（AI 真题引用）/ ai_generated（AI 拟题）
+  TextColumn get kind => text()();
+
+  /// UI 来源标签：真题·来自你的题库 / 真题引用·2023全国甲卷 / 来源待核实 / AI 拟题
+  TextColumn get sourceLabel => text()();
+
+  /// 已用于练习的次数（优先未用真题）
+  IntColumn get usedCount => integer().withDefault(const Constant(0))();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// 解析任务（拍题 → 拆题 → 逐题解析 的状态机载体）。
 /// 串行队列处理；失败单题可单独重试；部分成功可只保存成功题。
 class AnalysisJobs extends Table {

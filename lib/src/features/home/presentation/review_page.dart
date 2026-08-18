@@ -6,11 +6,22 @@ import 'package:fsrs/fsrs.dart';
 import '../../../design_system/design_system.dart';
 import '../../../data/repositories/question_repository.dart';
 import '../../../data/repositories/review_repository.dart';
+import '../../../data/services/review_scheduler.dart';
 import '../../learning/learning_providers.dart';
+
+/// 间隔时长的人性化展示
+String _intervalLabel(Duration d) {
+  if (d.inMinutes < 1) return '<1分钟';
+  if (d.inMinutes < 60) return '${d.inMinutes}分钟';
+  if (d.inHours < 24) return '${d.inHours}小时';
+  return '${d.inDays}天';
+}
 
 final reviewSessionProvider =
     FutureProvider.autoDispose<List<DueReviewItem>>((ref) async {
-  return ref.watch(reviewRepositoryProvider).dueItems();
+  final items = await ref.watch(reviewRepositoryProvider).dueItems();
+  // Part 3.2：FSRS 确定性兜底 + AI 智能优先级重排（失败不阻塞）
+  return ref.watch(aiReviewPlannerProvider).smartOrder(items);
 });
 
 /// 间隔复习页（FSRS）：逐卡作答 → 评分 → 下一张
@@ -145,25 +156,56 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
                     onPressed: () => setState(() => _revealed = true),
                   )
                 else
-                  Row(
+                  Column(
                     children: [
-                      for (final (rating, label, color) in [
-                        (Rating.again, '忘记', GrowthColors.caution),
-                        (Rating.hard, '困难', GrowthColors.primary),
-                        (Rating.good, '记得', GrowthColors.success),
-                        (Rating.easy, '简单', GrowthColors.abilityLearning),
-                      ])
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: GrowthSpacing.xs),
-                            child: _RatingButton(
-                              label: label,
-                              color: color,
-                              onTap: () => _rate(item, rating),
-                            ),
-                          ),
+                      // 融合②：复习队列内的「专注攻克」入口
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: () => context
+                              .push('/focus?questionId=${item.question.id}'),
+                          icon: const Icon(Icons.self_improvement_rounded,
+                              size: 16),
+                          label: const Text('专注攻克这道题'),
                         ),
+                      ),
+                      Builder(builder: (context) {
+                        // FSRS 下次复习时间预览
+                        final scheduler = ReviewScheduler();
+                        final card = scheduler.cardFromStorage(
+                          cardId: item.card.createdAt.millisecondsSinceEpoch,
+                          state: item.card.state,
+                          step: item.card.step,
+                          stability: item.card.stability,
+                          difficulty: item.card.difficulty,
+                          due: item.card.due,
+                          lastReview: item.card.lastReviewAt,
+                        );
+                        final previews = scheduler.previewIntervals(card);
+                        return Row(
+                          children: [
+                            for (final (rating, label, color) in [
+                              (Rating.again, '忘记', GrowthColors.caution),
+                              (Rating.hard, '困难', GrowthColors.actionAccent),
+                              (Rating.good, '记得', GrowthColors.success),
+                              (Rating.easy, '简单', GrowthColors.learning),
+                            ])
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: GrowthSpacing.xs),
+                                  child: _RatingButton(
+                                    label: label,
+                                    preview: _intervalLabel(
+                                        previews[rating] ?? Duration.zero),
+                                    color: color,
+                                    onTap: () => _rate(item, rating),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      }),
                     ],
                   ),
               ],
@@ -180,11 +222,15 @@ class _RatingButton extends StatelessWidget {
     required this.label,
     required this.color,
     required this.onTap,
+    this.preview,
   });
 
   final String label;
   final Color color;
   final VoidCallback onTap;
+
+  /// 下次复习时间预览
+  final String? preview;
 
   @override
   Widget build(BuildContext context) {
@@ -194,16 +240,29 @@ class _RatingButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(GrowthRadii.field),
         child: Container(
-          height: 52,
+          height: 58,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.14),
             borderRadius: BorderRadius.circular(GrowthRadii.field),
             border: Border.all(color: color.withValues(alpha: 0.5)),
           ),
           alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w700),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: TextStyle(color: color, fontWeight: FontWeight.w700),
+              ),
+              if (preview != null)
+                Text(
+                  preview!,
+                  style: TextStyle(
+                    color: color.withValues(alpha: 0.75),
+                    fontSize: 10.5,
+                  ),
+                ),
+            ],
           ),
         ),
       ),
