@@ -27,11 +27,6 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-
-        // 纯 Android 真机：只带 ARM 原生库（OpenCV 体积控制，去掉 x86 系）
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
-        }
     }
 
     buildTypes {
