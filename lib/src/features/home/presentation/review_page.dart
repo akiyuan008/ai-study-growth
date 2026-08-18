@@ -45,15 +45,12 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
     final sessionAsync = ref.watch(reviewSessionProvider);
 
     return Scaffold(
-      appBar: widget.embedded
-          ? AppBar(title: const Text('今日复习'))
-          : AppBar(
-              title: const Text('今日复习'),
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                onPressed: () => context.pop(),
-              ),
-            ),
+      appBar: growthAppBar(
+        context,
+        title: '今日复习',
+        showBack: !widget.embedded,
+        onBack: () => context.pop(),
+      ),
       body: GrowthBackground(
           child: sessionAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

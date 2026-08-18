@@ -9,5 +9,8 @@ export 'widgets/growth_button.dart';
 export 'widgets/growth_card.dart';
 export 'widgets/growth_chip.dart';
 export 'widgets/growth_dialog.dart';
+export 'widgets/glass_nav_bar.dart';
+export 'widgets/growth_header.dart';
+export 'widgets/growth_icons.dart';
 export 'widgets/growth_illustration.dart';
 export 'widgets/growth_text_field.dart';

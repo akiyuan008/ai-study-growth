@@ -81,7 +81,8 @@ class _CapturePageState extends ConsumerState<CapturePage> {
     return GrowthBackground(
         child: Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: const Text('拍题')),
+      appBar: growthAppBar(context,
+          title: '拍题', showBack: true, onBack: () => context.pop()),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(GrowthSpacing.xl),

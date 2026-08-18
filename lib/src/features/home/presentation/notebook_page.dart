@@ -57,16 +57,13 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
     );
 
     return Scaffold(
-      appBar: widget.embedded
-          ? AppBar(title: const Text('错题本'), actions: [reviewShortcut])
-          : AppBar(
-              title: const Text('错题本'),
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                onPressed: () => context.pop(),
-              ),
-              actions: [reviewShortcut],
-            ),
+      appBar: growthAppBar(
+        context,
+        title: '错题本',
+        showBack: !widget.embedded,
+        onBack: () => context.pop(),
+        actions: [reviewShortcut],
+      ),
       body: GrowthBackground(
           child: Column(
         children: [

@@ -14,24 +14,28 @@ import '../../growth/presentation/growth_home_page.dart';
 import '../../learning/learning_providers.dart';
 import 'notebook_page.dart';
 
-/// 主壳：错题本 / 复习 / 我的 + 中央拍题入口
+/// 主壳：成长 | 错题本 |（拍题 FAB）| 专注 | 设置
+/// Prompt H：GlassNavBar 玻璃底栏 + 托架切口 FAB 一体化
 class MainShellPage extends ConsumerWidget {
   const MainShellPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tab = ref.watch(_shellTabProvider);
     return Scaffold(
       body: const _ShellBody(),
-      bottomNavigationBar: const _ShellNav(),
-      // 拍题 FAB —— 行动强调色（橙）的合法载体，居中悬浮于错题本与专注之间
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: GrowthColors.actionAccent,
-        foregroundColor: Colors.white,
-        onPressed: () => context.push('/capture'),
-        icon: const Icon(Icons.camera_alt_rounded),
-        label: const Text('拍题'),
+      bottomNavigationBar: GlassNavBar(
+        selectedIndex: tab,
+        onDestinationSelected: (i) =>
+            ref.read(_shellTabProvider.notifier).state = i,
+        onCenterTap: () => context.push('/capture'),
+        items: const [
+          GlassNavItem(icon: GrowthIconType.sprout, label: '成长'),
+          GlassNavItem(icon: GrowthIconType.book, label: '错题本'),
+          GlassNavItem(icon: GrowthIconType.target, label: '专注'),
+          GlassNavItem(icon: GrowthIconType.gear, label: '设置'),
+        ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 }
@@ -52,39 +56,6 @@ class _ShellBody extends ConsumerWidget {
 }
 
 final _shellTabProvider = StateProvider<int>((ref) => 0);
-
-class _ShellNav extends ConsumerWidget {
-  const _ShellNav();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tab = ref.watch(_shellTabProvider);
-
-    return NavigationBar(
-      selectedIndex: tab,
-      onDestinationSelected: (i) =>
-          ref.read(_shellTabProvider.notifier).state = i,
-      destinations: [
-        const NavigationDestination(
-          icon: Icon(Icons.spa_rounded),
-          label: '成长',
-        ),
-        const NavigationDestination(
-          icon: Icon(Icons.menu_book_rounded),
-          label: '错题本',
-        ),
-        const NavigationDestination(
-          icon: Icon(Icons.self_improvement_rounded),
-          label: '专注',
-        ),
-        const NavigationDestination(
-          icon: Icon(Icons.person_rounded),
-          label: '我的',
-        ),
-      ],
-    );
-  }
-}
 
 class _NotebookTab extends ConsumerWidget {
   const _NotebookTab();
@@ -166,7 +137,7 @@ class _MeTabState extends ConsumerState<_MeTab> {
     final bridge = ref.watch(monitorBridgeProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('我的')),
+      appBar: growthAppBar(context, title: '设置'),
       body: GrowthBackground(
         child: ListView(
           padding: const EdgeInsets.all(GrowthSpacing.lg),

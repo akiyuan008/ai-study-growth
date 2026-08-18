@@ -36,12 +36,11 @@ class AnalysisJobsPage extends ConsumerWidget {
     return GrowthBackground(
         child: Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text('解析队列'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop(),
-        ),
+      appBar: growthAppBar(
+        context,
+        title: '解析队列',
+        showBack: true,
+        onBack: () => context.pop(),
       ),
       body: jobsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

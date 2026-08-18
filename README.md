@@ -81,6 +81,12 @@ Dart:   DisciplineEngine(focusMath 去重) → MissionEvaluator → RewardEngine
 | **P4** 融合引擎 | 复习即任务、专注有对象、四能力实装、NextStep | 系统给出合理明日学习规划 | ✅ |
 | **P5** 打磨发布 | 权限引导、Onboarding、整体审查、CI 打包 | 全量测试通过，Release APK | ✅ |
 
+### v0.3.2 AI 配置页修复 + 底栏一体化（Prompt G/H）
+
+**Prompt G · AI 配置页**：新建 AiConfigRepository（hydrate 回填 + Key 掩码、非敏感字段 Drift 持久化、密钥 secure storage）；获取模型只校验 URL+Key 解除死锁，loading + 错误分级 toast（401/超时/地址无效），成功弹模型选择 BottomSheet；Base URL 自动补 https:// 与尾斜杠规范化；测试连接明确反馈；保存 toast 返回；灰色 helper 校验文案；Key 输入密文 + 眼睛切换。
+
+**Prompt H · 底栏 FAB 一体化 + 去 Material 化**：GlassNavBar 玻璃底栏（半透明 + 模糊 + 无默认灰底/elevation）；中央圆形托架切口，拍题 FAB 嵌入切口（上浮 10px ≤12px，切口 1px 高光描边，FAB 橙渐变 + 阴影）；Tab 锁定 成长|错题本|(拍题)|专注|设置，自绘线性图标集（发芽/书本/靶心/齿轮/相机/返回箭头），选中主色填充；全局自定义头部（28/bold 大标题、透明无 elevation）替换所有 AppBar。
+
 ### v0.3 IA 重构与设计系统补课（Prompt A-D）
 
 - **IA 双域等重**：底部导航改为 成长 | 错题本 |（中央拍题 FAB）| 专注 | 我的；取消独立复习 Tab——到期复习以任务卡进入成长首页「今日行动」直达复习流，错题本右上角保留复习角标入口

@@ -14,7 +14,7 @@ class FocusResultPage extends ConsumerWidget {
     final outcome = ref.watch(focusOutcomeProvider);
     if (outcome == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('专注结果')),
+        appBar: growthAppBar(context, title: '专注结果', showBack: false),
         body: const GrowthEmptyState(message: '没有会话记录'),
       );
     }

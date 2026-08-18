@@ -36,12 +36,11 @@ class _AppWhitelistPageState extends ConsumerState<AppWhitelistPage> {
     final whitelist = settings.whitelist;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('App 分类管理'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop(),
-        ),
+      appBar: growthAppBar(
+        context,
+        title: 'App 分类管理',
+        showBack: true,
+        onBack: () => context.pop(),
       ),
       body: GrowthBackground(
         child: ListView(

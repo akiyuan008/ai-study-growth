@@ -25,12 +25,11 @@ class QuestionDetailPage extends ConsumerWidget {
     return GrowthBackground(
         child: Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text('错题详情'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop(),
-        ),
+      appBar: growthAppBar(
+        context,
+        title: '错题详情',
+        showBack: true,
+        onBack: () => context.pop(),
       ),
       body: questionAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

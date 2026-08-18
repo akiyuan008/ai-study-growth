@@ -39,7 +39,7 @@ class FocusHomePage extends ConsumerWidget {
     final monitorRunning = ref.watch(monitorRunningProvider);
 
     return Scaffold(
-      appBar: embedded ? AppBar(title: const Text('专注')) : null,
+      appBar: embedded ? growthAppBar(context, title: '专注') : null,
       body: GrowthBackground(
         child: ListView(
           padding: const EdgeInsets.all(GrowthSpacing.lg),

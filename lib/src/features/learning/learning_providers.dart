@@ -5,6 +5,7 @@ import '../../core/ai/ai_provider_config.dart';
 import '../../core/ai/analysis_gateway.dart';
 import '../../core/di/providers.dart';
 import '../../design_system/growth_theme.dart' show sharedPreferencesProvider;
+import '../../data/repositories/ai_config_repository.dart';
 import '../../data/repositories/ai_provider_repository.dart';
 import '../../data/repositories/exercise_repository.dart';
 import '../../data/repositories/question_repository.dart';
@@ -14,6 +15,11 @@ import '../../data/services/analysis_pipeline.dart';
 
 final aiProviderRepositoryProvider = Provider<AiProviderRepository>((ref) {
   return AiProviderRepository(ref.watch(databaseProvider));
+});
+
+/// AI 配置页专用仓储（hydrate / 规范化 / 错误分级）
+final aiConfigRepositoryProvider = Provider<AiConfigRepository>((ref) {
+  return AiConfigRepository(ref.watch(aiProviderRepositoryProvider));
 });
 
 /// 默认 AI 服务商配置（未配置时为 null）

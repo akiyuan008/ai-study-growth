@@ -60,12 +60,11 @@ class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
     return GrowthBackground(
         child: Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text('设计系统画廊'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop(),
-        ),
+      appBar: growthAppBar(
+        context,
+        title: '设计系统画廊',
+        showBack: true,
+        onBack: () => context.pop(),
       ),
       body: ListView(
         padding: const EdgeInsets.all(GrowthSpacing.lg),

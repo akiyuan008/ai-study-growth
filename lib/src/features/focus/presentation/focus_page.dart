@@ -78,7 +78,8 @@ class _FocusPageState extends ConsumerState<FocusPage> {
     return GrowthBackground(
         child: Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: const Text('开始专注')),
+      appBar: growthAppBar(context,
+          title: '开始专注', showBack: true, onBack: () => context.pop()),
       body: ListView(
         padding: const EdgeInsets.all(GrowthSpacing.lg),
         children: [

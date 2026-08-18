@@ -24,12 +24,10 @@ class GrowthHomePage extends ConsumerWidget {
 
     return Scaffold(
       appBar: embedded
-          ? AppBar(
-              title: const Text('成长'),
-              actions: [
-                _StreakBadge(dataAsync: dataAsync),
-                const SizedBox(width: GrowthSpacing.md),
-              ],
+          ? growthAppBar(
+              context,
+              title: '成长',
+              actions: [_StreakBadge(dataAsync: dataAsync)],
             )
           : null,
       body: GrowthBackground(

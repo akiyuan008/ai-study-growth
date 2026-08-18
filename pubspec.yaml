@@ -1,7 +1,7 @@
 name: ai_study_growth
 description: "AI 学习成长系统：自律学习 × AI 错题本 融合重构"
 publish_to: 'none'
-version: 0.3.1+1
+version: 0.3.2+1
 
 environment:
   sdk: ^3.5.0
