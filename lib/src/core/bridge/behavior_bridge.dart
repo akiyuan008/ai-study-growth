@@ -48,6 +48,12 @@ abstract interface class MonitorBridge {
   Future<bool> isUsageAccessGranted();
   Future<void> openUsageAccessSettings();
 
+  /// 悬浮窗权限设置页
+  Future<void> openOverlaySettings();
+
+  /// 应用通知设置页
+  Future<void> openNotificationSettings();
+
   /// 申请通知权限（Android 13+），返回当前是否已授权
   Future<bool> requestNotificationPermission();
 }
@@ -97,6 +103,14 @@ class MonitorBridgeImpl implements MonitorBridge {
       _method.invokeMethod('openUsageAccessSettings');
 
   @override
+  Future<void> openOverlaySettings() =>
+      _method.invokeMethod('openOverlaySettings');
+
+  @override
+  Future<void> openNotificationSettings() =>
+      _method.invokeMethod('openNotificationSettings');
+
+  @override
   Future<bool> requestNotificationPermission() async =>
       await _method.invokeMethod<bool>('requestNotificationPermission') ??
       false;
@@ -137,6 +151,12 @@ class FakeMonitorBridge implements MonitorBridge {
 
   @override
   Future<void> openUsageAccessSettings() async {}
+
+  @override
+  Future<void> openOverlaySettings() async {}
+
+  @override
+  Future<void> openNotificationSettings() async {}
 
   @override
   Future<bool> requestNotificationPermission() async => true;

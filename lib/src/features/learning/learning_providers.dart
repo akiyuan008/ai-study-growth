@@ -4,10 +4,12 @@ import '../../core/ai/ai_client.dart';
 import '../../core/ai/ai_provider_config.dart';
 import '../../core/ai/analysis_gateway.dart';
 import '../../core/di/providers.dart';
+import '../../design_system/growth_theme.dart' show sharedPreferencesProvider;
 import '../../data/repositories/ai_provider_repository.dart';
 import '../../data/repositories/exercise_repository.dart';
 import '../../data/repositories/question_repository.dart';
 import '../../data/repositories/review_repository.dart';
+import '../../data/services/settings_service.dart';
 import '../../data/services/analysis_pipeline.dart';
 
 final aiProviderRepositoryProvider = Provider<AiProviderRepository>((ref) {
@@ -31,6 +33,11 @@ final aiGatewayProvider = FutureProvider<AiAnalysisGateway?>((ref) async {
 
 final questionRepositoryProvider = Provider<QuestionRepository>((ref) {
   return QuestionRepository(ref.watch(databaseProvider));
+});
+
+/// 应用设置（深渊默认 / 监控白名单）
+final settingsServiceProvider = Provider<SettingsService>((ref) {
+  return SettingsService(ref.watch(sharedPreferencesProvider));
 });
 
 final reviewRepositoryProvider = Provider<ReviewRepository>((ref) {

@@ -5,6 +5,8 @@ import '../../core/bridge/behavior_bridge.dart';
 import '../../core/di/providers.dart';
 import '../../core/discipline/discipline_engine.dart';
 import '../../data/local/app_database.dart';
+import '../../data/services/settings_service.dart';
+import '../../design_system/growth_theme.dart' show sharedPreferencesProvider;
 import 'package:drift/drift.dart' hide Column, Table;
 
 const _uuid = Uuid();
@@ -53,10 +55,14 @@ class ActiveFocusController extends Notifier<ActiveFocusState> {
           ),
         );
 
+    final settings = SettingsService(ref.read(sharedPreferencesProvider));
+    final whitelist = settings.whitelist.toSet();
     final engine = DisciplineEngine(
       db: db,
       bridge: bridge,
       ownPackage: 'com.studygrowth.ai_study_growth',
+      // App 分类管理：白名单应用不算分心
+      isAllowed: (pkg) => whitelist.contains(pkg),
       remindAfter: request.mode == FocusMode.abyss
           ? const Duration(seconds: 30)
           : const Duration(minutes: 1),

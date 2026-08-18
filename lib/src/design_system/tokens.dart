@@ -20,15 +20,30 @@ abstract final class GrowthColors {
   // ---- 行动强调色：仅限拍题 FAB 与 streak 徽章 ----
   static const Color actionAccent = Color(0xFFFF9F43);
 
-  // ---- 四能力色（数据可视化语义色） ----
-  static const Color abilityLearning = Color(0xFF5B8DEF);
-  static const Color abilityFocus = Color(0xFFFF9F43);
-  static const Color abilityPersistence = Color(0xFF3DBE7B);
-  static const Color abilityRecovery = Color(0xFFA78BFA);
-
   // ---- 语义色 ----
   static const Color success = Color(0xFF3DBE7B);
   static const Color caution = Color(0xFFEE6352);
+
+  /// 别名（Prompt F3 令牌治理）：业务代码一律用语义别名，
+  /// 禁止直接引用重复色值。
+  static const Color danger = caution;
+  static const Color warning = caution;
+
+  // ---- 四能力色（数据可视化语义色，全部走别名映射） ----
+  /// 学习 = 主色靛蓝
+  static const Color learning = primary;
+  static const Color abilityLearning = primary;
+
+  /// 专注 = 行动强调橙
+  static const Color focus = actionAccent;
+  static const Color abilityFocus = actionAccent;
+
+  /// 坚持 = 成功绿
+  static const Color persistence = success;
+  static const Color abilityPersistence = success;
+
+  /// 恢复 = 紫（独立色相，无重复值）
+  static const Color abilityRecovery = Color(0xFFA78BFA);
 
   // ---- 中性灰阶（6 级） ----
   /// 页面底色（浅色）
@@ -164,19 +179,16 @@ abstract final class GrowthGlass {
   );
 }
 
-/// 页面背景：低饱和渐变，衬出玻璃质感
+/// 页面背景：低饱和对角渐变（左上浅靛 → 右下灰白），衬出玻璃质感
 abstract final class GrowthBackgrounds {
   static const LinearGradient light = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Color(0xFFF5F7FC), Color(0xFFECEFF7)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFEEF1FB), Color(0xFFF6F7F9)],
   );
 
-  static const LinearGradient dark = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Color(0xFF151924), Color(0xFF10131B)],
-  );
+  /// 深色冻结期内仅作占位（与 light 相同）
+  static const LinearGradient dark = light;
 }
 
 /// 主按钮渐变（靛蓝系胶囊）

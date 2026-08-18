@@ -21,7 +21,10 @@ class FocusPage extends ConsumerStatefulWidget {
 }
 
 class _FocusPageState extends ConsumerState<FocusPage> {
-  late FocusMode _mode = widget.initialMode ?? FocusMode.normal;
+  late FocusMode _mode = widget.initialMode ??
+      (ref.read(settingsServiceProvider).abyssDefault
+          ? FocusMode.abyss
+          : FocusMode.normal);
   int _minutes = 25;
   bool _starting = false;
 
@@ -72,7 +75,9 @@ class _FocusPageState extends ConsumerState<FocusPage> {
         ? null
         : ref.watch(_linkedQuestionProvider(widget.questionId!));
 
-    return Scaffold(
+    return GrowthBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('开始专注')),
       body: ListView(
         padding: const EdgeInsets.all(GrowthSpacing.lg),
@@ -156,7 +161,7 @@ class _FocusPageState extends ConsumerState<FocusPage> {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 

@@ -22,7 +22,9 @@ class QuestionDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final questionAsync = ref.watch(_questionProvider(questionId));
 
-    return Scaffold(
+    return GrowthBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('错题详情'),
         leading: IconButton(
@@ -38,7 +40,7 @@ class QuestionDetailPage extends ConsumerWidget {
           return _DetailBody(question: data);
         },
       ),
-    );
+    ));
   }
 }
 

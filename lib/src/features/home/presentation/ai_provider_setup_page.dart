@@ -129,7 +129,9 @@ class _AiProviderSetupPageState extends ConsumerState<AiProviderSetupPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GrowthBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('AI 服务商')),
       body: ListView(
         padding: const EdgeInsets.all(GrowthSpacing.lg),
@@ -234,6 +236,6 @@ class _AiProviderSetupPageState extends ConsumerState<AiProviderSetupPage> {
           ),
         ],
       ),
-    );
+    ));
   }
 }

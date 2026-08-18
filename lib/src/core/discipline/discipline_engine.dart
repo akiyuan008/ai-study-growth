@@ -100,7 +100,7 @@ class DisciplineEngine {
       case 'app_foreground':
         final pkg = event.appPackage ?? '';
         _persistEvent(sessionId, event);
-        if (pkg == ownPackage || _isAllowed(pkg)) {
+        if (pkg == ownPackage || _defaultAllowed(pkg) || _isAllowed(pkg)) {
           _returnToFocus(event.at);
         } else {
           _enterDistraction(event.at);

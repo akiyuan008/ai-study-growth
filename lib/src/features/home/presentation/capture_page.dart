@@ -78,7 +78,9 @@ class _CapturePageState extends ConsumerState<CapturePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GrowthBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('拍题')),
       body: Center(
         child: Padding(
@@ -117,6 +119,6 @@ class _CapturePageState extends ConsumerState<CapturePage> {
           ),
         ),
       ),
-    );
+    ));
   }
 }

@@ -33,7 +33,9 @@ class AnalysisJobsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final jobsAsync = ref.watch(analysisJobsProvider);
 
-    return Scaffold(
+    return GrowthBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('解析队列'),
         leading: IconButton(
@@ -59,7 +61,7 @@ class AnalysisJobsPage extends ConsumerWidget {
           );
         },
       ),
-    );
+    ));
   }
 }
 

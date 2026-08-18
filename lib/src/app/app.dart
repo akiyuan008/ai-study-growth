@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../design_system/design_system.dart';
 import '../features/design_gallery/presentation/design_gallery_page.dart';
 import '../features/home/presentation/ai_provider_setup_page.dart';
+import '../features/home/presentation/app_whitelist_page.dart';
 import '../features/home/presentation/analysis_jobs_page.dart';
 import '../features/home/presentation/capture_page.dart';
 import '../features/home/presentation/main_shell_page.dart';
@@ -76,8 +78,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AiProviderSetupPage(),
       ),
       GoRoute(
+        path: '/settings/app-whitelist',
+        builder: (context, state) => const AppWhitelistPage(),
+      ),
+      GoRoute(
+        // Prompt E：画廊仅 debug 可见；release 包中该路由重定向回首页，
+        // 画廊内的演示控件（模拟涨落/心流演示）不会在 release 被触达
         path: '/design/gallery',
-        builder: (context, state) => const DesignGalleryPage(),
+        builder: (context, state) =>
+            kDebugMode ? const DesignGalleryPage() : const MainShellPage(),
       ),
     ],
   );
@@ -89,13 +98,13 @@ class AiStudyGrowthApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    final themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: 'AI 学习成长系统',
       debugShowCheckedModeBanner: false,
       theme: buildGrowthTheme(Brightness.light),
-      darkTheme: buildGrowthTheme(Brightness.dark),
-      themeMode: themeMode,
+      // Prompt F4：深色模式本版冻结，固定浅色
+      darkTheme: buildGrowthTheme(Brightness.light),
+      themeMode: ThemeMode.light,
       routerConfig: router,
     );
   }

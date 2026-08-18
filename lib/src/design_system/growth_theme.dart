@@ -6,29 +6,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'tokens.dart';
 
-/// 主题管理器：浅色 / 深色 / 跟随系统，持久化用户选择。
+/// 主题管理器。
+///
+/// 【Prompt F4：深色模式本版冻结】当前版本固定浅色，
+/// set() 仅接受 light；深色能力保留在代码里，P5 解锁。
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
-  ThemeModeNotifier(this._prefs) : super(_read(_prefs));
+  ThemeModeNotifier(this._prefs) : super(ThemeMode.light);
 
   final SharedPreferences _prefs;
   static const _key = 'growth.theme_mode';
 
-  static ThemeMode _read(SharedPreferences prefs) {
-    final raw = prefs.getString(_key);
-    return ThemeMode.values.firstWhere(
-      (m) => m.name == raw,
-      orElse: () => ThemeMode.system,
-    );
-  }
-
   Future<void> set(ThemeMode mode) async {
-    state = mode;
-    await _prefs.setString(_key, mode.name);
+    // 深色冻结：非浅色请求一律落回浅色
+    state = ThemeMode.light;
+    await _prefs.setString(_key, ThemeMode.light.name);
   }
 
   Future<void> toggleLightDark() async {
-    final next = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-    await set(next);
+    // 冻结期内无操作
   }
 }
 

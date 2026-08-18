@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
+import android.net.Uri
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.studygrowth.ai_study_growth.monitor.BehaviorEventBus
@@ -60,6 +61,28 @@ class MainActivity : FlutterActivity() {
                     }
                     "openUsageAccessSettings" -> {
                         startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                        result.success(true)
+                    }
+                    "openUsageSettingsForPackage" -> {
+                        // 使用统计权限（系统设置页）
+                        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                        result.success(true)
+                    }
+                    "openOverlaySettings" -> {
+                        // 悬浮窗权限
+                        val intent = Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:$packageName")
+                        )
+                        startActivity(intent)
+                        result.success(true)
+                    }
+                    "openNotificationSettings" -> {
+                        // 应用通知设置页
+                        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                            putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                        }
+                        startActivity(intent)
                         result.success(true)
                     }
                     "requestNotificationPermission" -> {

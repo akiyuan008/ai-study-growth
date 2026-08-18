@@ -57,9 +57,9 @@ class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(themeModeProvider);
-
-    return Scaffold(
+    return GrowthBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('设计系统画廊'),
         leading: IconButton(
@@ -71,29 +71,10 @@ class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
         padding: const EdgeInsets.all(GrowthSpacing.lg),
         children: [
           _section('主题管理'),
-          GrowthCard(
-            child: Row(
-              children: [
-                for (final mode in ThemeMode.values)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: GrowthSpacing.xs),
-                      child: GrowthButton(
-                        label: switch (mode) {
-                          ThemeMode.system => '跟随系统',
-                          ThemeMode.light => '浅色',
-                          ThemeMode.dark => '深色',
-                        },
-                        variant: themeMode == mode
-                            ? GrowthButtonVariant.primary
-                            : GrowthButtonVariant.ghost,
-                        onPressed: () =>
-                            ref.read(themeModeProvider.notifier).set(mode),
-                      ),
-                    ),
-                  ),
-              ],
+          GlassCard(
+            child: Text(
+              '本版固定浅色（深色模式 P5 解锁），主题切换控件已冻结。',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
           _section('色彩令牌'),
@@ -262,7 +243,7 @@ class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
           const SizedBox(height: GrowthSpacing.xl),
         ],
       ),
-    );
+    ));
   }
 
   Widget _section(String title) {
