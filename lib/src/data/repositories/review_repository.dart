@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:fsrs/fsrs.dart';
 
+import '../../core/growth/mission_engine.dart';
 import '../local/app_database.dart';
 import '../services/review_scheduler.dart';
 
@@ -111,6 +112,9 @@ class ReviewRepository {
             })),
           ),
         );
+
+    // 复习即任务闭环：每次评分后重新评估今日任务
+    await MissionEngine.evaluateMissions(_db, at: at);
   }
 
   /// 掌握度映射（供成长引擎的学习能力维度消费）：

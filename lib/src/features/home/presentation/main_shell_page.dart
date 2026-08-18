@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../design_system/design_system.dart';
+import '../../growth/presentation/growth_home_page.dart';
 import '../../learning/learning_providers.dart';
 import 'notebook_page.dart';
 import 'review_page.dart';
@@ -35,8 +36,8 @@ class _ShellBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tab = ref.watch(_shellTabProvider);
     return switch (tab) {
-      0 => const _NotebookTab(),
-      1 => const _FocusTab(),
+      0 => const _GrowthTab(),
+      1 => const _NotebookTab(),
       2 => const _ReviewTabEntry(),
       _ => const _MeTab(),
     };
@@ -59,12 +60,12 @@ class _ShellNav extends ConsumerWidget {
           ref.read(_shellTabProvider.notifier).state = i,
       destinations: [
         const NavigationDestination(
-          icon: Icon(Icons.menu_book_rounded),
-          label: '错题本',
+          icon: Icon(Icons.spa_rounded),
+          label: '成长',
         ),
         const NavigationDestination(
-          icon: Icon(Icons.self_improvement_rounded),
-          label: '专注',
+          icon: Icon(Icons.menu_book_rounded),
+          label: '错题本',
         ),
         NavigationDestination(
           icon: Badge(
@@ -96,47 +97,12 @@ class _NotebookTab extends ConsumerWidget {
   }
 }
 
-class _FocusTab extends ConsumerWidget {
-  const _FocusTab();
+class _GrowthTab extends ConsumerWidget {
+  const _GrowthTab();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('专注')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(GrowthSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.self_improvement_rounded,
-                size: 72,
-                color: GrowthColors.flow.withValues(alpha: 0.6),
-              ),
-              const SizedBox(height: GrowthSpacing.lg),
-              Text(
-                '把注意力当成肌肉来练',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: GrowthSpacing.sm),
-              Text(
-                '选一段时长，进入单核专注；\nMOSS 会帮你挡住分心。',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: GrowthSpacing.xl),
-              GrowthButton(
-                label: '开始专注',
-                icon: Icons.center_focus_strong_rounded,
-                expanded: true,
-                onPressed: () => context.push('/focus'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return const GrowthHomePage(embedded: true);
   }
 }
 
