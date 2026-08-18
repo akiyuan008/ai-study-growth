@@ -80,7 +80,7 @@ object DocumentScanner {
 
         val gray = Mat()
         Imgproc.cvtColor(small, gray, Imgproc.COLOR_BGR2GRAY)
-        Imgproc.GaussianBlur(gray, gray, Size(7, 7), 0)
+        Imgproc.GaussianBlur(gray, gray, Size(7.0, 7.0), 0.0)
 
         val thresh = Mat()
         Imgproc.adaptiveThreshold(
@@ -90,7 +90,7 @@ object DocumentScanner {
         )
         // 纸面是亮区：反相后闭运算连通
         Core.bitwise_not(thresh, thresh)
-        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(5, 5))
+        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(5.0, 5.0))
         Imgproc.morphologyEx(thresh, thresh, Imgproc.MORPH_CLOSE, kernel)
 
         val contours = ArrayList<MatOfPoint>()
@@ -155,8 +155,8 @@ object DocumentScanner {
         val h = max(heightLeft, heightRight).toInt().coerceAtLeast(100)
 
         val dst = MatOfPoint2f(
-            Point(0, 0), Point(w - 1.0, 0),
-            Point(w - 1.0, h - 1.0), Point(0, h - 1.0)
+            Point(0.0, 0.0), Point(w - 1.0, 0.0),
+            Point(w - 1.0, h - 1.0), Point(0.0, h - 1.0)
         )
         val m = Imgproc.getPerspectiveTransform(quad, dst)
         val warped = Mat()
@@ -176,7 +176,7 @@ object DocumentScanner {
         Imgproc.cvtColor(src, gray, Imgproc.COLOR_BGR2GRAY)
 
         val bg = Mat()
-        Imgproc.GaussianBlur(gray, bg, Size(0, 0), 50.0)
+        Imgproc.GaussianBlur(gray, bg, Size(0.0, 0.0), 50.0)
 
         val divided = Mat()
         Core.divide(gray, bg, divided, 255.0)
