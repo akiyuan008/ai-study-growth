@@ -706,6 +706,444 @@ class QuestionRecordsCompanion extends UpdateCompanion<QuestionRecord> {
   }
 }
 
+class $AnalysisJobsTable extends AnalysisJobs
+    with TableInfo<$AnalysisJobsTable, AnalysisJob> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AnalysisJobsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _imagePathMeta =
+      const VerificationMeta('imagePath');
+  @override
+  late final GeneratedColumn<String> imagePath = GeneratedColumn<String>(
+      'image_path', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('pending'));
+  static const VerificationMeta _splitResultMeta =
+      const VerificationMeta('splitResult');
+  @override
+  late final GeneratedColumn<String> splitResult = GeneratedColumn<String>(
+      'split_result', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('[]'));
+  static const VerificationMeta _resultsMeta =
+      const VerificationMeta('results');
+  @override
+  late final GeneratedColumn<String> results = GeneratedColumn<String>(
+      'results', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('[]'));
+  static const VerificationMeta _errorMeta = const VerificationMeta('error');
+  @override
+  late final GeneratedColumn<String> error = GeneratedColumn<String>(
+      'error', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        imagePath,
+        status,
+        splitResult,
+        results,
+        error,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'analysis_jobs';
+  @override
+  VerificationContext validateIntegrity(Insertable<AnalysisJob> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('image_path')) {
+      context.handle(_imagePathMeta,
+          imagePath.isAcceptableOrUnknown(data['image_path']!, _imagePathMeta));
+    } else if (isInserting) {
+      context.missing(_imagePathMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('split_result')) {
+      context.handle(
+          _splitResultMeta,
+          splitResult.isAcceptableOrUnknown(
+              data['split_result']!, _splitResultMeta));
+    }
+    if (data.containsKey('results')) {
+      context.handle(_resultsMeta,
+          results.isAcceptableOrUnknown(data['results']!, _resultsMeta));
+    }
+    if (data.containsKey('error')) {
+      context.handle(
+          _errorMeta, error.isAcceptableOrUnknown(data['error']!, _errorMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AnalysisJob map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AnalysisJob(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      imagePath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}image_path'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      splitResult: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}split_result'])!,
+      results: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}results'])!,
+      error: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}error']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $AnalysisJobsTable createAlias(String alias) {
+    return $AnalysisJobsTable(attachedDatabase, alias);
+  }
+}
+
+class AnalysisJob extends DataClass implements Insertable<AnalysisJob> {
+  /// uuid
+  final String id;
+
+  /// 题目照片本地路径
+  final String imagePath;
+
+  /// pending / splitting / analyzing / waiting_confirm / saved / abandoned / failed
+  final String status;
+
+  /// 拆题结果，JSON：[{index, text}]
+  final String splitResult;
+
+  /// 逐题解析结果，JSON：[{index, status, result?, error?}]
+  final String results;
+
+  /// 任务级错误（拆题失败等）
+  final String? error;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const AnalysisJob(
+      {required this.id,
+      required this.imagePath,
+      required this.status,
+      required this.splitResult,
+      required this.results,
+      this.error,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['image_path'] = Variable<String>(imagePath);
+    map['status'] = Variable<String>(status);
+    map['split_result'] = Variable<String>(splitResult);
+    map['results'] = Variable<String>(results);
+    if (!nullToAbsent || error != null) {
+      map['error'] = Variable<String>(error);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AnalysisJobsCompanion toCompanion(bool nullToAbsent) {
+    return AnalysisJobsCompanion(
+      id: Value(id),
+      imagePath: Value(imagePath),
+      status: Value(status),
+      splitResult: Value(splitResult),
+      results: Value(results),
+      error:
+          error == null && nullToAbsent ? const Value.absent() : Value(error),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AnalysisJob.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AnalysisJob(
+      id: serializer.fromJson<String>(json['id']),
+      imagePath: serializer.fromJson<String>(json['imagePath']),
+      status: serializer.fromJson<String>(json['status']),
+      splitResult: serializer.fromJson<String>(json['splitResult']),
+      results: serializer.fromJson<String>(json['results']),
+      error: serializer.fromJson<String?>(json['error']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'imagePath': serializer.toJson<String>(imagePath),
+      'status': serializer.toJson<String>(status),
+      'splitResult': serializer.toJson<String>(splitResult),
+      'results': serializer.toJson<String>(results),
+      'error': serializer.toJson<String?>(error),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AnalysisJob copyWith(
+          {String? id,
+          String? imagePath,
+          String? status,
+          String? splitResult,
+          String? results,
+          Value<String?> error = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      AnalysisJob(
+        id: id ?? this.id,
+        imagePath: imagePath ?? this.imagePath,
+        status: status ?? this.status,
+        splitResult: splitResult ?? this.splitResult,
+        results: results ?? this.results,
+        error: error.present ? error.value : this.error,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  AnalysisJob copyWithCompanion(AnalysisJobsCompanion data) {
+    return AnalysisJob(
+      id: data.id.present ? data.id.value : this.id,
+      imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
+      status: data.status.present ? data.status.value : this.status,
+      splitResult:
+          data.splitResult.present ? data.splitResult.value : this.splitResult,
+      results: data.results.present ? data.results.value : this.results,
+      error: data.error.present ? data.error.value : this.error,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AnalysisJob(')
+          ..write('id: $id, ')
+          ..write('imagePath: $imagePath, ')
+          ..write('status: $status, ')
+          ..write('splitResult: $splitResult, ')
+          ..write('results: $results, ')
+          ..write('error: $error, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, imagePath, status, splitResult, results, error, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AnalysisJob &&
+          other.id == this.id &&
+          other.imagePath == this.imagePath &&
+          other.status == this.status &&
+          other.splitResult == this.splitResult &&
+          other.results == this.results &&
+          other.error == this.error &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AnalysisJobsCompanion extends UpdateCompanion<AnalysisJob> {
+  final Value<String> id;
+  final Value<String> imagePath;
+  final Value<String> status;
+  final Value<String> splitResult;
+  final Value<String> results;
+  final Value<String?> error;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AnalysisJobsCompanion({
+    this.id = const Value.absent(),
+    this.imagePath = const Value.absent(),
+    this.status = const Value.absent(),
+    this.splitResult = const Value.absent(),
+    this.results = const Value.absent(),
+    this.error = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AnalysisJobsCompanion.insert({
+    required String id,
+    required String imagePath,
+    this.status = const Value.absent(),
+    this.splitResult = const Value.absent(),
+    this.results = const Value.absent(),
+    this.error = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        imagePath = Value(imagePath),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<AnalysisJob> custom({
+    Expression<String>? id,
+    Expression<String>? imagePath,
+    Expression<String>? status,
+    Expression<String>? splitResult,
+    Expression<String>? results,
+    Expression<String>? error,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (imagePath != null) 'image_path': imagePath,
+      if (status != null) 'status': status,
+      if (splitResult != null) 'split_result': splitResult,
+      if (results != null) 'results': results,
+      if (error != null) 'error': error,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AnalysisJobsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? imagePath,
+      Value<String>? status,
+      Value<String>? splitResult,
+      Value<String>? results,
+      Value<String?>? error,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
+    return AnalysisJobsCompanion(
+      id: id ?? this.id,
+      imagePath: imagePath ?? this.imagePath,
+      status: status ?? this.status,
+      splitResult: splitResult ?? this.splitResult,
+      results: results ?? this.results,
+      error: error ?? this.error,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (imagePath.present) {
+      map['image_path'] = Variable<String>(imagePath.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (splitResult.present) {
+      map['split_result'] = Variable<String>(splitResult.value);
+    }
+    if (results.present) {
+      map['results'] = Variable<String>(results.value);
+    }
+    if (error.present) {
+      map['error'] = Variable<String>(error.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AnalysisJobsCompanion(')
+          ..write('id: $id, ')
+          ..write('imagePath: $imagePath, ')
+          ..write('status: $status, ')
+          ..write('splitResult: $splitResult, ')
+          ..write('results: $results, ')
+          ..write('error: $error, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $KnowledgePointsTable extends KnowledgePoints
     with TableInfo<$KnowledgePointsTable, KnowledgePoint> {
   @override
@@ -1234,6 +1672,18 @@ class $ReviewCardsTable extends ReviewCards
   late final GeneratedColumn<DateTime> due = GeneratedColumn<DateTime>(
       'due', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<int> state = GeneratedColumn<int>(
+      'state', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _stepMeta = const VerificationMeta('step');
+  @override
+  late final GeneratedColumn<int> step = GeneratedColumn<int>(
+      'step', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _stabilityMeta =
       const VerificationMeta('stability');
   @override
@@ -1281,6 +1731,8 @@ class $ReviewCardsTable extends ReviewCards
         id,
         questionId,
         due,
+        state,
+        step,
         stability,
         difficulty,
         reps,
@@ -1316,6 +1768,14 @@ class $ReviewCardsTable extends ReviewCards
           _dueMeta, due.isAcceptableOrUnknown(data['due']!, _dueMeta));
     } else if (isInserting) {
       context.missing(_dueMeta);
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+          _stateMeta, state.isAcceptableOrUnknown(data['state']!, _stateMeta));
+    }
+    if (data.containsKey('step')) {
+      context.handle(
+          _stepMeta, step.isAcceptableOrUnknown(data['step']!, _stepMeta));
     }
     if (data.containsKey('stability')) {
       context.handle(_stabilityMeta,
@@ -1362,6 +1822,10 @@ class $ReviewCardsTable extends ReviewCards
           .read(DriftSqlType.string, data['${effectivePrefix}question_id'])!,
       due: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}due'])!,
+      state: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}state'])!,
+      step: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}step']),
       stability: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}stability'])!,
       difficulty: attachedDatabase.typeMapping
@@ -1392,6 +1856,12 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
   /// 到期时间（FSRS due）
   final DateTime due;
 
+  /// FSRS 状态：0 new / 1 learning / 2 review / 3 relearning
+  final int state;
+
+  /// FSRS 学习/再学习阶段步序（review 状态为 null）
+  final int? step;
+
   /// FSRS 状态参数
   final double stability;
   final double difficulty;
@@ -1403,6 +1873,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       {required this.id,
       required this.questionId,
       required this.due,
+      required this.state,
+      this.step,
       required this.stability,
       required this.difficulty,
       required this.reps,
@@ -1415,6 +1887,10 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
     map['id'] = Variable<String>(id);
     map['question_id'] = Variable<String>(questionId);
     map['due'] = Variable<DateTime>(due);
+    map['state'] = Variable<int>(state);
+    if (!nullToAbsent || step != null) {
+      map['step'] = Variable<int>(step);
+    }
     map['stability'] = Variable<double>(stability);
     map['difficulty'] = Variable<double>(difficulty);
     map['reps'] = Variable<int>(reps);
@@ -1431,6 +1907,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       id: Value(id),
       questionId: Value(questionId),
       due: Value(due),
+      state: Value(state),
+      step: step == null && nullToAbsent ? const Value.absent() : Value(step),
       stability: Value(stability),
       difficulty: Value(difficulty),
       reps: Value(reps),
@@ -1449,6 +1927,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       id: serializer.fromJson<String>(json['id']),
       questionId: serializer.fromJson<String>(json['questionId']),
       due: serializer.fromJson<DateTime>(json['due']),
+      state: serializer.fromJson<int>(json['state']),
+      step: serializer.fromJson<int?>(json['step']),
       stability: serializer.fromJson<double>(json['stability']),
       difficulty: serializer.fromJson<double>(json['difficulty']),
       reps: serializer.fromJson<int>(json['reps']),
@@ -1464,6 +1944,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       'id': serializer.toJson<String>(id),
       'questionId': serializer.toJson<String>(questionId),
       'due': serializer.toJson<DateTime>(due),
+      'state': serializer.toJson<int>(state),
+      'step': serializer.toJson<int?>(step),
       'stability': serializer.toJson<double>(stability),
       'difficulty': serializer.toJson<double>(difficulty),
       'reps': serializer.toJson<int>(reps),
@@ -1477,6 +1959,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
           {String? id,
           String? questionId,
           DateTime? due,
+          int? state,
+          Value<int?> step = const Value.absent(),
           double? stability,
           double? difficulty,
           int? reps,
@@ -1487,6 +1971,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
         id: id ?? this.id,
         questionId: questionId ?? this.questionId,
         due: due ?? this.due,
+        state: state ?? this.state,
+        step: step.present ? step.value : this.step,
         stability: stability ?? this.stability,
         difficulty: difficulty ?? this.difficulty,
         reps: reps ?? this.reps,
@@ -1501,6 +1987,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       questionId:
           data.questionId.present ? data.questionId.value : this.questionId,
       due: data.due.present ? data.due.value : this.due,
+      state: data.state.present ? data.state.value : this.state,
+      step: data.step.present ? data.step.value : this.step,
       stability: data.stability.present ? data.stability.value : this.stability,
       difficulty:
           data.difficulty.present ? data.difficulty.value : this.difficulty,
@@ -1519,6 +2007,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
           ..write('id: $id, ')
           ..write('questionId: $questionId, ')
           ..write('due: $due, ')
+          ..write('state: $state, ')
+          ..write('step: $step, ')
           ..write('stability: $stability, ')
           ..write('difficulty: $difficulty, ')
           ..write('reps: $reps, ')
@@ -1530,8 +2020,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
   }
 
   @override
-  int get hashCode => Object.hash(id, questionId, due, stability, difficulty,
-      reps, lapses, lastReviewAt, createdAt);
+  int get hashCode => Object.hash(id, questionId, due, state, step, stability,
+      difficulty, reps, lapses, lastReviewAt, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1539,6 +2029,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
           other.id == this.id &&
           other.questionId == this.questionId &&
           other.due == this.due &&
+          other.state == this.state &&
+          other.step == this.step &&
           other.stability == this.stability &&
           other.difficulty == this.difficulty &&
           other.reps == this.reps &&
@@ -1551,6 +2043,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
   final Value<String> id;
   final Value<String> questionId;
   final Value<DateTime> due;
+  final Value<int> state;
+  final Value<int?> step;
   final Value<double> stability;
   final Value<double> difficulty;
   final Value<int> reps;
@@ -1562,6 +2056,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     this.id = const Value.absent(),
     this.questionId = const Value.absent(),
     this.due = const Value.absent(),
+    this.state = const Value.absent(),
+    this.step = const Value.absent(),
     this.stability = const Value.absent(),
     this.difficulty = const Value.absent(),
     this.reps = const Value.absent(),
@@ -1574,6 +2070,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     required String id,
     required String questionId,
     required DateTime due,
+    this.state = const Value.absent(),
+    this.step = const Value.absent(),
     this.stability = const Value.absent(),
     this.difficulty = const Value.absent(),
     this.reps = const Value.absent(),
@@ -1589,6 +2087,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     Expression<String>? id,
     Expression<String>? questionId,
     Expression<DateTime>? due,
+    Expression<int>? state,
+    Expression<int>? step,
     Expression<double>? stability,
     Expression<double>? difficulty,
     Expression<int>? reps,
@@ -1601,6 +2101,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
       if (id != null) 'id': id,
       if (questionId != null) 'question_id': questionId,
       if (due != null) 'due': due,
+      if (state != null) 'state': state,
+      if (step != null) 'step': step,
       if (stability != null) 'stability': stability,
       if (difficulty != null) 'difficulty': difficulty,
       if (reps != null) 'reps': reps,
@@ -1615,6 +2117,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
       {Value<String>? id,
       Value<String>? questionId,
       Value<DateTime>? due,
+      Value<int>? state,
+      Value<int?>? step,
       Value<double>? stability,
       Value<double>? difficulty,
       Value<int>? reps,
@@ -1626,6 +2130,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
       id: id ?? this.id,
       questionId: questionId ?? this.questionId,
       due: due ?? this.due,
+      state: state ?? this.state,
+      step: step ?? this.step,
       stability: stability ?? this.stability,
       difficulty: difficulty ?? this.difficulty,
       reps: reps ?? this.reps,
@@ -1647,6 +2153,12 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     }
     if (due.present) {
       map['due'] = Variable<DateTime>(due.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<int>(state.value);
+    }
+    if (step.present) {
+      map['step'] = Variable<int>(step.value);
     }
     if (stability.present) {
       map['stability'] = Variable<double>(stability.value);
@@ -1678,6 +2190,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
           ..write('id: $id, ')
           ..write('questionId: $questionId, ')
           ..write('due: $due, ')
+          ..write('state: $state, ')
+          ..write('step: $step, ')
           ..write('stability: $stability, ')
           ..write('difficulty: $difficulty, ')
           ..write('reps: $reps, ')
@@ -2361,7 +2875,7 @@ class GeneratedExercisesCompanion extends UpdateCompanion<GeneratedExercise> {
 }
 
 class $AiMessagesTable extends AiMessages
-    with TableInfo<$AiMessagesTable, AiMessage> {
+    with TableInfo<$AiMessagesTable, AiMessageRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -2407,7 +2921,7 @@ class $AiMessagesTable extends AiMessages
   String get actualTableName => $name;
   static const String $name = 'ai_messages';
   @override
-  VerificationContext validateIntegrity(Insertable<AiMessage> instance,
+  VerificationContext validateIntegrity(Insertable<AiMessageRow> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
@@ -2444,9 +2958,9 @@ class $AiMessagesTable extends AiMessages
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  AiMessage map(Map<String, dynamic> data, {String? tablePrefix}) {
+  AiMessageRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return AiMessage(
+    return AiMessageRow(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       questionId: attachedDatabase.typeMapping
@@ -2466,7 +2980,7 @@ class $AiMessagesTable extends AiMessages
   }
 }
 
-class AiMessage extends DataClass implements Insertable<AiMessage> {
+class AiMessageRow extends DataClass implements Insertable<AiMessageRow> {
   final int id;
   final String? questionId;
 
@@ -2474,7 +2988,7 @@ class AiMessage extends DataClass implements Insertable<AiMessage> {
   final String role;
   final String content;
   final DateTime createdAt;
-  const AiMessage(
+  const AiMessageRow(
       {required this.id,
       this.questionId,
       required this.role,
@@ -2505,10 +3019,10 @@ class AiMessage extends DataClass implements Insertable<AiMessage> {
     );
   }
 
-  factory AiMessage.fromJson(Map<String, dynamic> json,
+  factory AiMessageRow.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return AiMessage(
+    return AiMessageRow(
       id: serializer.fromJson<int>(json['id']),
       questionId: serializer.fromJson<String?>(json['questionId']),
       role: serializer.fromJson<String>(json['role']),
@@ -2528,21 +3042,21 @@ class AiMessage extends DataClass implements Insertable<AiMessage> {
     };
   }
 
-  AiMessage copyWith(
+  AiMessageRow copyWith(
           {int? id,
           Value<String?> questionId = const Value.absent(),
           String? role,
           String? content,
           DateTime? createdAt}) =>
-      AiMessage(
+      AiMessageRow(
         id: id ?? this.id,
         questionId: questionId.present ? questionId.value : this.questionId,
         role: role ?? this.role,
         content: content ?? this.content,
         createdAt: createdAt ?? this.createdAt,
       );
-  AiMessage copyWithCompanion(AiMessagesCompanion data) {
-    return AiMessage(
+  AiMessageRow copyWithCompanion(AiMessagesCompanion data) {
+    return AiMessageRow(
       id: data.id.present ? data.id.value : this.id,
       questionId:
           data.questionId.present ? data.questionId.value : this.questionId,
@@ -2554,7 +3068,7 @@ class AiMessage extends DataClass implements Insertable<AiMessage> {
 
   @override
   String toString() {
-    return (StringBuffer('AiMessage(')
+    return (StringBuffer('AiMessageRow(')
           ..write('id: $id, ')
           ..write('questionId: $questionId, ')
           ..write('role: $role, ')
@@ -2569,7 +3083,7 @@ class AiMessage extends DataClass implements Insertable<AiMessage> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AiMessage &&
+      (other is AiMessageRow &&
           other.id == this.id &&
           other.questionId == this.questionId &&
           other.role == this.role &&
@@ -2577,7 +3091,7 @@ class AiMessage extends DataClass implements Insertable<AiMessage> {
           other.createdAt == this.createdAt);
 }
 
-class AiMessagesCompanion extends UpdateCompanion<AiMessage> {
+class AiMessagesCompanion extends UpdateCompanion<AiMessageRow> {
   final Value<int> id;
   final Value<String?> questionId;
   final Value<String> role;
@@ -2599,7 +3113,7 @@ class AiMessagesCompanion extends UpdateCompanion<AiMessage> {
   })  : role = Value(role),
         content = Value(content),
         createdAt = Value(createdAt);
-  static Insertable<AiMessage> custom({
+  static Insertable<AiMessageRow> custom({
     Expression<int>? id,
     Expression<String>? questionId,
     Expression<String>? role,
@@ -5370,6 +5884,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $QuestionRecordsTable questionRecords =
       $QuestionRecordsTable(this);
+  late final $AnalysisJobsTable analysisJobs = $AnalysisJobsTable(this);
   late final $KnowledgePointsTable knowledgePoints =
       $KnowledgePointsTable(this);
   late final $QuestionKnowledgeLinksTable questionKnowledgeLinks =
@@ -5391,6 +5906,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
         questionRecords,
+        analysisJobs,
         knowledgePoints,
         questionKnowledgeLinks,
         reviewCards,
@@ -5719,6 +6235,224 @@ typedef $$QuestionRecordsTableProcessedTableManager = ProcessedTableManager<
     ),
     QuestionRecord,
     PrefetchHooks Function()>;
+typedef $$AnalysisJobsTableCreateCompanionBuilder = AnalysisJobsCompanion
+    Function({
+  required String id,
+  required String imagePath,
+  Value<String> status,
+  Value<String> splitResult,
+  Value<String> results,
+  Value<String?> error,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<int> rowid,
+});
+typedef $$AnalysisJobsTableUpdateCompanionBuilder = AnalysisJobsCompanion
+    Function({
+  Value<String> id,
+  Value<String> imagePath,
+  Value<String> status,
+  Value<String> splitResult,
+  Value<String> results,
+  Value<String?> error,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+class $$AnalysisJobsTableFilterComposer
+    extends Composer<_$AppDatabase, $AnalysisJobsTable> {
+  $$AnalysisJobsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get imagePath => $composableBuilder(
+      column: $table.imagePath, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get splitResult => $composableBuilder(
+      column: $table.splitResult, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get results => $composableBuilder(
+      column: $table.results, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get error => $composableBuilder(
+      column: $table.error, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$AnalysisJobsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AnalysisJobsTable> {
+  $$AnalysisJobsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get imagePath => $composableBuilder(
+      column: $table.imagePath, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get splitResult => $composableBuilder(
+      column: $table.splitResult, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get results => $composableBuilder(
+      column: $table.results, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get error => $composableBuilder(
+      column: $table.error, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AnalysisJobsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AnalysisJobsTable> {
+  $$AnalysisJobsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get imagePath =>
+      $composableBuilder(column: $table.imagePath, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get splitResult => $composableBuilder(
+      column: $table.splitResult, builder: (column) => column);
+
+  GeneratedColumn<String> get results =>
+      $composableBuilder(column: $table.results, builder: (column) => column);
+
+  GeneratedColumn<String> get error =>
+      $composableBuilder(column: $table.error, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AnalysisJobsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AnalysisJobsTable,
+    AnalysisJob,
+    $$AnalysisJobsTableFilterComposer,
+    $$AnalysisJobsTableOrderingComposer,
+    $$AnalysisJobsTableAnnotationComposer,
+    $$AnalysisJobsTableCreateCompanionBuilder,
+    $$AnalysisJobsTableUpdateCompanionBuilder,
+    (
+      AnalysisJob,
+      BaseReferences<_$AppDatabase, $AnalysisJobsTable, AnalysisJob>
+    ),
+    AnalysisJob,
+    PrefetchHooks Function()> {
+  $$AnalysisJobsTableTableManager(_$AppDatabase db, $AnalysisJobsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AnalysisJobsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AnalysisJobsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AnalysisJobsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> imagePath = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String> splitResult = const Value.absent(),
+            Value<String> results = const Value.absent(),
+            Value<String?> error = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AnalysisJobsCompanion(
+            id: id,
+            imagePath: imagePath,
+            status: status,
+            splitResult: splitResult,
+            results: results,
+            error: error,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String imagePath,
+            Value<String> status = const Value.absent(),
+            Value<String> splitResult = const Value.absent(),
+            Value<String> results = const Value.absent(),
+            Value<String?> error = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AnalysisJobsCompanion.insert(
+            id: id,
+            imagePath: imagePath,
+            status: status,
+            splitResult: splitResult,
+            results: results,
+            error: error,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AnalysisJobsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AnalysisJobsTable,
+    AnalysisJob,
+    $$AnalysisJobsTableFilterComposer,
+    $$AnalysisJobsTableOrderingComposer,
+    $$AnalysisJobsTableAnnotationComposer,
+    $$AnalysisJobsTableCreateCompanionBuilder,
+    $$AnalysisJobsTableUpdateCompanionBuilder,
+    (
+      AnalysisJob,
+      BaseReferences<_$AppDatabase, $AnalysisJobsTable, AnalysisJob>
+    ),
+    AnalysisJob,
+    PrefetchHooks Function()>;
 typedef $$KnowledgePointsTableCreateCompanionBuilder = KnowledgePointsCompanion
     Function({
   required String id,
@@ -6029,6 +6763,8 @@ typedef $$ReviewCardsTableCreateCompanionBuilder = ReviewCardsCompanion
   required String id,
   required String questionId,
   required DateTime due,
+  Value<int> state,
+  Value<int?> step,
   Value<double> stability,
   Value<double> difficulty,
   Value<int> reps,
@@ -6042,6 +6778,8 @@ typedef $$ReviewCardsTableUpdateCompanionBuilder = ReviewCardsCompanion
   Value<String> id,
   Value<String> questionId,
   Value<DateTime> due,
+  Value<int> state,
+  Value<int?> step,
   Value<double> stability,
   Value<double> difficulty,
   Value<int> reps,
@@ -6068,6 +6806,12 @@ class $$ReviewCardsTableFilterComposer
 
   ColumnFilters<DateTime> get due => $composableBuilder(
       column: $table.due, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get state => $composableBuilder(
+      column: $table.state, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get step => $composableBuilder(
+      column: $table.step, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get stability => $composableBuilder(
       column: $table.stability, builder: (column) => ColumnFilters(column));
@@ -6106,6 +6850,12 @@ class $$ReviewCardsTableOrderingComposer
   ColumnOrderings<DateTime> get due => $composableBuilder(
       column: $table.due, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get state => $composableBuilder(
+      column: $table.state, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get step => $composableBuilder(
+      column: $table.step, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<double> get stability => $composableBuilder(
       column: $table.stability, builder: (column) => ColumnOrderings(column));
 
@@ -6143,6 +6893,12 @@ class $$ReviewCardsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get due =>
       $composableBuilder(column: $table.due, builder: (column) => column);
+
+  GeneratedColumn<int> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<int> get step =>
+      $composableBuilder(column: $table.step, builder: (column) => column);
 
   GeneratedColumn<double> get stability =>
       $composableBuilder(column: $table.stability, builder: (column) => column);
@@ -6189,6 +6945,8 @@ class $$ReviewCardsTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String> questionId = const Value.absent(),
             Value<DateTime> due = const Value.absent(),
+            Value<int> state = const Value.absent(),
+            Value<int?> step = const Value.absent(),
             Value<double> stability = const Value.absent(),
             Value<double> difficulty = const Value.absent(),
             Value<int> reps = const Value.absent(),
@@ -6201,6 +6959,8 @@ class $$ReviewCardsTableTableManager extends RootTableManager<
             id: id,
             questionId: questionId,
             due: due,
+            state: state,
+            step: step,
             stability: stability,
             difficulty: difficulty,
             reps: reps,
@@ -6213,6 +6973,8 @@ class $$ReviewCardsTableTableManager extends RootTableManager<
             required String id,
             required String questionId,
             required DateTime due,
+            Value<int> state = const Value.absent(),
+            Value<int?> step = const Value.absent(),
             Value<double> stability = const Value.absent(),
             Value<double> difficulty = const Value.absent(),
             Value<int> reps = const Value.absent(),
@@ -6225,6 +6987,8 @@ class $$ReviewCardsTableTableManager extends RootTableManager<
             id: id,
             questionId: questionId,
             due: due,
+            state: state,
+            step: step,
             stability: stability,
             difficulty: difficulty,
             reps: reps,
@@ -6694,14 +7458,17 @@ class $$AiMessagesTableAnnotationComposer
 class $$AiMessagesTableTableManager extends RootTableManager<
     _$AppDatabase,
     $AiMessagesTable,
-    AiMessage,
+    AiMessageRow,
     $$AiMessagesTableFilterComposer,
     $$AiMessagesTableOrderingComposer,
     $$AiMessagesTableAnnotationComposer,
     $$AiMessagesTableCreateCompanionBuilder,
     $$AiMessagesTableUpdateCompanionBuilder,
-    (AiMessage, BaseReferences<_$AppDatabase, $AiMessagesTable, AiMessage>),
-    AiMessage,
+    (
+      AiMessageRow,
+      BaseReferences<_$AppDatabase, $AiMessagesTable, AiMessageRow>
+    ),
+    AiMessageRow,
     PrefetchHooks Function()> {
   $$AiMessagesTableTableManager(_$AppDatabase db, $AiMessagesTable table)
       : super(TableManagerState(
@@ -6751,14 +7518,17 @@ class $$AiMessagesTableTableManager extends RootTableManager<
 typedef $$AiMessagesTableProcessedTableManager = ProcessedTableManager<
     _$AppDatabase,
     $AiMessagesTable,
-    AiMessage,
+    AiMessageRow,
     $$AiMessagesTableFilterComposer,
     $$AiMessagesTableOrderingComposer,
     $$AiMessagesTableAnnotationComposer,
     $$AiMessagesTableCreateCompanionBuilder,
     $$AiMessagesTableUpdateCompanionBuilder,
-    (AiMessage, BaseReferences<_$AppDatabase, $AiMessagesTable, AiMessage>),
-    AiMessage,
+    (
+      AiMessageRow,
+      BaseReferences<_$AppDatabase, $AiMessagesTable, AiMessageRow>
+    ),
+    AiMessageRow,
     PrefetchHooks Function()>;
 typedef $$FocusSessionsTableCreateCompanionBuilder = FocusSessionsCompanion
     Function({
@@ -8083,6 +8853,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$QuestionRecordsTableTableManager get questionRecords =>
       $$QuestionRecordsTableTableManager(_db, _db.questionRecords);
+  $$AnalysisJobsTableTableManager get analysisJobs =>
+      $$AnalysisJobsTableTableManager(_db, _db.analysisJobs);
   $$KnowledgePointsTableTableManager get knowledgePoints =>
       $$KnowledgePointsTableTableManager(_db, _db.knowledgePoints);
   $$QuestionKnowledgeLinksTableTableManager get questionKnowledgeLinks =>

@@ -80,6 +80,12 @@ class ReviewCards extends Table {
   /// 到期时间（FSRS due）
   DateTimeColumn get due => dateTime()();
 
+  /// FSRS 状态：0 new / 1 learning / 2 review / 3 relearning
+  IntColumn get state => integer().withDefault(const Constant(0))();
+
+  /// FSRS 学习/再学习阶段步序（review 状态为 null）
+  IntColumn get step => integer().nullable()();
+
   /// FSRS 状态参数
   RealColumn get stability => real().withDefault(const Constant(0))();
   RealColumn get difficulty => real().withDefault(const Constant(0))();
@@ -124,6 +130,7 @@ class GeneratedExercises extends Table {
 }
 
 /// AI 追问对话记录（挂在某道题下）
+@DataClassName('AiMessageRow')
 class AiMessages extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get questionId => text().nullable()();
@@ -132,4 +139,32 @@ class AiMessages extends Table {
   TextColumn get role => text()();
   TextColumn get content => text()();
   DateTimeColumn get createdAt => dateTime()();
+}
+
+/// 解析任务（拍题 → 拆题 → 逐题解析 的状态机载体）。
+/// 串行队列处理；失败单题可单独重试；部分成功可只保存成功题。
+class AnalysisJobs extends Table {
+  /// uuid
+  TextColumn get id => text()();
+
+  /// 题目照片本地路径
+  TextColumn get imagePath => text()();
+
+  /// pending / splitting / analyzing / waiting_confirm / saved / abandoned / failed
+  TextColumn get status => text().withDefault(const Constant('pending'))();
+
+  /// 拆题结果，JSON：[{index, text}]
+  TextColumn get splitResult => text().withDefault(const Constant('[]'))();
+
+  /// 逐题解析结果，JSON：[{index, status, result?, error?}]
+  TextColumn get results => text().withDefault(const Constant('[]'))();
+
+  /// 任务级错误（拆题失败等）
+  TextColumn get error => text().nullable()();
+
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }

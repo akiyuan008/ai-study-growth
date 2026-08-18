@@ -20,6 +20,7 @@ part 'app_database.g.dart';
 @DriftDatabase(tables: [
   // 学习域实体
   QuestionRecords,
+  AnalysisJobs,
   KnowledgePoints,
   QuestionKnowledgeLinks,
   ReviewCards,
@@ -55,6 +56,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> clearAllForTest() async {
     final List<TableInfo<Table, dynamic>> tables = [
       questionRecords,
+      analysisJobs,
       knowledgePoints,
       questionKnowledgeLinks,
       reviewCards,

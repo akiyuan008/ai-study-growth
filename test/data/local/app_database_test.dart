@@ -2,7 +2,7 @@ import 'package:ai_study_growth/src/data/local/app_database.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// P0 验收：Drift 数据库初始化无报错，12 张核心表全部可读写。
+/// P0 验收：Drift 数据库初始化无报错，全部核心表可读写。
 void main() {
   late AppDatabase db;
 
@@ -14,7 +14,7 @@ void main() {
     await db.close();
   });
 
-  test('schema 初始化：12 张核心表全部存在且可查询', () async {
+  test('schema 初始化：全部核心表存在且可查询', () async {
     expect(await db.select(db.questionRecords).get(), isEmpty);
     expect(await db.select(db.knowledgePoints).get(), isEmpty);
     expect(await db.select(db.questionKnowledgeLinks).get(), isEmpty);
@@ -28,6 +28,7 @@ void main() {
     expect(await db.select(db.learningEvents).get(), isEmpty);
     expect(await db.select(db.growthMetrics).get(), isEmpty);
     expect(await db.select(db.aiProviders).get(), isEmpty);
+    expect(await db.select(db.analysisJobs).get(), isEmpty);
   });
 
   test('学习域：题目 → 知识点 → 复习卡 → 复习日志 写入链路', () async {
