@@ -394,6 +394,20 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
 
       List<ExerciseItem> typed = l1Items;
 
+      // AI 未配置：仅 L1 离线可用 + 解锁引导（Part 3.4）
+      final gateway = await ref.read(aiGatewayProvider.future);
+      if (gateway == null) {
+        if (typed.isEmpty) {
+          setState(() => _error = '题库里还没有同知识点的真题。配置 AI 服务商后，可解锁 AI 真题引用与拟题。');
+        } else {
+          await ref
+              .read(exerciseRepositoryProvider)
+              .createForQuestion(widget.question.id, typed);
+          setState(() => _items = typed);
+        }
+        return;
+      }
+
       // L1 不足时用 AI 补齐（L2 引用 / L3 待核实 / L4 拟题，均带来源标签）
       if (typed.length < 2) {
         final detail = QuestionRepository.decodeAnalysisDetail(

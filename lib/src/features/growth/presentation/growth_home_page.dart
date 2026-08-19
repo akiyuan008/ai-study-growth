@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,12 +7,7 @@ import '../../growth/growth_providers.dart';
 
 /// 成长首页 —— 系统主入口。
 ///
-/// 结构：
-/// 1. 成长身份（定性，不显示分数）
-/// 2. 能力变化（能量环四能力趋势，Prompt B 空状态规则）
-/// 3. 今日成长行动（NextStep + 任务清单，复习任务直达复习流）
-/// 4. 成长记忆（双域事件时间线）
-/// 5. 快捷入口（专注/拍题）
+/// 内容契约（v10）：身份/三环/趋势/成长记忆/NextStep 链接，禁执行类 UI。
 class GrowthHomePage extends ConsumerWidget {
   const GrowthHomePage({super.key, this.embedded = false});
 
@@ -35,7 +28,7 @@ class GrowthHomePage extends ConsumerWidget {
       body: GrowthBackground(
         child: dataAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('加载失败：$e')),
+          error: (e, _) => _ErrorRetry(message: '$e'),
           data: (data) => RefreshIndicator(
             onRefresh: () async => ref.invalidate(growthHomeProvider),
             child: ListView(
@@ -59,7 +52,7 @@ class GrowthHomePage extends ConsumerWidget {
   }
 }
 
-/// 身份 + 能量环卡片（Prompt B 空状态规则在此落地）
+/// 身份 + 三环卡片（新用户态：能力待唤醒 + 全灰轨道）
 class _IdentityCard extends StatelessWidget {
   const _IdentityCard({required this.data});
 
@@ -72,7 +65,6 @@ class _IdentityCard extends StatelessWidget {
     );
   }
 
-  /// 点按环体：弹出四能力明细总览（逐个可看单能力详情）
   void _openAllAbilitiesSheet(
       BuildContext context, List<_AbilityDetail> details) {
     showGrowthSheet<void>(
@@ -81,7 +73,7 @@ class _IdentityCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('四能力明细', style: Theme.of(context).textTheme.titleLarge),
+          Text('三能力明细', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: GrowthSpacing.md),
           for (final d in details)
             ListTile(
@@ -115,7 +107,7 @@ class _IdentityCard extends StatelessWidget {
     final details = [
       _AbilityDetail(
         name: '学习',
-        color: GrowthColors.abilityLearning,
+        color: GrowthColors.learning,
         score: data.scores.learning,
         legend: '${data.reviewCompletedToday}/${data.reviewDueTotal}',
         legendCaption: '今日复习 完成/应完成',
@@ -123,48 +115,31 @@ class _IdentityCard extends StatelessWidget {
           '完成复习 ${data.reviewCompletedToday} 次',
           '新题入库 ${data.newQuestionsToday} 道',
         ],
-        meaning: '把错题变成知识资产的能力：复习完成度、新题摄入、掌握度提升。',
-      ),
-      _AbilityDetail(
-        name: '专注',
-        color: GrowthColors.abilityFocus,
-        score: data.scores.focus,
-        legend: '${data.focusMinutesToday}/25min',
-        legendCaption: '今日真实专注 / 起步目标',
-        facts: [
-          '真实专注 ${data.focusMinutesToday} 分钟',
-          '分心 ${data.distractionCount} 次',
-        ],
-        meaning: '把注意力留在任务上的能力：真实专注时长对标目标，分心轻罚。',
+        meaning: '把错题变成知识资产的能力：复习完成率、掌握度提升、举一反三完成。',
       ),
       _AbilityDetail(
         name: '坚持',
-        color: GrowthColors.abilityPersistence,
+        color: GrowthColors.persistence,
         score: data.scores.persistence,
         legend: '${data.streak}/7天',
         legendCaption: '连续天数 / 一周目标',
         facts: ['连续学习 ${data.streak} 天'],
-        meaning: '让行动成为习惯的能力：以连续天数为主，断档会重罚。',
+        meaning: '让行动成为习惯的能力：连续天数 + 计划执行率。',
       ),
       _AbilityDetail(
         name: '恢复',
         color: GrowthColors.abilityRecovery,
         score: data.scores.recovery,
-        legend: data.distractionCount > 0
-            ? '${data.recoveryCount}/${data.distractionCount}'
-            : '—',
-        legendCaption: '分心后回归 / 分心次数',
-        facts: data.distractionCount > 0
-            ? ['分心 ${data.distractionCount} 次，回归 ${data.recoveryCount} 次']
-            : ['今天没有分心记录'],
-        meaning: '从分心和断档中回到轨道的能力：回归率越高越强。',
+        legend: data.reviewCompletedToday > 0 ? '活跃' : '—',
+        legendCaption: '错后重做正确 + 中断后回归',
+        facts: const ['遗忘后重新做对，中断后重新开始，都算恢复'],
+        meaning: '从错题复发和学习中断中回到轨道的能力。',
       ),
     ];
 
     return GlassCard(
       child: Column(
         children: [
-          // ---- 成长身份（定性） ----
           Text(
             isNewUser ? '能力待唤醒' : data.identity,
             style: GrowthType.pageTitle.copyWith(
@@ -179,15 +154,12 @@ class _IdentityCard extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: GrowthSpacing.lg),
-
-          // ---- 能量环：新用户态全灰轨道，无彩色弧 ----
           EnergyRing(
             idle: isNewUser,
             arcs: [
               for (final d in details)
                 AbilityArc(
                   label: d.name,
-                  // 弧长严格正比于得分；得分为 0 组件层不绘制
                   value: d.score / 100,
                   color: d.color,
                 ),
@@ -214,8 +186,6 @@ class _IdentityCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: GrowthSpacing.md),
-
-          // ---- 图例：带数值与目标，点按弹出单能力明细（Prompt D2） ----
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -333,50 +303,7 @@ class _AbilityDetailSheet extends StatelessWidget {
   }
 }
 
-/// NextStep 卡片
-class _NextStepCard extends StatelessWidget {
-  const _NextStepCard({required this.data});
-
-  final GrowthHomeData data;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GrowthSectionHeader(
-            title: '下一步',
-            trailing: Icon(
-              Icons.auto_awesome_rounded,
-              size: 18,
-              color: GrowthColors.primary,
-            ),
-          ),
-          const SizedBox(height: GrowthSpacing.sm),
-          Text(
-            data.nextStep.title,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: GrowthSpacing.xs),
-          Text(
-            data.nextStep.reason,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: GrowthSpacing.md),
-          GrowthButton(
-            label: data.nextStep.actionLabel,
-            expanded: true,
-            onPressed: () => context.push(data.nextStep.route),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 今日成长行动：任务卡片（复习任务直达复习流，Prompt A2）
-/// 成长趋势卡（内容契约：趋势只读展示，无执行 UI）
+/// 成长趋势卡
 class _TrendCard extends ConsumerWidget {
   const _TrendCard();
 
@@ -398,8 +325,10 @@ class _TrendCard extends ConsumerWidget {
             data: (points) {
               if (points.length < 2) {
                 return SizedBox(
-                  height: 72,
-                  child: Center(
+                  width: double.infinity,
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: GrowthSpacing.lg),
                     child: Text(
                       '积累 2 天以上的成长快照后，这里会出现趋势线',
                       style: Theme.of(context).textTheme.bodySmall,
@@ -451,7 +380,7 @@ class _TrendLinePainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..color = color;
 
-    final maxV = 100.0;
+    const maxV = 100.0;
     final stepX = size.width / (values.length - 1);
     final path = Path();
     for (var i = 0; i < values.length; i++) {
@@ -467,14 +396,11 @@ class _TrendLinePainter extends CustomPainter {
     }
     canvas.drawPath(path, paint);
 
-    // 端点
     final lastX = (values.length - 1) * stepX;
     final lastY = size.height -
         (values.last.clamp(0.0, maxV) / maxV) * (size.height - 8) -
         4;
     canvas.drawCircle(Offset(lastX, lastY), 3.6, Paint()..color = color);
-    // 数学保留
-    assert(math.pi > 0);
   }
 
   @override
@@ -482,6 +408,49 @@ class _TrendLinePainter extends CustomPainter {
       oldDelegate.values != values || oldDelegate.color != color;
 }
 
+/// NextStep 卡片（链接式，不含执行 UI）
+class _NextStepCard extends StatelessWidget {
+  const _NextStepCard({required this.data});
+
+  final GrowthHomeData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GrowthSectionHeader(
+            title: '下一步',
+            trailing: Icon(
+              Icons.auto_awesome_rounded,
+              size: 18,
+              color: GrowthColors.primary,
+            ),
+          ),
+          const SizedBox(height: GrowthSpacing.sm),
+          Text(
+            data.nextStep.title,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: GrowthSpacing.xs),
+          Text(
+            data.nextStep.reason,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: GrowthSpacing.md),
+          GrowthButton(
+            label: data.nextStep.actionLabel,
+            expanded: true,
+            onPressed: () => context.push(data.nextStep.route),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 成长记忆时间线
 class _MemoryCard extends StatelessWidget {
   const _MemoryCard({required this.data});
 
@@ -505,8 +474,8 @@ class _MemoryCard extends StatelessWidget {
                     height: 8,
                     decoration: BoxDecoration(
                       color: switch (moment.kind) {
-                        'learning' => GrowthColors.abilityLearning,
-                        'focus' => GrowthColors.abilityFocus,
+                        'learning' => GrowthColors.learning,
+                        'focus' => GrowthColors.primary,
                         _ => GrowthColors.success,
                       },
                       shape: BoxShape.circle,
@@ -541,7 +510,7 @@ class _MemoryCard extends StatelessWidget {
   }
 }
 
-/// streak 徽章 —— 行动强调色（橙）的合法出现位置之一
+/// streak 徽章（橙色行动强调色的合法位置）
 class _StreakBadge extends StatelessWidget {
   const _StreakBadge({required this.dataAsync});
 
@@ -571,6 +540,32 @@ class _StreakBadge extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 错误重试卡（状态四件套：零静默失败）
+class _ErrorRetry extends StatelessWidget {
+  const _ErrorRetry({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(GrowthSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('加载出了点问题', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: GrowthSpacing.sm),
+            Text(message,
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center),
+          ],
+        ),
       ),
     );
   }

@@ -136,17 +136,33 @@ class AiClient {
       ..sort();
   }
 
-  /// 连接测试：一次最小对话，成功返回 true
-  Future<bool> testConnection() async {
-    try {
-      final reply = await chat(
-        messages: const [AiMessage(role: 'user', content: 'ping')],
-        maxTokens: 8,
-      );
-      return reply.isNotEmpty;
-    } catch (_) {
-      return false;
-    }
+  /// 连接测试：一次最小对话。
+  /// Part 0.2：失败时抛出真实 DioException，由上层分级提示，禁笼统"无法连接"。
+  Future<bool> testConnectionOrThrow() async {
+    final probe = AiProviderConfig.create(
+      name: 'probe',
+      baseUrl: _config.normalizedBaseUrl,
+      model: _config.model,
+    );
+    final chatUrl = probe.chatCompletionsUrl;
+    final resp = await _dio.post<Map<String, dynamic>>(
+      chatUrl,
+      data: {
+        'model': _config.model,
+        'messages': const [
+          {'role': 'user', 'content': 'ping'}
+        ],
+        'max_tokens': 8,
+      },
+      options: Options(
+        headers: _headers,
+        sendTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ),
+    );
+    final data = resp.data;
+    return data != null &&
+        (data['choices'] as List<dynamic>?)?.isNotEmpty == true;
   }
 
   /// 请求体构造（抽出来便于单测）

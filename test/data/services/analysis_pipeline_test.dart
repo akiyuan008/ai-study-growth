@@ -81,14 +81,6 @@ class FakeGateway implements AiAnalysisGateway {
   }
 
   @override
-  Stream<String> companionChat({
-    required List<AiMessage> history,
-    required String message,
-  }) async* {
-    yield 'ok';
-  }
-
-  @override
   Future<List<String>> suggestKnowledgeTags({
     required List<int> imageBytes,
     String mimeType = 'image/jpeg',

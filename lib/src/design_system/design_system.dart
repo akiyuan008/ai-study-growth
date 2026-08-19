@@ -4,7 +4,6 @@ library;
 export 'growth_theme.dart';
 export 'tokens.dart';
 export 'widgets/energy_ring.dart';
-export 'widgets/flow_countdown.dart';
 export 'widgets/growth_button.dart';
 export 'widgets/growth_card.dart';
 export 'widgets/growth_chip.dart';

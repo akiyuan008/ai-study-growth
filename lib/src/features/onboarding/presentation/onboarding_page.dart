@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../design_system/design_system.dart';
-import '../../focus/focus_providers.dart';
 
 /// 首次启动引导：三屏讲清系统是什么、需要什么权限。
 class OnboardingPage extends ConsumerStatefulWidget {
@@ -19,43 +18,25 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
   static const _slides = [
     (
-      Icons.spa_rounded,
-      '欢迎',
-      '这里不是任务清单，而是一个看着你变强的系统。\n错题本记录你学了什么，自律系统记录你有没有真学，成长引擎把它们变成看得见的四能力趋势。',
+      Icons.menu_book_rounded,
+      '把错题变成成长',
+      '拍下错题，整理成你的专属题库。\n间隔复习帮你在忘记之前巩固，成长环记录每一点进步。',
     ),
     (
-      Icons.center_focus_strong_rounded,
-      '专注时，MOSS 陪着你',
-      '进入专注后，MOSS 伴读会感知你是否切出了 App：分心 1 分钟温和提醒，5 分钟锁屏干预。所有判定都在本机完成。',
+      Icons.auto_awesome_rounded,
+      'AI 可选，核心离线',
+      '不配置 AI 也能完整使用：拍题、复习、统计、备份。\n配置后 AI 帮你打知识点标签、推荐学习路径，可随时开关。',
     ),
     (
-      Icons.lock_outline_rounded,
-      '一个权限，换真实数据',
-      '专注监控需要「使用情况访问」权限。没有它，分心就无法被记录，成长数据会失真。你随时可以在「我的 → AI 与权限」里查看。',
+      Icons.cloud_sync_rounded,
+      '数据只属于你',
+      '无需注册账号。支持坚果云 / InfiniCLOUD / WebDAV 备份，\n换机时一键恢复，题库与图片完整带走。',
     ),
   ];
 
   Future<void> _finish() async {
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setBool('onboarding_done', true);
-    if (!mounted) return;
-
-    // 顺手引导使用情况访问权限
-    final bridge = ref.read(monitorBridgeProvider);
-    final granted = await bridge.isUsageAccessGranted();
-    if (!mounted) return;
-    if (!granted) {
-      final goSettings = await showGrowthDialog(
-        context: context,
-        title: '现在就去授权？',
-        message: '授权「使用情况访问」后，专注监控才能记录真实的分心与回归。',
-        confirmLabel: '去授权',
-        cancelLabel: '以后再说',
-      );
-      if (goSettings == true) {
-        await bridge.openUsageAccessSettings();
-      }
-    }
     if (mounted) context.go('/');
   }
 

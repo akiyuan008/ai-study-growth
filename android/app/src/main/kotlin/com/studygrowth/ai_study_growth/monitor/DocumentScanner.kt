@@ -2,27 +2,30 @@ package com.studygrowth.ai_study_growth.monitor
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import org.json.JSONObject
 import org.opencv.core.Core
-import org.opencv.core.CvType
 import org.opencv.core.Mat
 import org.opencv.core.MatOfPoint
 import org.opencv.core.MatOfPoint2f
 import org.opencv.core.Point
+import org.opencv.core.Rect
 import org.opencv.core.Size
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
- * 文档扫描器（Part 2 核心）—— Kotlin 产事实。
+ * 文档扫描器 v10 —— Kotlin 产事实。
  *
- * 页面级四边形检测：背景混入杂物时，只要纸面在画面内，
- * 自动提取纸面 → 透视拉正 → 匀光，产出"扫描件"。
- * 任何环节失败返回 null，Dart 侧回落原图 + 手动裁剪，不阻塞。
+ * 管线：缩放≤1000px → 双边滤波 → Canny 双阈值 + 膨胀 →
+ * approxPolyDP epsilon 扫描（0.02→0.05）→ 面积>20% 最大四边形。
+ * 失败回落链（禁死路）：四边形 → minAreaRect → 全幅内缩 2%（提示手动校准）。
+ *
+ * 返回 JSON：{"path": "...", "fallback": "none|minarea|fullframe"}
+ * 支持 ROI（对准引导框作为感兴趣区域，提升检测成功率）。
  */
 object DocumentScanner {
 
@@ -30,7 +33,6 @@ object DocumentScanner {
         try {
             System.loadLibrary(Core.NATIVE_LIBRARY_NAME)
         } catch (_: Throwable) {
-            // OpenCV 加载失败时所有方法安全降级为 null
         }
     }
 
@@ -41,93 +43,189 @@ object DocumentScanner {
     }
 
     /**
-     * 扫描入口：输入原图路径，输出扫描件路径；失败返回 null。
+     * 扫描入口。
+     * @param roi 归一化 ROI [x, y, w, h]（0-1），可空 = 全幅
+     * @return JSON 字符串；完全失败返回 null
      */
-    fun scan(srcPath: String, outDir: File): String? {
+    fun scan(srcPath: String, outDir: File, roi: DoubleArray?): String? {
         if (!opencvReady()) return null
         return try {
             val src = Imgcodecs.imread(srcPath)
             if (src.empty()) return null
 
-            val quad = detectPaperQuad(src) ?: return null
-            val warped = perspectiveCorrect(src, quad)
-            val lit = evenLighting(warped)
+            // ROI 裁剪（对准框 = 默认感兴趣区域）
+            val workMat = if (roi != null && roi.size == 4) {
+                val x = (roi[0] * src.cols()).toInt().coerceIn(0, src.cols() - 1)
+                val y = (roi[1] * src.rows()).toInt().coerceIn(0, src.rows() - 1)
+                val w = (roi[2] * src.cols()).toInt().coerceIn(1, src.cols() - x)
+                val h = (roi[3] * src.rows()).toInt().coerceIn(1, src.rows() - y)
+                Mat(src, Rect(x, y, w, h))
+            } else {
+                src.clone()
+            }
+            val roiOffX = if (roi != null && roi.size == 4) roi[0] * src.cols() else 0.0
+            val roiOffY = if (roi != null && roi.size == 4) roi[1] * src.rows() else 0.0
 
+            val quad = detectPaperQuad(workMat)
+            var fallback = "none"
+
+            val resultMat: Mat
+            if (quad != null) {
+                // 四边形坐标还原到原图尺度
+                for (i in 0 until quad.rows()) {
+                    val arr = quad.get(i, 0)
+                    quad.put(i, 0, arr[0] + roiOffX, arr[1] + roiOffY)
+                }
+                resultMat = perspectiveCorrect(src, quad)
+                quad.release()
+            } else {
+                // 回落 1：minAreaRect
+                val rect = minAreaFallback(workMat)
+                if (rect != null) {
+                    val pts = MatOfPoint2f()
+                    rect.points(pts)
+                    val arr = pts.toArray()
+                    // minAreaRect 点序不定，排序为 tl/tr/br/bl
+                    val ordered = orderPoints(arr.map {
+                        Point(it.x + roiOffX, it.y + roiOffY)
+                    })
+                    resultMat = perspectiveCorrect(src, ordered)
+                    ordered.release(); pts.release()
+                    fallback = "minarea"
+                } else {
+                    // 回落 2：全幅内缩 2%，提示手动校准
+                    val m = 0.02
+                    val inset = MatOfPoint2f(
+                        Point(src.cols() * m, src.rows() * m),
+                        Point(src.cols() * (1 - m), src.rows() * m),
+                        Point(src.cols() * (1 - m), src.rows() * (1 - m)),
+                        Point(src.cols() * m, src.rows() * (1 - m))
+                    )
+                    resultMat = perspectiveCorrect(src, inset)
+                    inset.release()
+                    fallback = "fullframe"
+                }
+            }
+
+            val lit = evenLighting(resultMat)
             outDir.mkdirs()
             val out = File(outDir, "scan_${System.currentTimeMillis()}.jpg")
             val ok = Imgcodecs.imwrite(out.absolutePath, lit)
-            src.release(); warped.release(); lit.release()
-            if (ok) out.absolutePath else null
+            src.release(); workMat.release(); resultMat.release(); lit.release()
+
+            if (!ok) return null
+            val json = JSONObject()
+            json.put("path", out.absolutePath)
+            json.put("fallback", fallback)
+            json.toString()
         } catch (_: Throwable) {
             null
         }
     }
 
     /**
-     * 纸面四边形检测：灰度 → 模糊 → 自适应阈值 → 轮廓 → 最大四点近似轮廓。
+     * 纸面四边形检测 v10：
+     * 缩放≤1000 → 灰度 → 双边滤波 → Canny 双阈值 → 膨胀 → 轮廓 →
+     * approxPolyDP epsilon 扫描 0.02→0.05 → 面积>20% 最大四边形
      */
     private fun detectPaperQuad(src: Mat): MatOfPoint2f? {
-        val scale = 1000.0 / max(src.cols(), src.rows())
+        val maxSide = 1000.0
+        val scale = maxSide / max(src.cols(), src.rows())
         val small = Mat()
         if (scale < 1.0) {
-            Imgproc.resize(
-                src, small,
-                Size(src.cols() * scale, src.rows() * scale)
-            )
+            Imgproc.resize(src, small, Size(src.cols() * scale, src.rows() * scale))
         } else {
             src.copyTo(small)
         }
 
         val gray = Mat()
         Imgproc.cvtColor(small, gray, Imgproc.COLOR_BGR2GRAY)
-        Imgproc.GaussianBlur(gray, gray, Size(7.0, 7.0), 0.0)
 
+        // 双边滤波：保边去噪
+        val filtered = Mat()
+        Imgproc.bilateralFilter(gray, filtered, 9, 75.0, 75.0)
+
+        // Canny 双阈值
+        val edges = Mat()
+        Imgproc.Canny(filtered, edges, 50.0, 150.0)
+
+        // 膨胀连接断边
+        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(3.0, 3.0))
+        Imgproc.dilate(edges, edges, kernel)
+
+        val contours = ArrayList<MatOfPoint>()
+        val hierarchy = Mat()
+        Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE)
+
+        val frameArea = small.cols().toDouble() * small.rows().toDouble()
+        var best: MatOfPoint2f? = null
+        var bestArea = 0.0
+
+        // epsilon 扫描：0.02 → 0.05
+        var eps = 0.02
+        while (eps <= 0.051 && best == null) {
+            for (c in contours) {
+                val c2f = MatOfPoint2f(*c.toArray())
+                val peri = Imgproc.arcLength(c2f, true)
+                val approx = MatOfPoint2f()
+                Imgproc.approxPolyDP(c2f, approx, eps * peri, true)
+                if (approx.rows() != 4) {
+                    approx.release(); c2f.release()
+                    continue
+                }
+                val area = Imgproc.contourArea(approx)
+                if (area > frameArea * 0.20 && area > bestArea) {
+                    best?.release()
+                    best = approx
+                    bestArea = area
+                } else {
+                    approx.release()
+                }
+                c2f.release()
+            }
+            eps += 0.01
+        }
+
+        small.release(); gray.release(); filtered.release(); edges.release()
+        hierarchy.release(); kernel.release()
+        for (c in contours) c.release()
+
+        val found = best ?: return null
+        val invScale = if (scale < 1.0) 1.0 / scale else 1.0
+        val pts = found.toArray().map { Point(it.x * invScale, it.y * invScale) }
+        found.release()
+        return orderPoints(pts)
+    }
+
+    /** 回落：最小外接旋转矩形（取最大轮廓） */
+    private fun minAreaFallback(src: Mat): org.opencv.core.RotatedRect? {
+        val gray = Mat()
+        Imgproc.cvtColor(src, gray, Imgproc.COLOR_BGR2GRAY)
+        Imgproc.GaussianBlur(gray, gray, Size(5.0, 5.0), 0.0)
         val thresh = Mat()
         Imgproc.adaptiveThreshold(
             gray, thresh, 255.0,
             Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C,
             Imgproc.THRESH_BINARY, 25, 15.0
         )
-        // 纸面是亮区：反相后闭运算连通
         Core.bitwise_not(thresh, thresh)
-        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(5.0, 5.0))
-        Imgproc.morphologyEx(thresh, thresh, Imgproc.MORPH_CLOSE, kernel)
-
         val contours = ArrayList<MatOfPoint>()
         val hierarchy = Mat()
-        Imgproc.findContours(
-            thresh, contours, hierarchy,
-            Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE
-        )
+        Imgproc.findContours(thresh, contours, hierarchy, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE)
+        gray.release(); thresh.release(); hierarchy.release()
 
-        val frameArea = small.cols().toDouble() * small.rows().toDouble()
-        var best: MatOfPoint2f? = null
+        val frameArea = src.cols().toDouble() * src.rows().toDouble()
+        var bestRect: org.opencv.core.RotatedRect? = null
         var bestArea = 0.0
-
         for (c in contours) {
-            val c2f = MatOfPoint2f(*c.toArray())
-            val peri = Imgproc.arcLength(c2f, true)
-            val approx = MatOfPoint2f()
-            Imgproc.approxPolyDP(c2f, approx, 0.02 * peri, true)
-            if (approx.rows() != 4) continue
-            val area = Imgproc.contourArea(approx)
-            // 纸面至少占画面 15%
-            if (area < frameArea * 0.15) continue
-            if (area > bestArea) {
+            val area = Imgproc.contourArea(c)
+            if (area > frameArea * 0.20 && area > bestArea) {
                 bestArea = area
-                best = approx
+                bestRect = Imgproc.minAreaRect(MatOfPoint2f(*c.toArray()))
             }
+            c.release()
         }
-
-        small.release(); gray.release(); thresh.release(); hierarchy.release()
-        kernel.release()
-        for (c in contours) c.release()
-
-        val found = best ?: return null
-        // 还原到原图尺度
-        val pts = found.toArray().map { Point(it.x / scale, it.y / scale) }
-        found.release()
-        return orderPoints(pts)
+        return bestRect
     }
 
     /** 四点排序：左上 → 右上 → 右下 → 左下 */
@@ -184,7 +282,6 @@ object DocumentScanner {
         val result = Mat()
         Core.normalize(divided, result, 40.0, 255.0, Core.NORM_MINMAX)
 
-        // 输出三通道（与下游管线一致）
         val out = Mat()
         Imgproc.cvtColor(result, out, Imgproc.COLOR_GRAY2BGR)
 
@@ -192,10 +289,7 @@ object DocumentScanner {
         return out
     }
 
-    /**
-     * 手动裁剪辅助：按用户给定的四角（归一化 0-1 坐标）透视拉正。
-     * 编辑屏拖拽裁剪框后调用；失败返回 null。
-     */
+    /** 手动四角裁剪（归一化坐标 0-1） */
     fun cropByNormalizedPoints(
         srcPath: String,
         outDir: File,
@@ -216,14 +310,14 @@ object DocumentScanner {
             outDir.mkdirs()
             val out = File(outDir, "crop_${System.currentTimeMillis()}.jpg")
             val ok = Imgcodecs.imwrite(out.absolutePath, warped)
-            src.release(); warped.release()
+            src.release(); warped.release(); quad.release()
             if (ok) out.absolutePath else null
         } catch (_: Throwable) {
             null
         }
     }
 
-    /** 旋转 90°（编辑屏手动旋转） */
+    /** 旋转 90° */
     fun rotate90(srcPath: String, outDir: File): String? {
         return try {
             val bmp = BitmapFactory.decodeFile(srcPath) ?: return null

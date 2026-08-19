@@ -84,14 +84,14 @@ class AiConfigRepository {
       apiKey: apiKey.trim(),
     );
     try {
-      final ok = await client.testConnection();
+      final ok = await client.testConnectionOrThrow();
       return ok
           ? (ok: true, message: '连接成功，服务可用')
-          : (ok: false, message: '连接失败：服务返回异常');
+          : (ok: false, message: '服务返回异常：响应中没有可用结果');
     } on DioException catch (e) {
       return (ok: false, message: classifyDioError(e));
-    } catch (_) {
-      return (ok: false, message: '连接失败：服务无响应');
+    } catch (e) {
+      return (ok: false, message: '连接失败：\$e');
     }
   }
 

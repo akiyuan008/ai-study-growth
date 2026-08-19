@@ -19,10 +19,6 @@ import '../features/home/presentation/question_detail_page.dart';
 import '../features/home/presentation/review_page.dart';
 import '../features/home/presentation/stats_page.dart';
 import '../features/onboarding/presentation/onboarding_page.dart';
-import '../features/focus/presentation/focus_active_page.dart';
-import '../features/focus/focus_providers.dart' show FocusMode;
-import '../features/focus/presentation/focus_page.dart';
-import '../features/focus/presentation/focus_result_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
@@ -63,6 +59,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             (s) => s.name == state.uri.queryParameters['source'],
             orElse: () => CaptureSource.camera,
           ),
+          roi: _parseRoi(state.uri.queryParameters['roi']),
         ),
       ),
       GoRoute(
@@ -84,23 +81,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/review',
         builder: (context, state) => const ReviewSessionPage(),
-      ),
-      GoRoute(
-        path: '/focus',
-        builder: (context, state) => FocusPage(
-          questionId: state.uri.queryParameters['questionId'],
-          initialMode: state.uri.queryParameters['mode'] == 'abyss'
-              ? FocusMode.abyss
-              : null,
-        ),
-      ),
-      GoRoute(
-        path: '/focus/active',
-        builder: (context, state) => const FocusActivePage(),
-      ),
-      GoRoute(
-        path: '/focus/result',
-        builder: (context, state) => const FocusResultPage(),
       ),
       GoRoute(
         path: '/settings/ai-provider',
@@ -143,4 +123,18 @@ class AiStudyGrowthApp extends ConsumerWidget {
       routerConfig: router,
     );
   }
+}
+
+/// 解析 roi=x,y,w,h
+List<double>? _parseRoi(String? raw) {
+  if (raw == null) return null;
+  final parts = raw.split(',');
+  if (parts.length != 4) return null;
+  final vals = <double>[];
+  for (final p in parts) {
+    final v = double.tryParse(p);
+    if (v == null) return null;
+    vals.add(v);
+  }
+  return vals;
 }

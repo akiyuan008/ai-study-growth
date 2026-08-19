@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fsrs/fsrs.dart';
@@ -44,6 +47,7 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
   }
 
   Future<void> _rate(DueReviewItem item, Rating rating) async {
+    unawaited(HapticFeedback.selectionClick());
     await ref
         .read(reviewRepositoryProvider)
         .rate(cardId: item.card.id, rating: rating);

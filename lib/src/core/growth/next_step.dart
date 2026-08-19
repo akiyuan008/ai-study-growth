@@ -21,14 +21,13 @@ class NextStep {
 
 /// NextStep 规则引擎 —— 按优先级给出「下一步最该做什么」。
 ///
-/// 规则顺序即产品价值观：先还记忆债（复习），再练专注，再摄入新题。
+/// 规则顺序即产品价值观：先还记忆债（复习），再摄入新题，再保持节奏。
 abstract final class NextStepEngine {
   /// 外部注入的学习路径建议（Part 3.3：AI 知识点规划是 NextStep 核心数据源）
   static String? injectedPathSuggestion;
 
   static Future<NextStep> suggest(AppDatabase db, {DateTime? at}) async {
     final now = at ?? DateTime.now();
-    final dayStart = DateTime(now.year, now.month, now.day);
 
     // 0) AI 学习路径建议（当日有效）优先级最高
     final path = injectedPathSuggestion;
@@ -54,21 +53,7 @@ abstract final class NextStepEngine {
       );
     }
 
-    // 2) 今日还没专注过 → 建议一次专注
-    final todaySessions = await (db.select(db.focusSessions)
-          ..where((t) => t.startedAt.isBiggerOrEqualValue(dayStart)))
-        .get();
-    final focusMs = todaySessions.fold<int>(0, (sum, s) => sum + s.focusMs);
-    if (focusMs < 25 * 60 * 1000) {
-      return NextStep(
-        title: '来一段 25 分钟专注',
-        reason: focusMs == 0 ? '今天还没有专注记录，先从一小段开始。' : '今天专注还不够，再来一段把它做扎实。',
-        actionLabel: '开始专注',
-        route: '/focus',
-      );
-    }
-
-    // 3) 最近 3 天没有新题摄入 → 建议拍题
+    // 2) 最近 3 天没有新题摄入 → 建议拍题
     final threeDaysAgo = now.subtract(const Duration(days: 3));
     final recentQuestions = await (db.select(db.questionRecords)
           ..where((t) => t.createdAt.isBiggerOrEqualValue(threeDaysAgo)))
@@ -85,7 +70,7 @@ abstract final class NextStepEngine {
     // 4) 默认：巩固循环
     return NextStep(
       title: '节奏很好，保持住',
-      reason: '复习和专注都在轨道上，按自己的节奏继续。',
+      reason: '复习在轨道上，按自己的节奏继续。',
       actionLabel: '看看错题本',
       route: '/notebook',
     );
@@ -147,64 +132,5 @@ abstract final class GrowthMemoryFeed {
 
     moments.sort((a, b) => b.at.compareTo(a.at));
     return moments.take(limit).toList();
-  }
-}
-
-/// 当日成长输入聚合（喂给 GrowthEngine）
-abstract final class GrowthInputAggregator {
-  /// 从 Drift 事实表聚合某一天的 GrowthInput 原料
-  static Future<Map<String, dynamic>> collect(
-    AppDatabase db, {
-    required DateTime now,
-    required int streak,
-  }) async {
-    final dayStart = DateTime(now.year, now.month, now.day);
-    final dayEnd = dayStart.add(const Duration(days: 1));
-
-    // 自律域
-    final sessions = await (db.select(db.focusSessions)
-          ..where((t) =>
-              t.startedAt.isBiggerOrEqualValue(dayStart) &
-              t.startedAt.isSmallerThanValue(dayEnd)))
-        .get();
-    final focusMs = sessions.fold<int>(0, (sum, s) => sum + s.focusMs);
-    final distractions =
-        sessions.fold<int>(0, (sum, s) => sum + s.distractionCount);
-
-    // 学习域
-    final reviewEvents = await (db.select(db.learningEvents)
-          ..where((t) =>
-              t.eventType.equals('review_done') &
-              t.at.isBiggerOrEqualValue(dayStart) &
-              t.at.isSmallerThanValue(dayEnd)))
-        .get();
-    final newQuestions = await (db.select(db.questionRecords)
-          ..where((t) =>
-              t.createdAt.isBiggerOrEqualValue(dayStart) &
-              t.createdAt.isSmallerThanValue(dayEnd)))
-        .get();
-
-    // 昨日是否断档
-    final yesterdayStart = dayStart.subtract(const Duration(days: 1));
-    final yesterdaySessions = await (db.select(db.focusSessions)
-          ..where((t) =>
-              t.startedAt.isBiggerOrEqualValue(yesterdayStart) &
-              t.startedAt.isSmallerThanValue(dayStart)))
-        .get();
-    final yesterdayEvents = await (db.select(db.learningEvents)
-          ..where((t) =>
-              t.at.isBiggerOrEqualValue(yesterdayStart) &
-              t.at.isSmallerThanValue(dayStart)))
-        .get();
-    final missedYesterday =
-        yesterdaySessions.isEmpty && yesterdayEvents.isEmpty;
-
-    return {
-      'focusMs': focusMs,
-      'distractionCount': distractions,
-      'reviewDone': reviewEvents.length,
-      'newQuestions': newQuestions.length,
-      'missedYesterday': missedYesterday,
-    };
   }
 }

@@ -1,7 +1,10 @@
 import 'dart:io';
 
 import 'package:drift/drift.dart' hide Column, Table;
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
@@ -37,6 +40,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
   List<String> _tags = [];
   bool _tagLoading = false;
   bool _saving = false;
+  final _manualTagController = TextEditingController();
 
   @override
   void initState() {
@@ -64,6 +68,15 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
     } catch (_) {
       if (mounted) setState(() => _tagLoading = false);
     }
+  }
+
+  void _addManualTag() {
+    final tag = _manualTagController.text.trim();
+    if (tag.isEmpty) return;
+    if (!_tags.contains(tag)) {
+      setState(() => _tags.add(tag));
+    }
+    _manualTagController.clear();
   }
 
   Future<void> _save() async {
@@ -151,6 +164,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
 
       await ref.read(backupStateProvider).markDirty();
       if (mounted) {
+        unawaited(HapticFeedback.mediumImpact());
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('已保存到错题本')),
         );
@@ -171,6 +185,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
     _stemController.dispose();
     _answerController.dispose();
     _mistakeController.dispose();
+    _manualTagController.dispose();
     super.dispose();
   }
 
@@ -243,7 +258,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
                     )
                   else if (_tags.isEmpty)
                     Text(
-                      '未识别到标签（未配置 AI 或识别失败），可跳过',
+                      '未配置 AI 或识别失败——手动输入标签同样可用',
                       style: Theme.of(context).textTheme.bodySmall,
                     )
                   else
@@ -258,6 +273,25 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
                           ),
                       ],
                     ),
+                  const SizedBox(height: GrowthSpacing.sm),
+                  // 手动添加标签（一等公民，离线可用）
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GrowthTextField(
+                          controller: _manualTagController,
+                          hint: '手动添加知识点，如：牛顿第二定律',
+                          onSubmitted: (_) => _addManualTag(),
+                        ),
+                      ),
+                      const SizedBox(width: GrowthSpacing.sm),
+                      GrowthButton(
+                        label: '添加',
+                        variant: GrowthButtonVariant.secondary,
+                        onPressed: _addManualTag,
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

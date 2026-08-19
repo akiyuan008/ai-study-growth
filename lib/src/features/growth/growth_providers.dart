@@ -5,83 +5,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/providers.dart';
 import '../../core/growth/growth_engine.dart';
-import '../../core/growth/mission_engine.dart';
 import '../../core/growth/next_step.dart';
-import '../../design_system/growth_theme.dart' show sharedPreferencesProvider;
 import '../../data/local/app_database.dart';
 import '../../data/repositories/ai_provider_repository.dart';
 import '../../data/services/ai_learning_services.dart';
+import '../../design_system/growth_theme.dart' show sharedPreferencesProvider;
 
-/// 成长首页的全部数据
-class GrowthHomeData {
-  const GrowthHomeData({
-    required this.scores,
-    required this.hasAnyActivity,
-    required this.identity,
-    required this.strongest,
-    required this.streak,
-    required this.nextStep,
-    required this.missions,
-    required this.moments,
-    required this.dueReviewCount,
-    required this.reviewCompletedToday,
-    required this.reviewDueTotal,
-    required this.focusMinutesToday,
-    required this.distractionCount,
-    required this.recoveryCount,
-    required this.newQuestionsToday,
-  });
-
-  final GrowthScores scores;
-
-  /// 今日是否有任何活动（Prompt B：空状态判定）
-  final bool hasAnyActivity;
-  final String identity;
-  final String strongest;
-  final int streak;
-  final NextStep nextStep;
-  final List<Mission> missions;
-  final List<GrowthMoment> moments;
-
-  /// 当前仍未到期的复习卡数
-  final int dueReviewCount;
-
-  /// 今日已完成的复习次数
-  final int reviewCompletedToday;
-
-  /// 今日应复习总数（已完成 + 当前到期），用于「复习已清空」判定
-  final int reviewDueTotal;
-
-  final int focusMinutesToday;
-  final int distractionCount;
-  final int recoveryCount;
-  final int newQuestionsToday;
-
-  /// 复习状态文案（Prompt B 规则 3）
-  String get reviewStatusLabel {
-    if (reviewDueTotal == 0) return '暂无复习安排';
-    if (reviewCompletedToday >= reviewDueTotal) return '复习已清空';
-    return '$dueReviewCount 道题待复习';
-  }
-}
-
-/// 成长趋势（近 7 日四能力快照，成长页趋势卡数据源）
+/// 成长趋势（近 7 日三能力快照）
 class GrowthTrendPoint {
   const GrowthTrendPoint({
     required this.date,
     required this.learning,
-    required this.focus,
     required this.persistence,
     required this.recovery,
   });
 
   final String date;
   final double learning;
-  final double focus;
   final double persistence;
   final double recovery;
 
-  double get overall => (learning + focus + persistence + recovery) / 4;
+  double get overall => (learning + persistence + recovery) / 3;
 }
 
 final growthTrendProvider =
@@ -95,52 +39,156 @@ final growthTrendProvider =
       .map((r) => GrowthTrendPoint(
             date: r.date,
             learning: r.learningScore,
-            focus: r.focusScore,
             persistence: r.persistenceScore,
             recovery: r.recoveryScore,
           ))
       .toList();
 });
 
-/// 成长首页数据聚合：生成任务 → 评估任务 → 聚合事实 → 计算四能力 → 快照落库
+/// 成长首页的全部数据（内容契约：身份/三环/趋势/成长记忆/NextStep 链接）
+class GrowthHomeData {
+  const GrowthHomeData({
+    required this.scores,
+    required this.hasAnyActivity,
+    required this.identity,
+    required this.strongest,
+    required this.streak,
+    required this.nextStep,
+    required this.moments,
+    required this.dueReviewCount,
+    required this.reviewCompletedToday,
+    required this.reviewDueTotal,
+    required this.newQuestionsToday,
+  });
+
+  final GrowthScores scores;
+  final bool hasAnyActivity;
+  final String identity;
+  final String strongest;
+  final int streak;
+  final NextStep nextStep;
+  final List<GrowthMoment> moments;
+
+  final int dueReviewCount;
+  final int reviewCompletedToday;
+  final int reviewDueTotal;
+  final int newQuestionsToday;
+
+  String get reviewStatusLabel {
+    if (reviewDueTotal == 0) return '暂无复习安排';
+    if (reviewCompletedToday >= reviewDueTotal) return '复习已清空';
+    return '$dueReviewCount 道题待复习';
+  }
+}
+
+/// 成长首页数据聚合：聚合事实 → 计算三能力 → 快照落库 → NextStep
 final growthHomeProvider =
     FutureProvider.autoDispose<GrowthHomeData>((ref) async {
   final db = ref.watch(databaseProvider);
   final now = DateTime.now();
+  final dayStart = DateTime(now.year, now.month, now.day);
+  final dayEnd = dayStart.add(const Duration(days: 1));
 
-  // 1) 复习即任务：生成 + 评估
-  await MissionEngine.generateDailyMissions(db, now: now);
-  await MissionEngine.evaluateMissions(db, at: now);
-
-  // 2) 连续天数
+  // 1) 连续天数
   final streak = await _computeStreak(db, now);
 
-  // 3) 聚合当日事实
-  final raw = await GrowthInputAggregator.collect(db, now: now, streak: streak);
+  // 2) 当日事实聚合
+  final reviewEvents = await (db.select(db.learningEvents)
+        ..where((t) =>
+            t.eventType.equals('review_done') &
+            t.at.isBiggerOrEqualValue(dayStart) &
+            t.at.isSmallerThanValue(dayEnd)))
+      .get();
   final dueCards = await (db.select(db.reviewCards)
         ..where((t) => t.due.isSmallerOrEqualValue(now)))
       .get();
+  final newQuestions = await (db.select(db.questionRecords)
+        ..where((t) =>
+            t.createdAt.isBiggerOrEqualValue(dayStart) &
+            t.createdAt.isSmallerThanValue(dayEnd)))
+      .get();
+  final exercisesToday = await (db.select(db.generatedExercises)
+        ..where((t) =>
+            t.createdAt.isBiggerOrEqualValue(dayStart) &
+            t.createdAt.isSmallerThanValue(dayEnd)))
+      .get();
+
+  // 掌握度提升：复习后进入 review 态
+  var masteryGains = 0;
+  for (final e in reviewEvents) {
+    try {
+      final payload = jsonDecode(e.payload) as Map<String, dynamic>;
+      if (payload['state'] == 'review') masteryGains++;
+    } catch (_) {}
+  }
+
+  // 遗忘与错后重做正确（恢复能力输入）
+  final reviewLogs = await (db.select(db.reviewLogs)
+        ..where((t) => t.reviewedAt.isBiggerOrEqualValue(dayStart))
+        ..orderBy([(t) => OrderingTerm.asc(t.reviewedAt)]))
+      .get();
+  final lapsedQuestions = <String>{};
+  var lapses = 0;
+  var lapseRecoveries = 0;
+  for (final log in reviewLogs) {
+    if (log.rating == 1) {
+      lapses++;
+      lapsedQuestions.add(log.questionId);
+    } else if (log.rating >= 3 && lapsedQuestions.contains(log.questionId)) {
+      lapseRecoveries++;
+      lapsedQuestions.remove(log.questionId);
+    }
+  }
+
+  // 昨日是否断档
+  final yesterdayStart = dayStart.subtract(const Duration(days: 1));
+  final yesterdayEvents = await (db.select(db.learningEvents)
+        ..where((t) =>
+            t.at.isBiggerOrEqualValue(yesterdayStart) &
+            t.at.isSmallerThanValue(dayStart))
+        ..limit(1))
+      .get();
+  final missedYesterday = yesterdayEvents.isEmpty;
 
   final input = GrowthInput(
-    focusMs: raw['focusMs'] as int,
-    distractionCount: raw['distractionCount'] as int,
-    distractionRecoveries: await _recoveriesToday(db, now),
-    reviewDone: raw['reviewDone'] as int,
-    reviewDue: dueCards.length + (raw['reviewDone'] as int),
-    newQuestions: raw['newQuestions'] as int,
-    masteryGains: await _masteryGainsToday(db, now),
+    reviewDone: reviewEvents.length,
+    reviewDue: dueCards.length + reviewEvents.length,
+    newQuestions: newQuestions.length,
+    masteryGains: masteryGains,
+    exerciseDone: exercisesToday.length,
     streak: streak,
-    missedYesterday: raw['missedYesterday'] as bool,
+    missedYesterday: missedYesterday,
+    lapseRecoveries: lapseRecoveries,
+    lapses: lapses,
   );
 
-  // 4) 计算四能力（calculate 同时给出 hasAnyActivity）
+  // 3) 计算三能力
   final calc = GrowthEngine.calculate(input);
   final scores = calc.scores;
 
-  // 5) 快照落库（growth_metrics 每日快照，成长趋势的数据源）
+  // 4) 快照落库
   await _upsertSnapshot(db, now, scores, input);
 
-  // 6) NextStep 与时间线（注入 AI 学习路径建议，Part 3.3）
+  // 5) 连续天数里程碑成就（成长记忆）
+  const milestones = [3, 7, 30, 100];
+  if (milestones.contains(streak)) {
+    final existing = await (db.select(db.learningEvents)
+          ..where((t) =>
+              t.eventType.equals('streak_milestone') &
+              t.at.isBiggerOrEqualValue(dayStart)))
+        .get();
+    if (existing.isEmpty) {
+      await db.into(db.learningEvents).insert(
+            LearningEventsCompanion.insert(
+              eventType: 'streak_milestone',
+              at: now,
+              payload: Value(jsonEncode({'streak': streak})),
+            ),
+          );
+    }
+  }
+
+  // 6) NextStep（注入 AI 学习路径建议）
   NextStepEngine.injectedPathSuggestion = null;
   try {
     final advisor = AiPathAdvisor(
@@ -150,7 +198,6 @@ final growthHomeProvider =
     NextStepEngine.injectedPathSuggestion = advisor.cachedSuggestion;
   } catch (_) {}
   final nextStep = await NextStepEngine.suggest(db, at: now);
-  final missions = await MissionEngine.todayMissions(db, at: now);
   final moments = await GrowthMemoryFeed.recent(db, at: now);
 
   return GrowthHomeData(
@@ -160,80 +207,34 @@ final growthHomeProvider =
     strongest: GrowthIdentity.strongest(scores),
     streak: streak,
     nextStep: nextStep,
-    missions: missions,
     moments: moments,
     dueReviewCount: dueCards.length,
-    reviewCompletedToday: input.reviewDone,
-    reviewDueTotal: dueCards.length + input.reviewDone,
-    focusMinutesToday: input.focusMs ~/ 60000,
-    distractionCount: input.distractionCount,
-    recoveryCount: input.distractionRecoveries,
-    newQuestionsToday: input.newQuestions,
+    reviewCompletedToday: reviewEvents.length,
+    reviewDueTotal: dueCards.length + reviewEvents.length,
+    newQuestionsToday: newQuestions.length,
   );
 });
 
-/// 连续天数：从今天往回数，有学习事件或专注会话的天数
+/// 连续天数：从今天往回数，有学习事件的天数
 Future<int> _computeStreak(AppDatabase db, DateTime now) async {
   var streak = 0;
   for (var i = 0; i < 365; i++) {
     final day = DateTime(now.year, now.month, now.day - i);
     final next = day.add(const Duration(days: 1));
-
     final events = await (db.select(db.learningEvents)
           ..where((t) =>
               t.at.isBiggerOrEqualValue(day) & t.at.isSmallerThanValue(next))
           ..limit(1))
         .get();
-    final sessions = await (db.select(db.focusSessions)
-          ..where((t) =>
-              t.startedAt.isBiggerOrEqualValue(day) &
-              t.startedAt.isSmallerThanValue(next))
-          ..limit(1))
-        .get();
-
-    if (events.isNotEmpty || sessions.isNotEmpty) {
+    if (events.isNotEmpty) {
       streak++;
     } else if (i == 0) {
-      // 今天还没开始不算断，继续往前看
-      continue;
+      continue; // 今天还没开始不算断
     } else {
       break;
     }
   }
   return streak;
-}
-
-/// 今日分心后回归次数（恢复能力输入）
-Future<int> _recoveriesToday(AppDatabase db, DateTime now) async {
-  final dayStart = DateTime(now.year, now.month, now.day);
-  final events = await (db.select(db.focusEvents)
-        ..where((t) =>
-            t.eventType.equals('app_foreground') &
-            t.at.isBiggerOrEqualValue(dayStart)))
-      .get();
-  // 回到本应用的 foreground 事件 = 一次恢复
-  return events
-      .where((e) => e.appPackage == 'com.studygrowth.ai_study_growth')
-      .length;
-}
-
-/// 今日掌握度提升题目数（学习能力输入）
-Future<int> _masteryGainsToday(AppDatabase db, DateTime now) async {
-  final dayStart = DateTime(now.year, now.month, now.day);
-  final events = await (db.select(db.learningEvents)
-        ..where((t) =>
-            t.eventType.equals('review_done') &
-            t.at.isBiggerOrEqualValue(dayStart)))
-      .get();
-  // 简化：复习评分为 good/easy(3/4) 且进入 review 态视为掌握度提升
-  var gains = 0;
-  for (final e in events) {
-    try {
-      final payload = jsonDecode(e.payload) as Map<String, dynamic>;
-      if (payload['state'] == 'review') gains++;
-    } catch (_) {}
-  }
-  return gains;
 }
 
 Future<void> _upsertSnapshot(
@@ -250,12 +251,13 @@ Future<void> _upsertSnapshot(
 
   final snapshotJson = jsonEncode({
     'input': {
-      'focusMs': input.focusMs,
-      'distractionCount': input.distractionCount,
       'reviewDone': input.reviewDone,
       'reviewDue': input.reviewDue,
       'newQuestions': input.newQuestions,
       'masteryGains': input.masteryGains,
+      'exerciseDone': input.exerciseDone,
+      'lapses': input.lapses,
+      'lapseRecoveries': input.lapseRecoveries,
       'missedYesterday': input.missedYesterday,
     },
   });
@@ -265,10 +267,9 @@ Future<void> _upsertSnapshot(
           GrowthMetricsCompanion.insert(
             date: date,
             learningScore: Value(scores.learning),
-            focusScore: Value(scores.focus),
+            focusScore: const Value(0), // 专注域已删除，保留列兼容
             persistenceScore: Value(scores.persistence),
             recoveryScore: Value(scores.recovery),
-            focusMs: Value(input.focusMs),
             reviewDone: Value(input.reviewDone),
             reviewDue: Value(input.reviewDue),
             streak: Value(input.streak),
@@ -279,10 +280,8 @@ Future<void> _upsertSnapshot(
     await (db.update(db.growthMetrics)..where((t) => t.date.equals(date)))
         .write(GrowthMetricsCompanion(
       learningScore: Value(scores.learning),
-      focusScore: Value(scores.focus),
       persistenceScore: Value(scores.persistence),
       recoveryScore: Value(scores.recovery),
-      focusMs: Value(input.focusMs),
       reviewDone: Value(input.reviewDone),
       reviewDue: Value(input.reviewDue),
       streak: Value(input.streak),

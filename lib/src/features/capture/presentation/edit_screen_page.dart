@@ -11,10 +11,18 @@ import 'camera_capture_page.dart';
 /// 统一编辑屏（Part 2.3）：
 /// 拍摄/导入一律进入——可拖拽四角裁剪框 + 旋转 + 一键自动校准。
 class EditScreenPage extends ConsumerStatefulWidget {
-  const EditScreenPage({super.key, required this.path, required this.source});
+  const EditScreenPage({
+    super.key,
+    required this.path,
+    required this.source,
+    this.roi,
+  });
 
   final String path;
   final CaptureSource source;
+
+  /// 拍照页对准引导框传来的归一化 ROI [x, y, w, h]
+  final List<double>? roi;
 
   @override
   ConsumerState<EditScreenPage> createState() => _EditScreenPageState();
@@ -45,12 +53,12 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
     if (_busy) return;
     setState(() => _busy = true);
     final scanner = ref.read(scannerBridgeProvider);
-    final result = await scanner.scanDocument(_currentPath);
+    final result = await scanner.scanDocument(_currentPath, roi: widget.roi);
     if (!mounted) return;
     setState(() {
       _busy = false;
       if (result != null) {
-        _currentPath = result;
+        _currentPath = result.path;
         // 自动校准成功后裁剪框复位（已拉正，无需再裁）
         _corners = [
           const Offset(0.02, 0.02),
@@ -60,12 +68,18 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
         ];
         if (!silent) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('已自动提取纸面并拉正')),
+            SnackBar(
+              content: Text(
+                result.needsManualHint
+                    ? '未检测到纸面边界，已按全幅处理，建议手动校准'
+                    : '已自动提取纸面并拉正',
+              ),
+            ),
           );
         }
       } else if (!silent) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('未检测到纸面，请手动调整裁剪框')),
+          const SnackBar(content: Text('校准没成功，请手动调整裁剪框，或直接使用原图')),
         );
       }
     });
@@ -106,6 +120,19 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
           const Offset(0.02, 0.98),
         ];
       }
+    });
+  }
+
+  /// 使用原图：放弃处理结果，回到最初拍摄的图
+  Future<void> _useOriginal() async {
+    setState(() {
+      _currentPath = widget.path;
+      _corners = [
+        const Offset(0.06, 0.08),
+        const Offset(0.94, 0.08),
+        const Offset(0.94, 0.92),
+        const Offset(0.06, 0.92),
+      ];
     });
   }
 
@@ -256,6 +283,11 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
                     icon: Icons.crop_rounded,
                     label: '裁剪',
                     onTap: _crop,
+                  ),
+                  _ToolButton(
+                    icon: Icons.image_outlined,
+                    label: '使用原图',
+                    onTap: _useOriginal,
                   ),
                 ],
               ),

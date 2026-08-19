@@ -41,20 +41,6 @@ class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
     });
   }
 
-  Future<void> _enterFlowDemo() async {
-    await Navigator.of(context).push<void>(
-      PageRouteBuilder(
-        fullscreenDialog: true,
-        pageBuilder: (_, __, ___) => FlowCountdown(
-          total: const Duration(seconds: 10),
-          title: '心流体验',
-          onFinished: () => Navigator.of(context).pop(),
-          onLeave: () => Navigator.of(context).pop(),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return GrowthBackground(
@@ -216,25 +202,6 @@ class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
                   variant: GrowthButtonVariant.secondary,
                   icon: Icons.autorenew_rounded,
                   onPressed: _shuffleArcs,
-                ),
-              ],
-            ),
-          ),
-          _section('心流倒计时'),
-          GrowthCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '单核模式：进入后全屏沉浸，只剩时间与环。',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: GrowthSpacing.md),
-                GrowthButton(
-                  label: '进入 10 秒心流演示',
-                  icon: Icons.center_focus_strong_rounded,
-                  expanded: true,
-                  onPressed: _enterFlowDemo,
                 ),
               ],
             ),

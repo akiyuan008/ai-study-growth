@@ -106,7 +106,22 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
           Expanded(
             child: listAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('加载失败：$e')),
+              error: (e, _) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('加载出了点问题',
+                        style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: GrowthSpacing.sm),
+                    Text('$e', style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: GrowthSpacing.md),
+                    GrowthButton(
+                      label: '重试',
+                      onPressed: () => setState(() {}),
+                    ),
+                  ],
+                ),
+              ),
               data: (questions) {
                 if (questions.isEmpty) {
                   return Column(

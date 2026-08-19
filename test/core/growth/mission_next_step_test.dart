@@ -1,4 +1,3 @@
-import 'package:ai_study_growth/src/core/growth/mission_engine.dart';
 import 'package:ai_study_growth/src/core/growth/next_step.dart';
 import 'package:ai_study_growth/src/data/local/app_database.dart';
 import 'package:drift/drift.dart' hide Column, Table, isNotNull;
@@ -54,105 +53,6 @@ void main() {
     await db.close();
   });
 
-  group('MissionEngine 复习即任务', () {
-    test('有到期复习时自动生成当日任务', () async {
-      await seedDueCard(await seedQuestion());
-      await seedDueCard(await seedQuestion());
-
-      final created = await MissionEngine.generateDailyMissions(db, now: now);
-      expect(created, hasLength(1));
-
-      final missions = await MissionEngine.todayMissions(db, at: now);
-      expect(missions, hasLength(1));
-      expect(missions.first.source, 'REVIEW');
-      expect(missions.first.title, contains('2 道'));
-    });
-
-    test('幂等：同一天重复生成不会重复建', () async {
-      await seedDueCard(await seedQuestion());
-      await MissionEngine.generateDailyMissions(db, now: now);
-      await MissionEngine.generateDailyMissions(db, now: now);
-      final missions = await MissionEngine.todayMissions(db, at: now);
-      expect(missions, hasLength(1));
-    });
-
-    test('无到期复习不生成任务', () async {
-      final created = await MissionEngine.generateDailyMissions(db, now: now);
-      expect(created, isEmpty);
-    });
-
-    test('复习事件达标后任务自动完成', () async {
-      await seedDueCard(await seedQuestion());
-      await MissionEngine.generateDailyMissions(db, now: now);
-
-      // 完成 1 次复习
-      await seedReviewEvent();
-      final completed = await MissionEngine.evaluateMissions(db, at: now);
-      expect(completed, 1);
-
-      final missions = await MissionEngine.todayMissions(db, at: now);
-      expect(missions.first.status, 'done');
-      expect(missions.first.completedAt, isNotNull);
-
-      // 完成事件入成长事件流
-      final events = await db.select(db.learningEvents).get();
-      expect(events.map((e) => e.eventType), contains('mission_done'));
-    });
-
-    test('复习未达标时任务保持 active', () async {
-      await seedDueCard(await seedQuestion());
-      await seedDueCard(await seedQuestion());
-      await MissionEngine.generateDailyMissions(db, now: now);
-
-      await seedReviewEvent(); // 只完成 1/2
-      await MissionEngine.evaluateMissions(db, at: now);
-
-      final missions = await MissionEngine.todayMissions(db, at: now);
-      expect(missions.first.status, 'active');
-    });
-  });
-
-  group('MissionEngine 手动任务（自律域对账补缺）', () {
-    test('创建 MANUAL 任务并落库', () async {
-      final id = await MissionEngine.createManualMission(
-        db,
-        title: '整理物理错题',
-        at: now,
-        focusMinutes: 25,
-      );
-      final missions = await MissionEngine.todayMissions(db, at: now);
-      expect(missions, hasLength(1));
-      expect(missions.first.id, id);
-      expect(missions.first.source, 'MANUAL');
-    });
-
-    test('focus 型任务：今日专注达标后自动完成', () async {
-      await MissionEngine.createManualMission(
-        db,
-        title: '专注 25 分钟',
-        at: now,
-        focusMinutes: 25,
-      );
-
-      // 未专注时不完成
-      var completed = await MissionEngine.evaluateMissions(db, at: now);
-      expect(completed, 0);
-
-      // 插入一条 25 分钟专注会话
-      await db.into(db.focusSessions).insert(
-            FocusSessionsCompanion.insert(
-              id: _uuid.v4(),
-              startedAt: now.subtract(const Duration(minutes: 30)),
-              endedAt: Value(now.subtract(const Duration(minutes: 5))),
-              status: const Value('completed'),
-              focusMs: const Value(25 * 60 * 1000),
-            ),
-          );
-      completed = await MissionEngine.evaluateMissions(db, at: now);
-      expect(completed, 1);
-    });
-  });
-
   group('NextStepEngine 规则优先级', () {
     test('有到期复习 → 复习优先', () async {
       await seedDueCard(await seedQuestion());
@@ -160,21 +60,7 @@ void main() {
       expect(step.route, '/review');
     });
 
-    test('无到期复习且今日未专注 → 建议专注', () async {
-      final step = await NextStepEngine.suggest(db, at: now);
-      expect(step.route, '/focus');
-    });
-
-    test('已专注足够但 3 天无新题 → 建议拍题', () async {
-      await db.into(db.focusSessions).insert(
-            FocusSessionsCompanion.insert(
-              id: _uuid.v4(),
-              startedAt: now.subtract(const Duration(hours: 1)),
-              endedAt: Value(now),
-              status: const Value('completed'),
-              focusMs: const Value(30 * 60 * 1000),
-            ),
-          );
+    test('无到期复习且 3 天无新题 → 建议拍题', () async {
       final step = await NextStepEngine.suggest(db, at: now);
       expect(step.route, '/capture');
     });

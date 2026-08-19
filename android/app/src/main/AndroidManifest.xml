@@ -2,13 +2,9 @@
     xmlns:tools="http://schemas.android.com/tools">
     <!-- 拍题需要相机权限（image_picker 调用系统相机） -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <!-- 自律域：应用使用监控（特殊权限，需用户在系统设置授权） -->
-    <uses-permission
-        android:name="android.permission.PACKAGE_USAGE_STATS"
-        tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
         android:label="智析录"
         android:name="${applicationName}"
@@ -35,22 +31,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- 自律域：使用监控前台服务 -->
-        <service
-            android:name=".monitor.UsageMonitorService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="专注期间监控前台应用切换，用于自律学习干预" />
-        </service>
-        <!-- 自律域：锁屏遮罩干预 -->
-        <activity
-            android:name=".monitor.LockScreenActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:taskAffinity=""
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" />
         <!-- image_cropper 的裁剪 Activity -->
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"

@@ -40,12 +40,6 @@ abstract interface class AiAnalysisGateway {
     required String question,
   });
 
-  /// MOSS 伴读通用对话（流式，无题目上下文）
-  Stream<String> companionChat({
-    required List<AiMessage> history,
-    required String message,
-  });
-
   /// 知识点分类（Part 3.1）：AI 仅输出结构化知识点标签列表。
   /// 严禁生成题干/答案/错因等解析内容。
   Future<List<String>> suggestKnowledgeTags({
@@ -184,29 +178,6 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
       if (arr is List) return {'tags': arr};
     } catch (_) {}
     return null;
-  }
-
-  @override
-  Stream<String> companionChat({
-    required List<AiMessage> history,
-    required String message,
-  }) async* {
-    final messages = [
-      const AiMessage(
-        role: 'system',
-        content: '你是 MOSS，一个温和的数字伴读。用引导式、启发式的语气陪用户聊天：'
-            '聊学习状态、给节奏建议、帮忙拆解拖延。回答简短（2-4 句），不说教。',
-      ),
-      ...history,
-      AiMessage(role: 'user', content: message),
-    ];
-    await for (final chunk in _client.chatStream(
-      messages: messages,
-      temperature: 0.6,
-      maxTokens: 512,
-    )) {
-      if (chunk.delta.isNotEmpty) yield chunk.delta;
-    }
   }
 
   @override
