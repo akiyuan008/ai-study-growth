@@ -81,6 +81,17 @@ Dart:   DisciplineEngine(focusMath 去重) → MissionEvaluator → RewardEngine
 | **P4** 融合引擎 | 复习即任务、专注有对象、四能力实装、NextStep | 系统给出合理明日学习规划 | ✅ |
 | **P5** 打磨发布 | 权限引导、Onboarding、整体审查、CI 打包 | 全量测试通过，Release APK | ✅ |
 
+### v0.5.0 无服务器云备份（Part 0-4 全量）
+
+**Part 4 · 三通道 WebDAV 云备份**：
+- 备份打包：SQLite `VACUUM INTO` 一致性快照 + 错题图片 + manifest.json → zip；可选 AES-256-CBC 加密（PBKDF2 派生密钥，随机 salt/iv）；快照中 ai_providers 表清空——密钥严禁出设备；图片入库即压缩（长边 1600px/q80）
+- 三通道：坚果云（地址写死 dav.jianguoyun.com/dav/，仅填账号+应用密码）/ InfiniCLOUD（地址按用户名自动拼接 {用户名}.teracloud.jp/dav/，可手改）/ 自定义 WebDAV（NAS 全手填）；local_export 本地导出通道；枚举预留 aliyun_drive/baidu_pcs
+- 设置页：测试连接通过才能保存；显示上次备份时间；立即备份/从云恢复；移动网络自动备份开关
+- 自动备份：dirty 标记（保存题目/复习评分/专注结算/建任务）+ 退后台 + WiFi（可配置允许流量）触发；云端保留最近 3 个版本，恢复取最新
+- 恢复：首启引导「从云端恢复数据」入口；DB 文件整体还原 + 图片还原，恢复后全量可用
+
+**Part 3 补强**：question_bank 扩字段（科目/题型/难度/source_citation）；FSRS 排期器确定性单测（同输入同结果/评分单调性/预览一致性，证明无 LLM 参与排期）
+
 ### v0.4.0 双域融合大版本（Part 0-4）
 
 **Part 1 · IA v2**：五 Tab（成长|错题本|复习|专注|设置），删全局 FAB，拍题入口语境化（错题本右上大按钮/空状态 CTA/成长页快捷）；复习 Tab 完整 FSRS 流（对错判定+下次复习时间预览+专注攻克入口）；统计子页（统计卡+知识点掌握度柱状图 fl_chart）；内容契约落地（成长页只读、专注页只执行）；四条融合全通（REVIEW Mission、专注绑定题目、复习驱动学习弧、NextStep 深链）。

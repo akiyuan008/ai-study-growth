@@ -1,7 +1,7 @@
 name: ai_study_growth
 description: "AI 学习成长系统：自律学习 × AI 错题本 融合重构"
 publish_to: 'none'
-version: 0.4.0+1
+version: 0.5.0+1
 
 environment:
   sdk: ^3.5.0
@@ -36,6 +36,14 @@ dependencies:
   intl: ^0.19.0
   shared_preferences: ^2.3.2
   package_info_plus: ^8.0.0
+
+  # 云备份（Part 4）
+  archive: ^3.6.1
+  encrypt: ^5.0.3
+  pointycastle: ^3.9.1
+  flutter_image_compress: ^2.3.0
+  connectivity_plus: ^6.0.5
+  share_plus: ^10.0.2
 
 dev_dependencies:
   flutter_test:

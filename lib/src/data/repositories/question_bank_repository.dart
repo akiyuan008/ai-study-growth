@@ -20,6 +20,7 @@ class QuestionBankRepository {
     required String questionId,
     required String stem,
     String? knowledgePointId,
+    String subject = '',
   }) async {
     final id = _uuid.v4();
     await _db.into(_db.questionBank).insert(
@@ -27,6 +28,7 @@ class QuestionBankRepository {
             id: id,
             sourceQuestionId: Value(questionId),
             knowledgePointId: Value(knowledgePointId),
+            subject: Value(subject),
             content: jsonEncode({
               'question': stem,
               'options': const <String>[],
@@ -45,6 +47,7 @@ class QuestionBankRepository {
   Future<void> ingestExercise({
     required ExerciseItem item,
     String? knowledgePointId,
+    String subject = '',
   }) async {
     final kind = switch (item.sourceLevel) {
       ExerciseSourceLevel.l2Cited => 'ai_cited',
@@ -54,12 +57,25 @@ class QuestionBankRepository {
           QuestionBankCompanion.insert(
             id: _uuid.v4(),
             knowledgePointId: Value(knowledgePointId),
+            subject: Value(subject),
+            difficulty: Value(_mapDifficulty(item.difficulty)),
             content: jsonEncode(item.toJson()),
             kind: kind,
             sourceLabel: item.displaySourceLabel,
+            sourceCitation: Value(
+              item.sourceLevel == ExerciseSourceLevel.l2Cited
+                  ? item.displaySourceLabel
+                  : null,
+            ),
             createdAt: DateTime.now(),
           ),
         );
+  }
+
+  static String _mapDifficulty(String raw) {
+    if (raw.contains('简')) return 'easy';
+    if (raw.contains('难') || raw.contains('提高')) return 'hard';
+    return 'medium';
   }
 
   /// L1：同知识点检索，优先未用真题

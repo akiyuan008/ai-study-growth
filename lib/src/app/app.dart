@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../design_system/design_system.dart';
 import '../features/design_gallery/presentation/design_gallery_page.dart';
 import '../features/home/presentation/ai_provider_setup_page.dart';
+import '../features/home/presentation/backup_settings_page.dart';
 import '../features/home/presentation/app_whitelist_page.dart';
 import '../features/home/presentation/analysis_jobs_page.dart';
 import '../features/capture/presentation/camera_capture_page.dart';
@@ -104,6 +105,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/ai-provider',
         builder: (context, state) => const AiProviderSetupPage(),
+      ),
+      GoRoute(
+        path: '/settings/backup',
+        builder: (context, state) => BackupSettingsPage(
+          focusRestore: state.uri.queryParameters['restore'] == '1',
+        ),
       ),
       GoRoute(
         path: '/settings/app-whitelist',

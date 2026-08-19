@@ -148,6 +148,11 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                 },
               ),
             ),
+            if (isLast)
+              TextButton(
+                onPressed: () => context.push('/settings/backup?restore=1'),
+                child: const Text('从云端恢复数据'),
+              ),
             if (!isLast)
               TextButton(
                 onPressed: _finish,

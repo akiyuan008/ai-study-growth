@@ -74,4 +74,59 @@ void main() {
   test('未复习卡的可提取率为 0', () {
     expect(scheduler.retrievability(newCard(), now: now), 0);
   });
+
+  group('排期器确定性（Part 3.2：禁 LLM 算间隔）', () {
+    test('同输入同评分 → 完全相同的下次到期时间（无随机性）', () {
+      final results = <DateTime>[];
+      for (var i = 0; i < 5; i++) {
+        final s = ReviewScheduler();
+        final card = s.cardFromStorage(
+          cardId: 1,
+          state: 0,
+          stability: 0,
+          difficulty: 0,
+          due: now,
+        );
+        results.add(s.rate(card, Rating.good, now: now).card.due);
+      }
+      for (final d in results) {
+        expect(d, results.first);
+      }
+    });
+
+    test('评分单调性：easy 的间隔 ≥ good ≥ hard', () {
+      Card freshCard() => scheduler.cardFromStorage(
+            cardId: 1,
+            state: 0,
+            stability: 0,
+            difficulty: 0,
+            due: now,
+          );
+      final easyDue =
+          scheduler.rate(freshCard(), Rating.easy, now: now).card.due;
+      final goodDue =
+          scheduler.rate(freshCard(), Rating.good, now: now).card.due;
+      final hardDue =
+          scheduler.rate(freshCard(), Rating.hard, now: now).card.due;
+      expect(easyDue.isAfter(goodDue) || easyDue.isAtSameMomentAs(goodDue),
+          isTrue);
+      expect(goodDue.isAfter(hardDue), isTrue);
+    });
+
+    test('预览间隔与真实评分一致（复习页所见即所得）', () {
+      final card = scheduler.cardFromStorage(
+        cardId: 1,
+        state: 0,
+        stability: 0,
+        difficulty: 0,
+        due: now,
+      );
+      final previews = scheduler.previewIntervals(card, now: now);
+      final actual = scheduler.rate(card, Rating.good, now: now).card.due;
+      expect(
+        (previews[Rating.good] ?? Duration.zero).inMinutes,
+        actual.difference(now).inMinutes,
+      );
+    });
+  });
 }

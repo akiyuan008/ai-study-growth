@@ -729,6 +729,30 @@ class $QuestionBankTable extends QuestionBank
   late final GeneratedColumn<String> knowledgePointId = GeneratedColumn<String>(
       'knowledge_point_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _subjectMeta =
+      const VerificationMeta('subject');
+  @override
+  late final GeneratedColumn<String> subject = GeneratedColumn<String>(
+      'subject', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _questionTypeMeta =
+      const VerificationMeta('questionType');
+  @override
+  late final GeneratedColumn<String> questionType = GeneratedColumn<String>(
+      'question_type', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('solve'));
+  static const VerificationMeta _difficultyMeta =
+      const VerificationMeta('difficulty');
+  @override
+  late final GeneratedColumn<String> difficulty = GeneratedColumn<String>(
+      'difficulty', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('medium'));
   static const VerificationMeta _contentMeta =
       const VerificationMeta('content');
   @override
@@ -746,6 +770,12 @@ class $QuestionBankTable extends QuestionBank
   late final GeneratedColumn<String> sourceLabel = GeneratedColumn<String>(
       'source_label', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _sourceCitationMeta =
+      const VerificationMeta('sourceCitation');
+  @override
+  late final GeneratedColumn<String> sourceCitation = GeneratedColumn<String>(
+      'source_citation', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _usedCountMeta =
       const VerificationMeta('usedCount');
   @override
@@ -765,9 +795,13 @@ class $QuestionBankTable extends QuestionBank
         id,
         sourceQuestionId,
         knowledgePointId,
+        subject,
+        questionType,
+        difficulty,
         content,
         kind,
         sourceLabel,
+        sourceCitation,
         usedCount,
         createdAt
       ];
@@ -798,6 +832,22 @@ class $QuestionBankTable extends QuestionBank
           knowledgePointId.isAcceptableOrUnknown(
               data['knowledge_point_id']!, _knowledgePointIdMeta));
     }
+    if (data.containsKey('subject')) {
+      context.handle(_subjectMeta,
+          subject.isAcceptableOrUnknown(data['subject']!, _subjectMeta));
+    }
+    if (data.containsKey('question_type')) {
+      context.handle(
+          _questionTypeMeta,
+          questionType.isAcceptableOrUnknown(
+              data['question_type']!, _questionTypeMeta));
+    }
+    if (data.containsKey('difficulty')) {
+      context.handle(
+          _difficultyMeta,
+          difficulty.isAcceptableOrUnknown(
+              data['difficulty']!, _difficultyMeta));
+    }
     if (data.containsKey('content')) {
       context.handle(_contentMeta,
           content.isAcceptableOrUnknown(data['content']!, _contentMeta));
@@ -817,6 +867,12 @@ class $QuestionBankTable extends QuestionBank
               data['source_label']!, _sourceLabelMeta));
     } else if (isInserting) {
       context.missing(_sourceLabelMeta);
+    }
+    if (data.containsKey('source_citation')) {
+      context.handle(
+          _sourceCitationMeta,
+          sourceCitation.isAcceptableOrUnknown(
+              data['source_citation']!, _sourceCitationMeta));
     }
     if (data.containsKey('used_count')) {
       context.handle(_usedCountMeta,
@@ -843,12 +899,20 @@ class $QuestionBankTable extends QuestionBank
           DriftSqlType.string, data['${effectivePrefix}source_question_id']),
       knowledgePointId: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}knowledge_point_id']),
+      subject: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}subject'])!,
+      questionType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}question_type'])!,
+      difficulty: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}difficulty'])!,
       content: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
       kind: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
       sourceLabel: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}source_label'])!,
+      sourceCitation: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source_citation']),
       usedCount: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}used_count'])!,
       createdAt: attachedDatabase.typeMapping
@@ -873,6 +937,15 @@ class QuestionBankData extends DataClass
   /// 关联知识点
   final String? knowledgePointId;
 
+  /// 科目（Part 3.5 扩展）
+  final String subject;
+
+  /// 题型：choice / fill / solve（Part 3.5 扩展）
+  final String questionType;
+
+  /// 难度：easy / medium / hard（Part 3.5 扩展）
+  final String difficulty;
+
   /// 题目内容 JSON：{question, options, answer, explanation}
   final String content;
 
@@ -882,6 +955,9 @@ class QuestionBankData extends DataClass
   /// UI 来源标签：真题·来自你的题库 / 真题引用·2023全国甲卷 / 来源待核实 / AI 拟题
   final String sourceLabel;
 
+  /// 出处引用原文（L2：年份+地区+考卷名；Part 3.5 扩展）
+  final String? sourceCitation;
+
   /// 已用于练习的次数（优先未用真题）
   final int usedCount;
   final DateTime createdAt;
@@ -889,9 +965,13 @@ class QuestionBankData extends DataClass
       {required this.id,
       this.sourceQuestionId,
       this.knowledgePointId,
+      required this.subject,
+      required this.questionType,
+      required this.difficulty,
       required this.content,
       required this.kind,
       required this.sourceLabel,
+      this.sourceCitation,
       required this.usedCount,
       required this.createdAt});
   @override
@@ -904,9 +984,15 @@ class QuestionBankData extends DataClass
     if (!nullToAbsent || knowledgePointId != null) {
       map['knowledge_point_id'] = Variable<String>(knowledgePointId);
     }
+    map['subject'] = Variable<String>(subject);
+    map['question_type'] = Variable<String>(questionType);
+    map['difficulty'] = Variable<String>(difficulty);
     map['content'] = Variable<String>(content);
     map['kind'] = Variable<String>(kind);
     map['source_label'] = Variable<String>(sourceLabel);
+    if (!nullToAbsent || sourceCitation != null) {
+      map['source_citation'] = Variable<String>(sourceCitation);
+    }
     map['used_count'] = Variable<int>(usedCount);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -921,9 +1007,15 @@ class QuestionBankData extends DataClass
       knowledgePointId: knowledgePointId == null && nullToAbsent
           ? const Value.absent()
           : Value(knowledgePointId),
+      subject: Value(subject),
+      questionType: Value(questionType),
+      difficulty: Value(difficulty),
       content: Value(content),
       kind: Value(kind),
       sourceLabel: Value(sourceLabel),
+      sourceCitation: sourceCitation == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceCitation),
       usedCount: Value(usedCount),
       createdAt: Value(createdAt),
     );
@@ -936,9 +1028,13 @@ class QuestionBankData extends DataClass
       id: serializer.fromJson<String>(json['id']),
       sourceQuestionId: serializer.fromJson<String?>(json['sourceQuestionId']),
       knowledgePointId: serializer.fromJson<String?>(json['knowledgePointId']),
+      subject: serializer.fromJson<String>(json['subject']),
+      questionType: serializer.fromJson<String>(json['questionType']),
+      difficulty: serializer.fromJson<String>(json['difficulty']),
       content: serializer.fromJson<String>(json['content']),
       kind: serializer.fromJson<String>(json['kind']),
       sourceLabel: serializer.fromJson<String>(json['sourceLabel']),
+      sourceCitation: serializer.fromJson<String?>(json['sourceCitation']),
       usedCount: serializer.fromJson<int>(json['usedCount']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
@@ -950,9 +1046,13 @@ class QuestionBankData extends DataClass
       'id': serializer.toJson<String>(id),
       'sourceQuestionId': serializer.toJson<String?>(sourceQuestionId),
       'knowledgePointId': serializer.toJson<String?>(knowledgePointId),
+      'subject': serializer.toJson<String>(subject),
+      'questionType': serializer.toJson<String>(questionType),
+      'difficulty': serializer.toJson<String>(difficulty),
       'content': serializer.toJson<String>(content),
       'kind': serializer.toJson<String>(kind),
       'sourceLabel': serializer.toJson<String>(sourceLabel),
+      'sourceCitation': serializer.toJson<String?>(sourceCitation),
       'usedCount': serializer.toJson<int>(usedCount),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
@@ -962,9 +1062,13 @@ class QuestionBankData extends DataClass
           {String? id,
           Value<String?> sourceQuestionId = const Value.absent(),
           Value<String?> knowledgePointId = const Value.absent(),
+          String? subject,
+          String? questionType,
+          String? difficulty,
           String? content,
           String? kind,
           String? sourceLabel,
+          Value<String?> sourceCitation = const Value.absent(),
           int? usedCount,
           DateTime? createdAt}) =>
       QuestionBankData(
@@ -975,9 +1079,14 @@ class QuestionBankData extends DataClass
         knowledgePointId: knowledgePointId.present
             ? knowledgePointId.value
             : this.knowledgePointId,
+        subject: subject ?? this.subject,
+        questionType: questionType ?? this.questionType,
+        difficulty: difficulty ?? this.difficulty,
         content: content ?? this.content,
         kind: kind ?? this.kind,
         sourceLabel: sourceLabel ?? this.sourceLabel,
+        sourceCitation:
+            sourceCitation.present ? sourceCitation.value : this.sourceCitation,
         usedCount: usedCount ?? this.usedCount,
         createdAt: createdAt ?? this.createdAt,
       );
@@ -990,10 +1099,19 @@ class QuestionBankData extends DataClass
       knowledgePointId: data.knowledgePointId.present
           ? data.knowledgePointId.value
           : this.knowledgePointId,
+      subject: data.subject.present ? data.subject.value : this.subject,
+      questionType: data.questionType.present
+          ? data.questionType.value
+          : this.questionType,
+      difficulty:
+          data.difficulty.present ? data.difficulty.value : this.difficulty,
       content: data.content.present ? data.content.value : this.content,
       kind: data.kind.present ? data.kind.value : this.kind,
       sourceLabel:
           data.sourceLabel.present ? data.sourceLabel.value : this.sourceLabel,
+      sourceCitation: data.sourceCitation.present
+          ? data.sourceCitation.value
+          : this.sourceCitation,
       usedCount: data.usedCount.present ? data.usedCount.value : this.usedCount,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
@@ -1005,9 +1123,13 @@ class QuestionBankData extends DataClass
           ..write('id: $id, ')
           ..write('sourceQuestionId: $sourceQuestionId, ')
           ..write('knowledgePointId: $knowledgePointId, ')
+          ..write('subject: $subject, ')
+          ..write('questionType: $questionType, ')
+          ..write('difficulty: $difficulty, ')
           ..write('content: $content, ')
           ..write('kind: $kind, ')
           ..write('sourceLabel: $sourceLabel, ')
+          ..write('sourceCitation: $sourceCitation, ')
           ..write('usedCount: $usedCount, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -1015,8 +1137,19 @@ class QuestionBankData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(id, sourceQuestionId, knowledgePointId,
-      content, kind, sourceLabel, usedCount, createdAt);
+  int get hashCode => Object.hash(
+      id,
+      sourceQuestionId,
+      knowledgePointId,
+      subject,
+      questionType,
+      difficulty,
+      content,
+      kind,
+      sourceLabel,
+      sourceCitation,
+      usedCount,
+      createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1024,9 +1157,13 @@ class QuestionBankData extends DataClass
           other.id == this.id &&
           other.sourceQuestionId == this.sourceQuestionId &&
           other.knowledgePointId == this.knowledgePointId &&
+          other.subject == this.subject &&
+          other.questionType == this.questionType &&
+          other.difficulty == this.difficulty &&
           other.content == this.content &&
           other.kind == this.kind &&
           other.sourceLabel == this.sourceLabel &&
+          other.sourceCitation == this.sourceCitation &&
           other.usedCount == this.usedCount &&
           other.createdAt == this.createdAt);
 }
@@ -1035,9 +1172,13 @@ class QuestionBankCompanion extends UpdateCompanion<QuestionBankData> {
   final Value<String> id;
   final Value<String?> sourceQuestionId;
   final Value<String?> knowledgePointId;
+  final Value<String> subject;
+  final Value<String> questionType;
+  final Value<String> difficulty;
   final Value<String> content;
   final Value<String> kind;
   final Value<String> sourceLabel;
+  final Value<String?> sourceCitation;
   final Value<int> usedCount;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
@@ -1045,9 +1186,13 @@ class QuestionBankCompanion extends UpdateCompanion<QuestionBankData> {
     this.id = const Value.absent(),
     this.sourceQuestionId = const Value.absent(),
     this.knowledgePointId = const Value.absent(),
+    this.subject = const Value.absent(),
+    this.questionType = const Value.absent(),
+    this.difficulty = const Value.absent(),
     this.content = const Value.absent(),
     this.kind = const Value.absent(),
     this.sourceLabel = const Value.absent(),
+    this.sourceCitation = const Value.absent(),
     this.usedCount = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1056,9 +1201,13 @@ class QuestionBankCompanion extends UpdateCompanion<QuestionBankData> {
     required String id,
     this.sourceQuestionId = const Value.absent(),
     this.knowledgePointId = const Value.absent(),
+    this.subject = const Value.absent(),
+    this.questionType = const Value.absent(),
+    this.difficulty = const Value.absent(),
     required String content,
     required String kind,
     required String sourceLabel,
+    this.sourceCitation = const Value.absent(),
     this.usedCount = const Value.absent(),
     required DateTime createdAt,
     this.rowid = const Value.absent(),
@@ -1071,9 +1220,13 @@ class QuestionBankCompanion extends UpdateCompanion<QuestionBankData> {
     Expression<String>? id,
     Expression<String>? sourceQuestionId,
     Expression<String>? knowledgePointId,
+    Expression<String>? subject,
+    Expression<String>? questionType,
+    Expression<String>? difficulty,
     Expression<String>? content,
     Expression<String>? kind,
     Expression<String>? sourceLabel,
+    Expression<String>? sourceCitation,
     Expression<int>? usedCount,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
@@ -1082,9 +1235,13 @@ class QuestionBankCompanion extends UpdateCompanion<QuestionBankData> {
       if (id != null) 'id': id,
       if (sourceQuestionId != null) 'source_question_id': sourceQuestionId,
       if (knowledgePointId != null) 'knowledge_point_id': knowledgePointId,
+      if (subject != null) 'subject': subject,
+      if (questionType != null) 'question_type': questionType,
+      if (difficulty != null) 'difficulty': difficulty,
       if (content != null) 'content': content,
       if (kind != null) 'kind': kind,
       if (sourceLabel != null) 'source_label': sourceLabel,
+      if (sourceCitation != null) 'source_citation': sourceCitation,
       if (usedCount != null) 'used_count': usedCount,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
@@ -1095,9 +1252,13 @@ class QuestionBankCompanion extends UpdateCompanion<QuestionBankData> {
       {Value<String>? id,
       Value<String?>? sourceQuestionId,
       Value<String?>? knowledgePointId,
+      Value<String>? subject,
+      Value<String>? questionType,
+      Value<String>? difficulty,
       Value<String>? content,
       Value<String>? kind,
       Value<String>? sourceLabel,
+      Value<String?>? sourceCitation,
       Value<int>? usedCount,
       Value<DateTime>? createdAt,
       Value<int>? rowid}) {
@@ -1105,9 +1266,13 @@ class QuestionBankCompanion extends UpdateCompanion<QuestionBankData> {
       id: id ?? this.id,
       sourceQuestionId: sourceQuestionId ?? this.sourceQuestionId,
       knowledgePointId: knowledgePointId ?? this.knowledgePointId,
+      subject: subject ?? this.subject,
+      questionType: questionType ?? this.questionType,
+      difficulty: difficulty ?? this.difficulty,
       content: content ?? this.content,
       kind: kind ?? this.kind,
       sourceLabel: sourceLabel ?? this.sourceLabel,
+      sourceCitation: sourceCitation ?? this.sourceCitation,
       usedCount: usedCount ?? this.usedCount,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
@@ -1126,6 +1291,15 @@ class QuestionBankCompanion extends UpdateCompanion<QuestionBankData> {
     if (knowledgePointId.present) {
       map['knowledge_point_id'] = Variable<String>(knowledgePointId.value);
     }
+    if (subject.present) {
+      map['subject'] = Variable<String>(subject.value);
+    }
+    if (questionType.present) {
+      map['question_type'] = Variable<String>(questionType.value);
+    }
+    if (difficulty.present) {
+      map['difficulty'] = Variable<String>(difficulty.value);
+    }
     if (content.present) {
       map['content'] = Variable<String>(content.value);
     }
@@ -1134,6 +1308,9 @@ class QuestionBankCompanion extends UpdateCompanion<QuestionBankData> {
     }
     if (sourceLabel.present) {
       map['source_label'] = Variable<String>(sourceLabel.value);
+    }
+    if (sourceCitation.present) {
+      map['source_citation'] = Variable<String>(sourceCitation.value);
     }
     if (usedCount.present) {
       map['used_count'] = Variable<int>(usedCount.value);
@@ -1153,9 +1330,13 @@ class QuestionBankCompanion extends UpdateCompanion<QuestionBankData> {
           ..write('id: $id, ')
           ..write('sourceQuestionId: $sourceQuestionId, ')
           ..write('knowledgePointId: $knowledgePointId, ')
+          ..write('subject: $subject, ')
+          ..write('questionType: $questionType, ')
+          ..write('difficulty: $difficulty, ')
           ..write('content: $content, ')
           ..write('kind: $kind, ')
           ..write('sourceLabel: $sourceLabel, ')
+          ..write('sourceCitation: $sourceCitation, ')
           ..write('usedCount: $usedCount, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
@@ -6700,9 +6881,13 @@ typedef $$QuestionBankTableCreateCompanionBuilder = QuestionBankCompanion
   required String id,
   Value<String?> sourceQuestionId,
   Value<String?> knowledgePointId,
+  Value<String> subject,
+  Value<String> questionType,
+  Value<String> difficulty,
   required String content,
   required String kind,
   required String sourceLabel,
+  Value<String?> sourceCitation,
   Value<int> usedCount,
   required DateTime createdAt,
   Value<int> rowid,
@@ -6712,9 +6897,13 @@ typedef $$QuestionBankTableUpdateCompanionBuilder = QuestionBankCompanion
   Value<String> id,
   Value<String?> sourceQuestionId,
   Value<String?> knowledgePointId,
+  Value<String> subject,
+  Value<String> questionType,
+  Value<String> difficulty,
   Value<String> content,
   Value<String> kind,
   Value<String> sourceLabel,
+  Value<String?> sourceCitation,
   Value<int> usedCount,
   Value<DateTime> createdAt,
   Value<int> rowid,
@@ -6740,6 +6929,15 @@ class $$QuestionBankTableFilterComposer
       column: $table.knowledgePointId,
       builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get subject => $composableBuilder(
+      column: $table.subject, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get questionType => $composableBuilder(
+      column: $table.questionType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get difficulty => $composableBuilder(
+      column: $table.difficulty, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<String> get content => $composableBuilder(
       column: $table.content, builder: (column) => ColumnFilters(column));
 
@@ -6748,6 +6946,10 @@ class $$QuestionBankTableFilterComposer
 
   ColumnFilters<String> get sourceLabel => $composableBuilder(
       column: $table.sourceLabel, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sourceCitation => $composableBuilder(
+      column: $table.sourceCitation,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get usedCount => $composableBuilder(
       column: $table.usedCount, builder: (column) => ColumnFilters(column));
@@ -6776,6 +6978,16 @@ class $$QuestionBankTableOrderingComposer
       column: $table.knowledgePointId,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get subject => $composableBuilder(
+      column: $table.subject, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get questionType => $composableBuilder(
+      column: $table.questionType,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get difficulty => $composableBuilder(
+      column: $table.difficulty, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get content => $composableBuilder(
       column: $table.content, builder: (column) => ColumnOrderings(column));
 
@@ -6784,6 +6996,10 @@ class $$QuestionBankTableOrderingComposer
 
   ColumnOrderings<String> get sourceLabel => $composableBuilder(
       column: $table.sourceLabel, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sourceCitation => $composableBuilder(
+      column: $table.sourceCitation,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<int> get usedCount => $composableBuilder(
       column: $table.usedCount, builder: (column) => ColumnOrderings(column));
@@ -6810,6 +7026,15 @@ class $$QuestionBankTableAnnotationComposer
   GeneratedColumn<String> get knowledgePointId => $composableBuilder(
       column: $table.knowledgePointId, builder: (column) => column);
 
+  GeneratedColumn<String> get subject =>
+      $composableBuilder(column: $table.subject, builder: (column) => column);
+
+  GeneratedColumn<String> get questionType => $composableBuilder(
+      column: $table.questionType, builder: (column) => column);
+
+  GeneratedColumn<String> get difficulty => $composableBuilder(
+      column: $table.difficulty, builder: (column) => column);
+
   GeneratedColumn<String> get content =>
       $composableBuilder(column: $table.content, builder: (column) => column);
 
@@ -6818,6 +7043,9 @@ class $$QuestionBankTableAnnotationComposer
 
   GeneratedColumn<String> get sourceLabel => $composableBuilder(
       column: $table.sourceLabel, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceCitation => $composableBuilder(
+      column: $table.sourceCitation, builder: (column) => column);
 
   GeneratedColumn<int> get usedCount =>
       $composableBuilder(column: $table.usedCount, builder: (column) => column);
@@ -6855,9 +7083,13 @@ class $$QuestionBankTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String?> sourceQuestionId = const Value.absent(),
             Value<String?> knowledgePointId = const Value.absent(),
+            Value<String> subject = const Value.absent(),
+            Value<String> questionType = const Value.absent(),
+            Value<String> difficulty = const Value.absent(),
             Value<String> content = const Value.absent(),
             Value<String> kind = const Value.absent(),
             Value<String> sourceLabel = const Value.absent(),
+            Value<String?> sourceCitation = const Value.absent(),
             Value<int> usedCount = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -6866,9 +7098,13 @@ class $$QuestionBankTableTableManager extends RootTableManager<
             id: id,
             sourceQuestionId: sourceQuestionId,
             knowledgePointId: knowledgePointId,
+            subject: subject,
+            questionType: questionType,
+            difficulty: difficulty,
             content: content,
             kind: kind,
             sourceLabel: sourceLabel,
+            sourceCitation: sourceCitation,
             usedCount: usedCount,
             createdAt: createdAt,
             rowid: rowid,
@@ -6877,9 +7113,13 @@ class $$QuestionBankTableTableManager extends RootTableManager<
             required String id,
             Value<String?> sourceQuestionId = const Value.absent(),
             Value<String?> knowledgePointId = const Value.absent(),
+            Value<String> subject = const Value.absent(),
+            Value<String> questionType = const Value.absent(),
+            Value<String> difficulty = const Value.absent(),
             required String content,
             required String kind,
             required String sourceLabel,
+            Value<String?> sourceCitation = const Value.absent(),
             Value<int> usedCount = const Value.absent(),
             required DateTime createdAt,
             Value<int> rowid = const Value.absent(),
@@ -6888,9 +7128,13 @@ class $$QuestionBankTableTableManager extends RootTableManager<
             id: id,
             sourceQuestionId: sourceQuestionId,
             knowledgePointId: knowledgePointId,
+            subject: subject,
+            questionType: questionType,
+            difficulty: difficulty,
             content: content,
             kind: kind,
             sourceLabel: sourceLabel,
+            sourceCitation: sourceCitation,
             usedCount: usedCount,
             createdAt: createdAt,
             rowid: rowid,

@@ -11,7 +11,8 @@ import '../../../data/local/app_database.dart';
 import '../../../design_system/design_system.dart';
 import '../../focus/focus_providers.dart';
 import '../../growth/growth_providers.dart';
-import '../../learning/learning_providers.dart' show aiGatewayProvider;
+import '../../learning/learning_providers.dart'
+    show aiGatewayProvider, backupStateProvider;
 import 'package:drift/drift.dart' hide Column, Table;
 
 /// 今日专注会话
@@ -277,6 +278,7 @@ class FocusHomePage extends ConsumerWidget {
                   at: DateTime.now(),
                   focusMinutes: focusMinutes,
                 );
+                await ref.read(backupStateProvider).markDirty();
                 if (sheetContext.mounted) {
                   Navigator.of(sheetContext).pop();
                 }

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ai/ai_client.dart';
+import '../../core/backup/backup_service.dart';
 import '../../core/ai/ai_provider_config.dart';
 import '../../core/ai/analysis_gateway.dart';
 import '../../core/di/providers.dart';
@@ -22,6 +23,19 @@ final aiProviderRepositoryProvider = Provider<AiProviderRepository>((ref) {
 /// AI 配置页专用仓储（hydrate / 规范化 / 错误分级）
 final aiConfigRepositoryProvider = Provider<AiConfigRepository>((ref) {
   return AiConfigRepository(ref.watch(aiProviderRepositoryProvider));
+});
+
+/// 备份状态仓储（Part 4）
+final backupStateProvider = Provider<BackupStateRepository>((ref) {
+  return BackupStateRepository(ref.watch(sharedPreferencesProvider));
+});
+
+/// 备份服务
+final backupServiceProvider = Provider<BackupService>((ref) {
+  return BackupService(
+    dbFactory: () => ref.read(databaseProvider),
+    state: ref.watch(backupStateProvider),
+  );
 });
 
 /// 默认 AI 服务商配置（未配置时为 null）

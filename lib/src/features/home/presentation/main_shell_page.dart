@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,11 +18,54 @@ import 'review_page.dart';
 
 /// 主壳（Part 1 IA v2）：成长 | 错题本 | 复习 | 专注 | 设置
 /// 全局悬浮 FAB 已删除，拍题入口语境化
-class MainShellPage extends ConsumerWidget {
+/// Part 4.5：退后台 + 数据有变更 + WiFi（可配置允许流量）→ 自动备份
+class MainShellPage extends ConsumerStatefulWidget {
   const MainShellPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainShellPage> createState() => _MainShellPageState();
+}
+
+class _MainShellPageState extends ConsumerState<MainShellPage>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _maybeAutoBackup();
+    }
+  }
+
+  Future<void> _maybeAutoBackup() async {
+    try {
+      final backupState = ref.read(backupStateProvider);
+      if (!backupState.isDirty) return;
+      if (backupState.loadConfig() == null) return;
+
+      final results = await Connectivity().checkConnectivity();
+      final onWifi = results.contains(ConnectivityResult.wifi);
+      final onCellular = results.contains(ConnectivityResult.mobile);
+      if (!onWifi && !(onCellular && backupState.allowCellular)) return;
+
+      await ref.read(backupServiceProvider).backupNow();
+    } catch (_) {
+      // 自动备份静默失败，不打扰用户
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final tab = ref.watch(_shellTabProvider);
     return Scaffold(
       body: const _ShellBody(),
@@ -170,6 +214,34 @@ class _MeTabState extends ConsumerState<_MeTab> {
                         const SizedBox(height: GrowthSpacing.xs),
                         Text(
                           configName ?? '未配置 · 拍题解析需要',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+            ),
+            const SizedBox(height: GrowthSpacing.md),
+
+            // ---- 云备份（Part 4） ----
+            GlassCard(
+              onTap: () => context.push('/settings/backup'),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_sync_rounded,
+                      color: GrowthColors.primary),
+                  const SizedBox(width: GrowthSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('云备份',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: GrowthSpacing.xs),
+                        Text(
+                          '坚果云 / InfiniCLOUD / WebDAV / 本地导出',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],

@@ -53,6 +53,10 @@ class AppDatabase extends _$AppDatabase {
         },
       );
 
+  /// 打开指定文件路径的数据库（备份快照临时实例用）
+  factory AppDatabase.openFile(String path) =>
+      AppDatabase(NativeDatabase(File(path)));
+
   /// 开发/测试用：全库清空（不删表）
   Future<void> clearAllForTest() async {
     final List<TableInfo<Table, dynamic>> tables = [
@@ -90,3 +94,15 @@ AppDatabase openAppDatabase({String? fileOverride}) {
 
 /// 测试用内存数据库
 AppDatabase openAppDatabaseMemory() => AppDatabase(NativeDatabase.memory());
+
+/// 全局数据库持有者：云备份恢复时关闭并重建实例（Part 4）
+abstract final class AppDatabaseHolder {
+  static AppDatabase? _instance;
+
+  static AppDatabase get instance => _instance ??= openAppDatabase();
+
+  /// 恢复流程写入新 DB 文件后调用：下次访问重新打开
+  static void reopen() {
+    _instance = null;
+  }
+}

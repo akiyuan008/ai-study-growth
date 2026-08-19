@@ -149,6 +149,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
             ),
           );
 
+      await ref.read(backupStateProvider).markDirty();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('已保存到错题本')),

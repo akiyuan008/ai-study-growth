@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -384,7 +385,7 @@ class _ViewfinderPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// 图片归档工具：把任意来源图片复制到 captures 目录
+/// 图片归档工具：入库即压缩（长边 1600px、q80，Part 4.1），存到 captures 目录
 Future<String> archiveImage(String sourcePath) async {
   final dir = await getApplicationDocumentsDirectory();
   final captureDir = Directory(p.join(dir.path, 'captures'))
@@ -393,6 +394,20 @@ Future<String> archiveImage(String sourcePath) async {
     captureDir.path,
     'img_${DateTime.now().millisecondsSinceEpoch}.jpg',
   ));
+  try {
+    final compressed = await FlutterImageCompress.compressAndGetFile(
+      sourcePath,
+      target.path,
+      minWidth: 1600,
+      minHeight: 1600,
+      quality: 80,
+    );
+    if (compressed != null) {
+      return compressed.path;
+    }
+  } catch (_) {
+    // 压缩失败回落原图复制，不阻塞录入
+  }
   await File(sourcePath).copy(target.path);
   return target.path;
 }

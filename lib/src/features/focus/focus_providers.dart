@@ -5,6 +5,7 @@ import '../../core/bridge/behavior_bridge.dart';
 import '../../core/di/providers.dart';
 import '../../core/discipline/discipline_engine.dart';
 import '../../data/local/app_database.dart';
+import '../learning/learning_providers.dart' show backupStateProvider;
 import '../../data/services/settings_service.dart';
 import '../../design_system/growth_theme.dart' show sharedPreferencesProvider;
 import 'package:drift/drift.dart' hide Column, Table;
@@ -89,6 +90,9 @@ class ActiveFocusController extends Notifier<ActiveFocusState> {
     final outcome = await current.engine.stop(status: status);
     await current.engine.dispose();
     state = const FocusIdle();
+    try {
+      await ref.read(backupStateProvider).markDirty();
+    } catch (_) {}
     return outcome;
   }
 }

@@ -47,6 +47,7 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
     await ref
         .read(reviewRepositoryProvider)
         .rate(cardId: item.card.id, rating: rating);
+    await ref.read(backupStateProvider).markDirty();
     setState(() => _doneCount++);
     _next();
   }

@@ -153,6 +153,15 @@ class QuestionBank extends Table {
   /// 关联知识点
   TextColumn get knowledgePointId => text().nullable()();
 
+  /// 科目（Part 3.5 扩展）
+  TextColumn get subject => text().withDefault(const Constant(''))();
+
+  /// 题型：choice / fill / solve（Part 3.5 扩展）
+  TextColumn get questionType => text().withDefault(const Constant('solve'))();
+
+  /// 难度：easy / medium / hard（Part 3.5 扩展）
+  TextColumn get difficulty => text().withDefault(const Constant('medium'))();
+
   /// 题目内容 JSON：{question, options, answer, explanation}
   TextColumn get content => text()();
 
@@ -161,6 +170,9 @@ class QuestionBank extends Table {
 
   /// UI 来源标签：真题·来自你的题库 / 真题引用·2023全国甲卷 / 来源待核实 / AI 拟题
   TextColumn get sourceLabel => text()();
+
+  /// 出处引用原文（L2：年份+地区+考卷名；Part 3.5 扩展）
+  TextColumn get sourceCitation => text().nullable()();
 
   /// 已用于练习的次数（优先未用真题）
   IntColumn get usedCount => integer().withDefault(const Constant(0))();
