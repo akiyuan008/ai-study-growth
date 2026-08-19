@@ -1,7 +1,7 @@
 name: ai_study_growth
-description: "AI 学习成长系统：自律学习 × AI 错题本 融合重构"
+description: "智析录：AI 学习成长系统——自律学习 × AI 错题本 融合重构"
 publish_to: 'none'
-version: 0.5.0+1
+version: 0.5.1+1
 
 environment:
   sdk: ^3.5.0
@@ -59,5 +59,5 @@ flutter:
 flutter_launcher_icons:
   android: true
   image_path: "assets/icon/app_icon.png"
-  adaptive_icon_background: "#F7F8FB"
+  adaptive_icon_background: "assets/icon/app_icon_background.png"
   adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"

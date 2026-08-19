@@ -134,7 +134,7 @@ class AiStudyGrowthApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
-      title: 'AI 学习成长系统',
+      title: '智析录',
       debugShowCheckedModeBanner: false,
       theme: buildGrowthTheme(Brightness.light),
       // Prompt F4：深色模式本版冻结，固定浅色

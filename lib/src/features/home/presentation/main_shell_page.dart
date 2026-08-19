@@ -362,7 +362,7 @@ class _MeTabState extends ConsumerState<_MeTab> {
                       return _SettingRow(
                         icon: Icons.info_outline_rounded,
                         title: '关于',
-                        subtitle: 'AI 学习成长系统 v$version',
+                        subtitle: '智析录 v$version',
                         onTap: _onVersionTap,
                       );
                     },
