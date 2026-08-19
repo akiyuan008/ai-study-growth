@@ -82,15 +82,13 @@ object DocumentScanner {
                 // 回落 1：minAreaRect
                 val rect = minAreaFallback(workMat)
                 if (rect != null) {
-                    val pts = MatOfPoint2f()
-                    rect.points(pts)
-                    val arr = pts.toArray()
+                    val arr = rect.points()
                     // minAreaRect 点序不定，排序为 tl/tr/br/bl
                     val ordered = orderPoints(arr.map {
                         Point(it.x + roiOffX, it.y + roiOffY)
                     })
                     resultMat = perspectiveCorrect(src, ordered)
-                    ordered.release(); pts.release()
+                    ordered.release()
                     fallback = "minarea"
                 } else {
                     // 回落 2：全幅内缩 2%，提示手动校准
