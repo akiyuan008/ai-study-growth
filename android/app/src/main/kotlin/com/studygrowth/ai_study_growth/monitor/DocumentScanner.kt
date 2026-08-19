@@ -74,7 +74,7 @@ class DocumentScanner {
                 src
             }
 
-            val scale = 1000.0 / max(workMat.cols(), workMat.rows()).coerceAtLeast(1.0)
+            val scale = 1000.0 / max(workMat.cols(), workMat.rows()).coerceAtLeast(1)
             val scaled = if (scale < 1.0) {
                 val resized = Mat()
                 Imgproc.resize(workMat, resized, Size(workMat.cols() * scale, workMat.rows() * scale))
