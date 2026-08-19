@@ -28,6 +28,7 @@ abstract final class GrowthColors {
   /// 禁止直接引用重复色值。
   static const Color danger = caution;
   static const Color warning = caution;
+  static const Color error = caution;
 
   // ---- 四能力色（数据可视化语义色，全部走别名映射） ----
   /// 学习 = 主色靛蓝

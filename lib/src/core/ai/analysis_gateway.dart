@@ -58,17 +58,82 @@ abstract interface class AiAnalysisGateway {
   });
 }
 
+/// AI 调用日志回调（补钉 A）：每次 AI 调用后触发，由上层写入 AiCallLog 表。
+typedef AiCallLogger = Future<void> Function({
+  required String purpose,
+  required String requestBody,
+  required String responseBody,
+  required int httpStatus,
+  required bool success,
+  String? errorTier,
+  required int durationMs,
+});
+
 class AiAnalysisGatewayImpl implements AiAnalysisGateway {
-  AiAnalysisGatewayImpl(this._client);
+  AiAnalysisGatewayImpl(this._client, {this.logger});
 
   final AiClient _client;
+
+  /// 可选日志回调，非 null 时每次调用后写日志
+  final AiCallLogger? logger;
+
+  Future<String> _chatWithLog({
+    required String purpose,
+    required List<AiMessage> messages,
+    double temperature = 0.3,
+    int maxTokens = 2048,
+  }) async {
+    final sw = Stopwatch()..start();
+    final reqBody = jsonEncode({
+      'model': _client.config.model,
+      'messages': messages.map((m) => m.toJson()).toList(),
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+    });
+    try {
+      final raw = await AiCall.run(() => _client.chat(
+            messages: messages,
+            temperature: temperature,
+            maxTokens: maxTokens,
+          ));
+      sw.stop();
+      if (logger != null) {
+        await logger!(
+          purpose: purpose,
+          requestBody: reqBody,
+          responseBody: raw,
+          httpStatus: 200,
+          success: true,
+          durationMs: sw.elapsedMilliseconds,
+        );
+      }
+      return raw;
+    } catch (e) {
+      sw.stop();
+      String? tier;
+      if (e is AiCallException) tier = e.tier.name;
+      if (logger != null) {
+        await logger!(
+          purpose: purpose,
+          requestBody: reqBody,
+          responseBody: e.toString(),
+          httpStatus: e is AiCallException ? 500 : 0,
+          success: false,
+          errorTier: tier,
+          durationMs: sw.elapsedMilliseconds,
+        );
+      }
+      rethrow;
+    }
+  }
 
   @override
   Future<List<QuestionCandidate>> splitQuestions({
     required List<int> imageBytes,
     String mimeType = 'image/jpeg',
   }) async {
-    final raw = await _client.chat(
+    final raw = await _chatWithLog(
+      purpose: 'split',
       messages: [
         const AiMessage(role: 'system', content: AiPrompts.splitSystem),
         userMessageWithImage(
@@ -109,7 +174,8 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
             mimeType: mimeType,
           );
 
-    final raw = await _client.chat(
+    final raw = await _chatWithLog(
+      purpose: 'analyze',
       messages: [
         const AiMessage(role: 'system', content: AiPrompts.analysisSystem),
         userMsg,
@@ -139,7 +205,8 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
       mistakeReason: mistakeReason,
       knowledgePoints: knowledgePoints,
     );
-    final raw = await _client.chat(
+    final raw = await _chatWithLog(
+      purpose: 'exercise',
       messages: [
         const AiMessage(role: 'system', content: AiPrompts.exerciseSystem),
         AiMessage(role: 'user', content: '请基于以下错题生成举一反三练习：\n$context'),
@@ -158,18 +225,19 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
     const system = '你是一个知识点分类器。只看题目图片，输出该题涉及的知识点标签。'
         '规则：只输出 JSON 数组（如 ["高中物理","力学","牛顿第二定律"]），3-6 个，'
         '从学科大类到具体知识点递进；不解题、不写答案、不输出任何其他文字。';
-    final raw = await AiCall.run(() => _client.chat(
-          messages: [
-            const AiMessage(role: 'system', content: system),
-            userMessageWithImage(
-              text: '请输出知识点标签。',
-              imageBytes: imageBytes,
-              mimeType: mimeType,
-            ),
-          ],
-          temperature: 0.1,
-          maxTokens: 256,
-        ));
+    final raw = await _chatWithLog(
+      purpose: 'classify',
+      messages: [
+        const AiMessage(role: 'system', content: system),
+        userMessageWithImage(
+          text: '请输出知识点标签。',
+          imageBytes: imageBytes,
+          mimeType: mimeType,
+        ),
+      ],
+      temperature: 0.1,
+      maxTokens: 256,
+    );
     final json = extractJsonObject(raw) ?? _tryParseArray(raw);
     if (json == null) {
       throw const AiCallException(AiErrorTier.parseFailed, detail: '未识别到标签结构');
@@ -191,18 +259,19 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
         'book(册别，如八年级上册)、chapter(章)、lesson(节)、point(知识点名称)。'
         '不确定的层级留空字符串。示例：'
         '{"subject":"物理","version":"人教版","book":"八年级下册","chapter":"第九章 压强","lesson":"第1节 压强","point":"压强"}';
-    final raw = await AiCall.run(() => _client.chat(
-          messages: [
-            const AiMessage(role: 'system', content: system),
-            userMessageWithImage(
-              text: '请输出知识点层级路径。',
-              imageBytes: imageBytes,
-              mimeType: mimeType,
-            ),
-          ],
-          temperature: 0.1,
-          maxTokens: 300,
-        ));
+    final raw = await _chatWithLog(
+      purpose: 'classify',
+      messages: [
+        const AiMessage(role: 'system', content: system),
+        userMessageWithImage(
+          text: '请输出知识点层级路径。',
+          imageBytes: imageBytes,
+          mimeType: mimeType,
+        ),
+      ],
+      temperature: 0.1,
+      maxTokens: 300,
+    );
     // JSON 提取 + 正则兜底
     var json = extractJsonObject(raw);
     if (json == null) {

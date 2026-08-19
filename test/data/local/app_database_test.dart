@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// P0 验收：Drift 数据库初始化无报错，全部核心表可读写。
+/// v13：专注/任务/监控表已删除，新增 AiCallLogs 表
 void main() {
   late AppDatabase db;
 
@@ -22,13 +23,11 @@ void main() {
     expect(await db.select(db.reviewLogs).get(), isEmpty);
     expect(await db.select(db.generatedExercises).get(), isEmpty);
     expect(await db.select(db.aiMessages).get(), isEmpty);
-    expect(await db.select(db.focusSessions).get(), isEmpty);
-    expect(await db.select(db.focusEvents).get(), isEmpty);
-    expect(await db.select(db.missions).get(), isEmpty);
     expect(await db.select(db.learningEvents).get(), isEmpty);
     expect(await db.select(db.growthMetrics).get(), isEmpty);
     expect(await db.select(db.aiProviders).get(), isEmpty);
     expect(await db.select(db.analysisJobs).get(), isEmpty);
+    expect(await db.select(db.aiCallLogs).get(), isEmpty);
   });
 
   test('学习域：题目 → 知识点 → 复习卡 → 复习日志 写入链路', () async {
@@ -84,44 +83,6 @@ void main() {
     expect(links, hasLength(1));
   });
 
-  test('自律域：任务 + 专注会话 + 行为事件流', () async {
-    final now = DateTime.now();
-    await db.into(db.missions).insert(
-          MissionsCompanion.insert(
-            id: 'm-1',
-            title: '今日到期复习',
-            source: const Value('review_engine'),
-            scheduledFor: '2026-08-18',
-            requirement: const Value('{"type":"review_due","count":8}'),
-            createdAt: now,
-          ),
-        );
-    await db.into(db.focusSessions).insert(
-          FocusSessionsCompanion.insert(
-            id: 'fs-1',
-            missionId: const Value('m-1'),
-            questionIds: const Value('["q-1"]'),
-            mode: const Value('abyss'),
-            startedAt: now,
-            plannedMs: const Value(25 * 60 * 1000),
-          ),
-        );
-    await db.into(db.focusEvents).insert(
-          FocusEventsCompanion.insert(
-            sessionId: const Value('fs-1'),
-            eventType: 'app_usage',
-            appPackage: const Value('com.example.video'),
-            at: now,
-            durationMs: const Value(65000),
-          ),
-        );
-
-    final session = await db.select(db.focusSessions).getSingle();
-    expect(session.mode, 'abyss');
-    expect(session.status, 'active');
-    expect(session.focusMs, 0); // 真实专注时长由 focusMath 事后计算
-  });
-
   test('成长引擎：事件流 + 每日快照', () async {
     final now = DateTime.now();
     await db.into(db.learningEvents).insert(
@@ -136,17 +97,14 @@ void main() {
           GrowthMetricsCompanion.insert(
             date: '2026-08-18',
             learningScore: const Value(62.5),
-            focusScore: const Value(71.0),
             persistenceScore: const Value(55.0),
             recoveryScore: const Value(48.0),
-            focusMs: const Value(50 * 60 * 1000),
             streak: const Value(3),
           ),
         );
 
     final snapshot = await db.select(db.growthMetrics).getSingle();
     expect(snapshot.learningScore, closeTo(62.5, 0.001));
-    expect(snapshot.focusScore, closeTo(71.0, 0.001));
   });
 
   test('AI 配置表：密钥不落库，只存 keyRef', () async {
@@ -165,5 +123,25 @@ void main() {
     final row = await db.select(db.aiProviders).getSingle();
     expect(row.keyRef, 'ai_provider_key_p-1');
     expect(row.isDefault, isTrue);
+  });
+
+  test('AiCallLogs：写入与查询', () async {
+    final now = DateTime.now();
+    await db.into(db.aiCallLogs).insert(
+          AiCallLogsCompanion.insert(
+            purpose: 'classify',
+            requestBody: '{"model":"gpt-4o"}',
+            responseBody: '{"subject":"物理"}',
+            httpStatus: const Value(200),
+            success: const Value(true),
+            durationMs: const Value(1500),
+            at: now,
+          ),
+        );
+    final logs = await db.select(db.aiCallLogs).get();
+    expect(logs, hasLength(1));
+    expect(logs.first.purpose, 'classify');
+    expect(logs.first.success, isTrue);
+    expect(logs.first.httpStatus, 200);
   });
 }

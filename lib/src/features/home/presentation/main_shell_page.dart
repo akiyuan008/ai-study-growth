@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,8 +14,8 @@ import '../../learning/learning_providers.dart';
 import 'notebook_page.dart';
 import 'review_page.dart';
 
-/// 主壳（v10 IA）：成长 | 错题本 | 复习 | 设置
-/// 无全局 FAB，拍题入口语境化（错题本右上/空状态/成长页 NextStep）
+/// 主壳（v13 IA）：成长 | 错题本 | 中央相机键 | 复习 | 设置
+/// dock 五槽，相机键嵌入底栏（非悬浮）
 class MainShellPage extends ConsumerWidget {
   const MainShellPage({super.key});
 
@@ -26,6 +28,7 @@ class MainShellPage extends ConsumerWidget {
         selectedIndex: tab,
         onDestinationSelected: (i) =>
             ref.read(_shellTabProvider.notifier).state = i,
+        onCameraTap: () => context.push('/capture'),
         items: const [
           GlassNavItem(icon: GrowthIconType.sprout, label: '成长'),
           GlassNavItem(icon: GrowthIconType.book, label: '错题本'),
@@ -81,7 +84,8 @@ class _ReviewTab extends ConsumerWidget {
   }
 }
 
-/// 设置页。排序：AI 服务商 → 解析任务队列 → 云备份 → 数据与关于
+/// 设置页。排序：AI 服务商 → 通知设置 → 云备份 → 数据与关于
+/// 无解析任务队列（v13 已删除）
 class _SettingsTab extends ConsumerStatefulWidget {
   const _SettingsTab();
 
@@ -109,6 +113,10 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
   Widget build(BuildContext context) {
     final configAsync = ref.watch(defaultAiConfigProvider);
     final configName = configAsync.valueOrNull?.name;
+
+    // 通知设置
+    final notifyEnabled = ref.watch(settingsServiceProvider).notifyReviewEnabled;
+    final notifyTime = ref.watch(settingsServiceProvider).reviewNotifyTime;
 
     return Scaffold(
       appBar: growthAppBar(context, title: '设置'),
@@ -144,17 +152,27 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
             ),
             const SizedBox(height: GrowthSpacing.md),
 
-            // ---- 解析任务队列 ----
+            // ---- AI 调用日志 ----
             GlassCard(
-              onTap: () => context.push('/analysis'),
+              onTap: () => context.push('/settings/ai-call-log'),
               child: Row(
                 children: [
-                  const Icon(Icons.hourglass_top_rounded,
+                  const Icon(Icons.receipt_long_rounded,
                       color: GrowthColors.primary),
                   const SizedBox(width: GrowthSpacing.md),
                   Expanded(
-                    child: Text('解析任务队列',
-                        style: Theme.of(context).textTheme.titleLarge),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('AI 调用日志',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: GrowthSpacing.xs),
+                        Text(
+                          '查看知识点识别等 AI 调用记录',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
                   ),
                   const Icon(Icons.chevron_right_rounded),
                 ],
@@ -162,7 +180,58 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
             ),
             const SizedBox(height: GrowthSpacing.md),
 
+            // ---- 通知设置 ----
+            _GroupLabel(label: '通知'),
+            GlassCard(
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    title: const Text('每日复习提醒'),
+                    subtitle: const Text('到期复习时推送通知'),
+                    value: notifyEnabled,
+                    activeThumbColor: GrowthColors.primary,
+                    onChanged: (v) {
+                      unawaited(ref.read(settingsServiceProvider).setNotifyReviewEnabled(v));
+                      setState(() {});
+                    },
+                  ),
+                  if (notifyEnabled)
+                    ListTile(
+                      leading: const Icon(Icons.access_time_rounded,
+                          color: GrowthColors.primary),
+                      title: const Text('提醒时间'),
+                      trailing: Text(
+                        notifyTime,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: GrowthColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: _parseTime(notifyTime),
+                        );
+                        if (picked != null) {
+                          final newTime =
+                              '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                          unawaited(ref
+                              .read(settingsServiceProvider)
+                              .setReviewNotifyTime(newTime)
+                              .then((_) {
+                            if (context.mounted) setState(() {});
+                          }));
+                        }
+                      },
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: GrowthSpacing.lg),
+
             // ---- 云备份 ----
+            _GroupLabel(label: '备份'),
             GlassCard(
               onTap: () => context.push('/settings/backup'),
               child: Row(
@@ -210,11 +279,11 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                   FutureBuilder<PackageInfo>(
                     future: PackageInfo.fromPlatform(),
                     builder: (context, snapshot) {
-                      final version = snapshot.data?.version ?? '0.6.0';
+                      final version = snapshot.data?.version ?? '0.7.0';
                       return _SettingRow(
                         icon: Icons.info_outline_rounded,
                         title: '关于',
-                        subtitle: '跤错本 v$version',
+                        subtitle: '智析录 v$version',
                         onTap: _onVersionTap,
                       );
                     },
@@ -227,6 +296,17 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
         ),
       ),
     );
+  }
+
+  TimeOfDay _parseTime(String s) {
+    final parts = s.split(':');
+    if (parts.length == 2) {
+      return TimeOfDay(
+        hour: int.tryParse(parts[0]) ?? 9,
+        minute: int.tryParse(parts[1]) ?? 0,
+      );
+    }
+    return const TimeOfDay(hour: 9, minute: 0);
   }
 
   Future<void> _exportBackup() async {

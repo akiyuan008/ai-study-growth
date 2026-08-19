@@ -7,8 +7,6 @@ import '../design_system/design_system.dart';
 import '../features/design_gallery/presentation/design_gallery_page.dart';
 import '../features/home/presentation/ai_provider_setup_page.dart';
 import '../features/home/presentation/backup_settings_page.dart';
-import '../features/home/presentation/app_whitelist_page.dart';
-import '../features/home/presentation/analysis_jobs_page.dart';
 import '../features/capture/presentation/camera_capture_page.dart';
 import '../features/capture/presentation/edit_screen_page.dart';
 import '../features/capture/presentation/question_save_page.dart';
@@ -18,6 +16,7 @@ import '../features/home/presentation/notebook_page.dart';
 import '../features/home/presentation/question_detail_page.dart';
 import '../features/home/presentation/review_page.dart';
 import '../features/home/presentation/stats_page.dart';
+import '../features/home/presentation/ai_call_log_page.dart';
 import '../features/onboarding/presentation/onboarding_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -25,6 +24,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final onboarded = prefs.getBool('onboarding_done') ?? false;
   return GoRouter(
     initialLocation: onboarded ? '/' : '/onboarding',
+    observers: [SnackBarClearObserver()],
     routes: [
       GoRoute(
         path: '/',
@@ -74,12 +74,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/analysis',
-        builder: (context, state) => AnalysisJobsPage(
-          focusJobId: state.uri.queryParameters['focus'],
-        ),
-      ),
-      GoRoute(
         path: '/review',
         builder: (context, state) => const ReviewSessionPage(),
       ),
@@ -94,8 +88,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/settings/app-whitelist',
-        builder: (context, state) => const AppWhitelistPage(),
+        path: '/settings/ai-call-log',
+        builder: (context, state) => const AiCallLogPage(),
       ),
       GoRoute(
         // Prompt E：画廊仅 debug 可见；release 包中该路由重定向回首页，
@@ -138,4 +132,31 @@ List<double>? _parseRoi(String? raw) {
     vals.add(v);
   }
   return vals;
+}
+
+/// 路由级 SnackBar 清理（Part 1.1）：
+/// toast 不得跨页残留——每次路由变更时清除当前 SnackBar。
+class SnackBarClearObserver extends NavigatorObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _clearSnackBars();
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    _clearSnackBars();
+  }
+
+  @override
+  void didPop(Route<dynamic>? route, Route<dynamic>? previousRoute) {
+    _clearSnackBars();
+  }
+
+  void _clearSnackBars() {
+    final context = navigator?.context;
+    if (context != null) {
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      messenger?.clearSnackBars();
+    }
+  }
 }

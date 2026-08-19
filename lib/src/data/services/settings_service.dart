@@ -8,38 +8,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../local/app_database.dart';
 
-/// 应用设置：深渊默认模式、监控白名单（prefs 持久化）
+/// 应用设置：通知、备份偏好（prefs 持久化）
+/// v13：专注/深渊/监控/白名单已删除
 class SettingsService {
   SettingsService(this._prefs);
 
   final SharedPreferences _prefs;
-  static const _abyssKey = 'focus.abyss_default';
-  static const _whitelistKey = 'monitor.whitelist';
 
-  /// 深渊模式作为默认选项
-  bool get abyssDefault => _prefs.getBool(_abyssKey) ?? false;
-  Future<void> setAbyssDefault(bool v) => _prefs.setBool(_abyssKey, v);
+  // ---- 通知设置 ----
+  static const _notifyReviewKey = 'notify.review_enabled';
+  static const _reviewNotifyTimeKey = 'notify.review_time';
 
-  /// 监控白名单：这些包名的前台切换不算分心
-  List<String> get whitelist {
-    final raw = _prefs.getStringList(_whitelistKey);
-    return raw ?? const [];
-  }
+  /// 每日复习提醒开关
+  bool get notifyReviewEnabled => _prefs.getBool(_notifyReviewKey) ?? false;
+  Future<void> setNotifyReviewEnabled(bool v) =>
+      _prefs.setBool(_notifyReviewKey, v);
 
-  Future<void> addWhitelist(String package) async {
-    final list = whitelist.toList();
-    final pkg = package.trim();
-    if (pkg.isEmpty || list.contains(pkg)) return;
-    list.add(pkg);
-    await _prefs.setStringList(_whitelistKey, list);
-  }
-
-  Future<void> removeWhitelist(String package) async {
-    final list = whitelist.toList()..remove(package);
-    await _prefs.setStringList(_whitelistKey, list);
-  }
-
-  bool isWhitelisted(String package) => whitelist.contains(package);
+  /// 提醒时间 HH:mm
+  String get reviewNotifyTime =>
+      _prefs.getString(_reviewNotifyTimeKey) ?? '09:00';
+  Future<void> setReviewNotifyTime(String v) =>
+      _prefs.setString(_reviewNotifyTimeKey, v);
 }
 
 /// 数据备份导出：全库序列化为 JSON 文件
@@ -57,9 +46,6 @@ abstract final class DataExporter {
           (await db.select(db.reviewLogs).get()).map((r) => r.toJson()),
       'generatedExercises':
           (await db.select(db.generatedExercises).get()).map((r) => r.toJson()),
-      'focusSessions':
-          (await db.select(db.focusSessions).get()).map((r) => r.toJson()),
-      'missions': (await db.select(db.missions).get()).map((r) => r.toJson()),
       'learningEvents':
           (await db.select(db.learningEvents).get()).map((r) => r.toJson()),
       'growthMetrics':

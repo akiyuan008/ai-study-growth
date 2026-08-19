@@ -105,28 +105,14 @@ abstract final class GrowthMemoryFeed {
     for (final e in learning) {
       moments.add(GrowthMoment(
         at: e.at,
-        kind: e.eventType == 'mission_done' ? 'mission' : 'learning',
+        kind: 'learning',
         label: switch (e.eventType) {
           'analysis_done' => '新题入库',
           'question_saved' => '新题入库',
           'review_done' => '完成一次复习',
-          'mission_done' => '完成一个任务',
           'streak_milestone' => '连续学习里程碑达成',
           _ => e.eventType,
         },
-      ));
-    }
-
-    final sessions = await (db.select(db.focusSessions)
-          ..where((t) => t.status.isIn(['completed', 'aborted']))
-          ..orderBy([(t) => OrderingTerm.desc(t.endedAt)])
-          ..limit(limit))
-        .get();
-    for (final s in sessions) {
-      moments.add(GrowthMoment(
-        at: s.endedAt ?? s.startedAt,
-        kind: 'focus',
-        label: '专注 ${s.focusMs ~/ 60000} 分钟',
       ));
     }
 

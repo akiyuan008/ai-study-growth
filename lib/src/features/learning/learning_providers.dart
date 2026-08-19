@@ -6,6 +6,7 @@ import '../../core/ai/ai_provider_config.dart';
 import '../../core/ai/analysis_gateway.dart';
 import '../../core/di/providers.dart';
 import '../../design_system/growth_theme.dart' show sharedPreferencesProvider;
+import '../../data/repositories/ai_call_log_repository.dart';
 import '../../data/repositories/ai_config_repository.dart';
 import '../../data/repositories/ai_provider_repository.dart';
 import '../../data/repositories/exercise_repository.dart';
@@ -44,20 +45,36 @@ final defaultAiConfigProvider = FutureProvider<AiProviderConfig?>((ref) {
 });
 
 /// AI 网关：学习域唯一的 AI 入口；未配置时返回 null
+/// 补钉 A：接入 AiCallLog，每次 AI 调用写日志
 final aiGatewayProvider = FutureProvider<AiAnalysisGateway?>((ref) async {
   final repo = ref.watch(aiProviderRepositoryProvider);
   final config = await repo.defaultProvider();
   if (config == null) return null;
   final client = await repo.buildClient(config.id);
   if (client == null) return null;
-  return AiAnalysisGatewayImpl(client);
+  final logRepo = ref.watch(aiCallLogRepositoryProvider);
+  return AiAnalysisGatewayImpl(
+    client,
+    logger: ({required purpose, required requestBody, required responseBody,
+        required httpStatus, required success, errorTier, required durationMs}) async {
+      await logRepo.log(
+        purpose: purpose,
+        requestBody: requestBody,
+        responseBody: responseBody,
+        httpStatus: httpStatus,
+        success: success,
+        errorTier: errorTier,
+        durationMs: durationMs,
+      );
+    },
+  );
 });
 
 final questionRepositoryProvider = Provider<QuestionRepository>((ref) {
   return QuestionRepository(ref.watch(databaseProvider));
 });
 
-/// 应用设置（深渊默认 / 监控白名单）
+/// 应用设置（通知 / 复习提醒时间）
 final settingsServiceProvider = Provider<SettingsService>((ref) {
   return SettingsService(ref.watch(sharedPreferencesProvider));
 });

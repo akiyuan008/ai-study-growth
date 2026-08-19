@@ -56,18 +56,22 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
   String? _pathError;
   bool _visionUnsupported = false;
 
+  /// 补钉 A：推荐的视觉模型名（null = 未推荐/未找到）
+  String? _recommendedVisionModel;
+
   @override
   void initState() {
     super.initState();
     _fetchPath();
   }
 
-  /// AI 识别层级路径（视觉守卫：不支持→转手动，禁转圈）
+  /// AI 识别层级路径（视觉守卫：不支持→推荐视觉模型+一键换用，禁转圈）
   Future<void> _fetchPath() async {
     setState(() {
       _pathLoading = true;
       _pathError = null;
       _visionUnsupported = false;
+      _recommendedVisionModel = null;
     });
     try {
       final gateway = await ref.read(aiGatewayProvider.future);
@@ -91,6 +95,8 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
         _pathLoading = false;
         if (e.tier == AiErrorTier.visionUnsupported) {
           _visionUnsupported = true; // 视觉守卫：明确提示，禁转圈
+          // 补钉 A：自动从已获取模型列表推荐一个视觉模型
+          unawaited(_suggestVisionModel());
         } else {
           _pathError = e.userMessage;
         }
@@ -102,6 +108,60 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
           _pathError = '识别失败：$e';
         });
       }
+    }
+  }
+
+  /// 补钉 A：从当前服务商拉取模型列表，推荐一个视觉模型
+  Future<void> _suggestVisionModel() async {
+    try {
+      final repo = ref.read(aiProviderRepositoryProvider);
+      final config = await repo.defaultProvider();
+      if (config == null) return;
+      final client = await repo.buildClient(config.id);
+      if (client == null) return;
+      final models = await client.fetchModels();
+      // 视觉模型关键词匹配
+      const visionKeywords = [
+        'vision', 'vl', '4o', 'multimodal', 'image', 'eye',
+        'gpt-4o', 'claude-3', 'gemini', 'qwen-vl', 'qwen2-vl',
+        'glm-4v', 'step-1v', 'yi-vl', 'llava',
+      ];
+      final visionModels = models.where((m) {
+        final lower = m.toLowerCase();
+        return visionKeywords.any((k) => lower.contains(k));
+      }).toList();
+      if (visionModels.isNotEmpty && mounted) {
+        setState(() => _recommendedVisionModel = visionModels.first);
+      }
+    } catch (_) {
+      // 静默：推荐失败不影响手动填写
+    }
+  }
+
+  /// 补钉 A：一键换用推荐的视觉模型
+  Future<void> _switchToVisionModel() async {
+    final model = _recommendedVisionModel;
+    if (model == null) return;
+    try {
+      final db = ref.read(databaseProvider);
+      final repo = ref.read(aiProviderRepositoryProvider);
+      final config = await repo.defaultProvider();
+      if (config == null) return;
+      await (db.update(db.aiProviders)
+            ..where((t) => t.id.equals(config.id)))
+          .write(AiProvidersCompanion(model: Value(model)));
+      // 刷新 gateway provider
+      ref.invalidate(aiGatewayProvider);
+      if (mounted) {
+        setState(() {
+          _visionUnsupported = false;
+          _recommendedVisionModel = null;
+        });
+        AppToast.success(context, '已切换到 $model，正在重新识别…');
+        unawaited(_fetchPath());
+      }
+    } catch (e) {
+      if (mounted) AppToast.error(context, '切换失败：$e');
     }
   }
 
@@ -327,7 +387,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
                       child: Center(child: CircularProgressIndicator()),
                     )
                   else if (_visionUnsupported)
-                    // 视觉守卫：明确提示改选模型或手动，禁转圈
+                    // 视觉守卫：推荐视觉模型+一键换用，禁转圈
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -336,10 +396,29 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         const SizedBox(height: GrowthSpacing.sm),
-                        Text(
-                          '可在「设置 → AI 服务商」换用带视觉能力的模型，或直接手动填写。',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
+                        if (_recommendedVisionModel != null)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '检测到视觉模型「$_recommendedVisionModel」，可一键换用：',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: GrowthColors.learning,
+                                    ),
+                              ),
+                              const SizedBox(height: GrowthSpacing.xs),
+                              GrowthButton(
+                                label: '换用 $_recommendedVisionModel 并重新识别',
+                                onPressed: _switchToVisionModel,
+                              ),
+                              const SizedBox(height: GrowthSpacing.sm),
+                            ],
+                          )
+                        else
+                          Text(
+                            '可在「设置 → AI 服务商」换用带视觉能力的模型，或直接手动填写。',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                         const SizedBox(height: GrowthSpacing.sm),
                         GrowthButton(
                           label: '手动填写知识点',

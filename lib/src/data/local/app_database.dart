@@ -5,7 +5,6 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import 'tables/discipline_tables.dart';
 import 'tables/growth_tables.dart';
 import 'tables/learning_tables.dart';
 
@@ -14,7 +13,7 @@ part 'app_database.g.dart';
 /// 全系统唯一事实源。
 ///
 /// 设计原则（事件溯源 + 实体表混合模型）：
-/// - 行为与成长数据走事件流：[LearningEvents] / [FocusEvents] → [GrowthMetrics] 快照
+/// - 行为与成长数据走事件流：[LearningEvents] → [GrowthMetrics] 快照
 /// - 知识资产走实体表：[QuestionRecords] 等，服务错题本业务查询
 /// - 两者通过 question id 关联
 @DriftDatabase(tables: [
@@ -28,21 +27,19 @@ part 'app_database.g.dart';
   ReviewLogs,
   GeneratedExercises,
   AiMessages,
-  // 自律域实体 + 行为事件流
-  FocusSessions,
-  FocusEvents,
-  Missions,
   // 成长引擎
   LearningEvents,
   GrowthMetrics,
   // AI 配置
   AiProviders,
+  // AI 调用日志（补钉 A）
+  AiCallLogs,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -58,6 +55,14 @@ class AppDatabase extends _$AppDatabase {
                 'ALTER TABLE knowledge_points ADD COLUMN chapter TEXT NOT NULL DEFAULT \'\'');
             await customStatement(
                 'ALTER TABLE knowledge_points ADD COLUMN lesson TEXT NOT NULL DEFAULT \'\'');
+          }
+          // v3：删除自律域表（专注/任务/监控），新增 AiCallLogs
+          if (from < 3) {
+            await customStatement('DROP TABLE IF EXISTS focus_sessions');
+            await customStatement('DROP TABLE IF EXISTS focus_events');
+            await customStatement('DROP TABLE IF EXISTS missions');
+            await customStatement(
+                'CREATE TABLE IF NOT EXISTS ai_call_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, purpose TEXT NOT NULL, request_body TEXT NOT NULL, response_body TEXT NOT NULL, http_status INTEGER NOT NULL, success INTEGER NOT NULL, error_tier TEXT, duration_ms INTEGER NOT NULL, at INTEGER NOT NULL)');
           }
         },
         beforeOpen: (details) async {
@@ -82,12 +87,10 @@ class AppDatabase extends _$AppDatabase {
       reviewLogs,
       generatedExercises,
       aiMessages,
-      focusSessions,
-      focusEvents,
-      missions,
       learningEvents,
       growthMetrics,
       aiProviders,
+      aiCallLogs,
     ];
     for (final t in tables) {
       await delete(t).go();

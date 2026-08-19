@@ -267,7 +267,6 @@ Future<void> _upsertSnapshot(
           GrowthMetricsCompanion.insert(
             date: date,
             learningScore: Value(scores.learning),
-            focusScore: const Value(0), // 专注域已删除，保留列兼容
             persistenceScore: Value(scores.persistence),
             recoveryScore: Value(scores.recovery),
             reviewDone: Value(input.reviewDone),

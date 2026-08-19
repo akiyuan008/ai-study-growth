@@ -37,6 +37,9 @@ class GrowthHomePage extends ConsumerWidget {
               children: [
                 _IdentityCard(data: data),
                 const SizedBox(height: GrowthSpacing.md),
+                // v13 Part 2.2：成长页 chip 入口（三处入口之一）
+                _ActionChips(),
+                const SizedBox(height: GrowthSpacing.md),
                 const _TrendCard(),
                 const SizedBox(height: GrowthSpacing.md),
                 _NextStepCard(data: data),
@@ -475,7 +478,6 @@ class _MemoryCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: switch (moment.kind) {
                         'learning' => GrowthColors.learning,
-                        'focus' => GrowthColors.primary,
                         _ => GrowthColors.success,
                       },
                       shape: BoxShape.circle,
@@ -567,6 +569,31 @@ class _ErrorRetry extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// v13 Part 2.2：成长页 chip 入口（三处入口之一）
+class _ActionChips extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: GrowthSpacing.sm,
+      runSpacing: GrowthSpacing.xs,
+      children: [
+        ActionChip(
+          label: const Text('拍题录入'),
+          avatar: const Icon(Icons.camera_alt_rounded,
+              size: 18, color: GrowthColors.actionAccent),
+          onPressed: () => context.push('/capture'),
+        ),
+        ActionChip(
+          label: const Text('今日复习'),
+          avatar: const Icon(Icons.replay_rounded,
+              size: 18, color: GrowthColors.primary),
+          onPressed: () => context.push('/review'),
+        ),
+      ],
     );
   }
 }

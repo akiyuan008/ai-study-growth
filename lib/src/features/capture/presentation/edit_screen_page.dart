@@ -41,6 +41,9 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
   /// 自动校准是否应用过（cropSource 判定）
   bool _autoApplied = false;
 
+  /// 补钉 B：页内 inline 错误提示（裁剪失败时保留上一有效状态）
+  String? _inlineError;
+
   @override
   void initState() {
     super.initState();
@@ -57,7 +60,10 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
 
   Future<void> _autoCorrect({bool silent = false}) async {
     if (_busy) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _inlineError = null;
+    });
     final scanner = ref.read(scannerBridgeProvider);
     final result = await scanner.scanDocument(_currentPath, roi: widget.roi);
     if (!mounted) return;
@@ -65,8 +71,7 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
       _busy = false;
       if (result != null) {
         _currentPath = result.path;
-        _autoApplied = true; // 自动校准只提案，最终保存以用户框为准
-        // 自动校准成功后裁剪框复位（已拉正，无需再裁）
+        _autoApplied = true;
         _corners = [
           const Offset(0.02, 0.02),
           const Offset(0.98, 0.02),
@@ -82,7 +87,7 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
           }
         }
       } else if (!silent) {
-        AppToast.error(context, '校准没成功，请手动调整裁剪框，或直接使用原图');
+        _inlineError = '自动校准未成功，请手动调整裁剪框或使用原图';
       }
     });
   }
@@ -101,7 +106,10 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
 
   Future<void> _crop() async {
     if (_busy) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _inlineError = null;
+    });
     final scanner = ref.read(scannerBridgeProvider);
     final result = await scanner.cropByPoints(
       _currentPath,
@@ -113,8 +121,9 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
     if (!mounted) return;
     setState(() {
       _busy = false;
-      if (result != null) {
-        _currentPath = result;
+      if (result.isSuccess && result.path != null) {
+        // 成功：更新路径，裁剪框复位
+        _currentPath = result.path!;
         _corners = [
           const Offset(0.02, 0.02),
           const Offset(0.98, 0.02),
@@ -122,6 +131,9 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
           const Offset(0.02, 0.98),
         ];
         _cornersDirty = false;
+      } else {
+        // 补钉 B：失败保留上一有效状态 + 页内 inline 原因
+        _inlineError = result.error ?? '裁剪失败';
       }
     });
   }
@@ -132,6 +144,7 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
       _currentPath = widget.path;
       _autoApplied = false;
       _cornersDirty = false;
+      _inlineError = null;
       _corners = [
         const Offset(0.06, 0.08),
         const Offset(0.94, 0.08),
@@ -143,13 +156,17 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
 
   /// Part 2.2 手动框选最终裁定：
   /// 确认保存按用户框渲染裁剪位图写入题目图片（严禁存原图路径）。
+  /// 补钉 B：裁剪失败时保留上一有效状态 + 页内 inline 原因（非 toast 死循环）
   Future<void> _confirm() async {
     if (_busy) return;
     var finalPath = _currentPath;
     var cropSource = _autoApplied ? 'auto' : 'original';
 
     if (_cornersDirty) {
-      setState(() => _busy = true);
+      setState(() {
+        _busy = true;
+        _inlineError = null;
+      });
       final scanner = ref.read(scannerBridgeProvider);
       final cropped = await scanner.cropByPoints(
         _currentPath,
@@ -160,11 +177,12 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
       );
       if (!mounted) return;
       setState(() => _busy = false);
-      if (cropped == null) {
-        AppToast.error(context, '裁剪没成功，请调整裁剪框再试');
+      if (!cropped.isSuccess || cropped.path == null) {
+        // 补钉 B：保留上一有效状态 + 页内 inline 原因（非 toast 死循环）
+        setState(() => _inlineError = cropped.error ?? '裁剪失败，请调整框再试');
         return;
       }
-      finalPath = cropped;
+      finalPath = cropped.path!;
       cropSource = 'manual';
     }
 
@@ -325,6 +343,30 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
                 ],
               ),
             ),
+            // 补钉 B：页内 inline 错误提示
+            if (_inlineError != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: GrowthSpacing.lg, vertical: GrowthSpacing.xs),
+                child: GlassCard(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: GrowthSpacing.md, vertical: GrowthSpacing.sm),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline_rounded,
+                          color: GrowthColors.error, size: 18),
+                      const SizedBox(width: GrowthSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          _inlineError!,
+                          style: const TextStyle(
+                              color: GrowthColors.error, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.all(GrowthSpacing.lg),
               child: GrowthButton(

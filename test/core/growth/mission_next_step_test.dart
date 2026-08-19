@@ -66,15 +66,6 @@ void main() {
     });
 
     test('一切都在轨道上 → 保持节奏', () async {
-      await db.into(db.focusSessions).insert(
-            FocusSessionsCompanion.insert(
-              id: _uuid.v4(),
-              startedAt: now.subtract(const Duration(hours: 1)),
-              endedAt: Value(now),
-              status: const Value('completed'),
-              focusMs: const Value(30 * 60 * 1000),
-            ),
-          );
       await db.into(db.questionRecords).insert(
             QuestionRecordsCompanion.insert(
               id: _uuid.v4(),
@@ -89,17 +80,9 @@ void main() {
   });
 
   group('GrowthMemoryFeed', () {
-    test('聚合双域事件并按时间倒序', () async {
+    test('聚合学习事件并按时间倒序', () async {
       await seedReviewEvent(at: now.subtract(const Duration(minutes: 5)));
-      await db.into(db.focusSessions).insert(
-            FocusSessionsCompanion.insert(
-              id: _uuid.v4(),
-              startedAt: now.subtract(const Duration(hours: 2)),
-              endedAt: Value(now.subtract(const Duration(hours: 1))),
-              status: const Value('completed'),
-              focusMs: const Value(50 * 60 * 1000),
-            ),
-          );
+      await seedReviewEvent(at: now);
 
       final moments = await GrowthMemoryFeed.recent(db, at: now);
       expect(moments.length, greaterThanOrEqualTo(2));
@@ -107,7 +90,7 @@ void main() {
           moments.first.at.isAfter(moments.last.at) ||
               moments.first.at.isAtSameMomentAs(moments.last.at),
           isTrue);
-      expect(moments.map((m) => m.kind), contains('focus'));
+      expect(moments.map((m) => m.kind), contains('learning'));
     });
   });
 }

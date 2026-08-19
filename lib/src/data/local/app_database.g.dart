@@ -3974,1483 +3974,6 @@ class AiMessagesCompanion extends UpdateCompanion<AiMessageRow> {
   }
 }
 
-class $FocusSessionsTable extends FocusSessions
-    with TableInfo<$FocusSessionsTable, FocusSession> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $FocusSessionsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-      'id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _missionIdMeta =
-      const VerificationMeta('missionId');
-  @override
-  late final GeneratedColumn<String> missionId = GeneratedColumn<String>(
-      'mission_id', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _questionIdsMeta =
-      const VerificationMeta('questionIds');
-  @override
-  late final GeneratedColumn<String> questionIds = GeneratedColumn<String>(
-      'question_ids', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('[]'));
-  static const VerificationMeta _modeMeta = const VerificationMeta('mode');
-  @override
-  late final GeneratedColumn<String> mode = GeneratedColumn<String>(
-      'mode', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('normal'));
-  static const VerificationMeta _statusMeta = const VerificationMeta('status');
-  @override
-  late final GeneratedColumn<String> status = GeneratedColumn<String>(
-      'status', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('active'));
-  static const VerificationMeta _startedAtMeta =
-      const VerificationMeta('startedAt');
-  @override
-  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
-      'started_at', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _endedAtMeta =
-      const VerificationMeta('endedAt');
-  @override
-  late final GeneratedColumn<DateTime> endedAt = GeneratedColumn<DateTime>(
-      'ended_at', aliasedName, true,
-      type: DriftSqlType.dateTime, requiredDuringInsert: false);
-  static const VerificationMeta _plannedMsMeta =
-      const VerificationMeta('plannedMs');
-  @override
-  late final GeneratedColumn<int> plannedMs = GeneratedColumn<int>(
-      'planned_ms', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
-  static const VerificationMeta _focusMsMeta =
-      const VerificationMeta('focusMs');
-  @override
-  late final GeneratedColumn<int> focusMs = GeneratedColumn<int>(
-      'focus_ms', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
-  static const VerificationMeta _distractionCountMeta =
-      const VerificationMeta('distractionCount');
-  @override
-  late final GeneratedColumn<int> distractionCount = GeneratedColumn<int>(
-      'distraction_count', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
-  @override
-  List<GeneratedColumn> get $columns => [
-        id,
-        missionId,
-        questionIds,
-        mode,
-        status,
-        startedAt,
-        endedAt,
-        plannedMs,
-        focusMs,
-        distractionCount
-      ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'focus_sessions';
-  @override
-  VerificationContext validateIntegrity(Insertable<FocusSession> instance,
-      {bool isInserting = false}) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('mission_id')) {
-      context.handle(_missionIdMeta,
-          missionId.isAcceptableOrUnknown(data['mission_id']!, _missionIdMeta));
-    }
-    if (data.containsKey('question_ids')) {
-      context.handle(
-          _questionIdsMeta,
-          questionIds.isAcceptableOrUnknown(
-              data['question_ids']!, _questionIdsMeta));
-    }
-    if (data.containsKey('mode')) {
-      context.handle(
-          _modeMeta, mode.isAcceptableOrUnknown(data['mode']!, _modeMeta));
-    }
-    if (data.containsKey('status')) {
-      context.handle(_statusMeta,
-          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
-    }
-    if (data.containsKey('started_at')) {
-      context.handle(_startedAtMeta,
-          startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta));
-    } else if (isInserting) {
-      context.missing(_startedAtMeta);
-    }
-    if (data.containsKey('ended_at')) {
-      context.handle(_endedAtMeta,
-          endedAt.isAcceptableOrUnknown(data['ended_at']!, _endedAtMeta));
-    }
-    if (data.containsKey('planned_ms')) {
-      context.handle(_plannedMsMeta,
-          plannedMs.isAcceptableOrUnknown(data['planned_ms']!, _plannedMsMeta));
-    }
-    if (data.containsKey('focus_ms')) {
-      context.handle(_focusMsMeta,
-          focusMs.isAcceptableOrUnknown(data['focus_ms']!, _focusMsMeta));
-    }
-    if (data.containsKey('distraction_count')) {
-      context.handle(
-          _distractionCountMeta,
-          distractionCount.isAcceptableOrUnknown(
-              data['distraction_count']!, _distractionCountMeta));
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  FocusSession map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return FocusSession(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      missionId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}mission_id']),
-      questionIds: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}question_ids'])!,
-      mode: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}mode'])!,
-      status: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
-      startedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}started_at'])!,
-      endedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}ended_at']),
-      plannedMs: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}planned_ms'])!,
-      focusMs: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}focus_ms'])!,
-      distractionCount: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}distraction_count'])!,
-    );
-  }
-
-  @override
-  $FocusSessionsTable createAlias(String alias) {
-    return $FocusSessionsTable(attachedDatabase, alias);
-  }
-}
-
-class FocusSession extends DataClass implements Insertable<FocusSession> {
-  /// uuid
-  final String id;
-
-  /// 关联任务（可空：自由专注）
-  final String? missionId;
-
-  /// 关联题目，JSON 数组 —— “25 分钟吃透这 3 道题”的落地字段
-  final String questionIds;
-
-  /// normal / abyss
-  final String mode;
-
-  /// active / completed / aborted
-  final String status;
-  final DateTime startedAt;
-  final DateTime? endedAt;
-
-  /// 计划时长（毫秒）
-  final int plannedMs;
-
-  /// 真实专注时长（focusMath 区间去重后，毫秒）—— 只认这个数
-  final int focusMs;
-  final int distractionCount;
-  const FocusSession(
-      {required this.id,
-      this.missionId,
-      required this.questionIds,
-      required this.mode,
-      required this.status,
-      required this.startedAt,
-      this.endedAt,
-      required this.plannedMs,
-      required this.focusMs,
-      required this.distractionCount});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    if (!nullToAbsent || missionId != null) {
-      map['mission_id'] = Variable<String>(missionId);
-    }
-    map['question_ids'] = Variable<String>(questionIds);
-    map['mode'] = Variable<String>(mode);
-    map['status'] = Variable<String>(status);
-    map['started_at'] = Variable<DateTime>(startedAt);
-    if (!nullToAbsent || endedAt != null) {
-      map['ended_at'] = Variable<DateTime>(endedAt);
-    }
-    map['planned_ms'] = Variable<int>(plannedMs);
-    map['focus_ms'] = Variable<int>(focusMs);
-    map['distraction_count'] = Variable<int>(distractionCount);
-    return map;
-  }
-
-  FocusSessionsCompanion toCompanion(bool nullToAbsent) {
-    return FocusSessionsCompanion(
-      id: Value(id),
-      missionId: missionId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(missionId),
-      questionIds: Value(questionIds),
-      mode: Value(mode),
-      status: Value(status),
-      startedAt: Value(startedAt),
-      endedAt: endedAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(endedAt),
-      plannedMs: Value(plannedMs),
-      focusMs: Value(focusMs),
-      distractionCount: Value(distractionCount),
-    );
-  }
-
-  factory FocusSession.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return FocusSession(
-      id: serializer.fromJson<String>(json['id']),
-      missionId: serializer.fromJson<String?>(json['missionId']),
-      questionIds: serializer.fromJson<String>(json['questionIds']),
-      mode: serializer.fromJson<String>(json['mode']),
-      status: serializer.fromJson<String>(json['status']),
-      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
-      endedAt: serializer.fromJson<DateTime?>(json['endedAt']),
-      plannedMs: serializer.fromJson<int>(json['plannedMs']),
-      focusMs: serializer.fromJson<int>(json['focusMs']),
-      distractionCount: serializer.fromJson<int>(json['distractionCount']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'missionId': serializer.toJson<String?>(missionId),
-      'questionIds': serializer.toJson<String>(questionIds),
-      'mode': serializer.toJson<String>(mode),
-      'status': serializer.toJson<String>(status),
-      'startedAt': serializer.toJson<DateTime>(startedAt),
-      'endedAt': serializer.toJson<DateTime?>(endedAt),
-      'plannedMs': serializer.toJson<int>(plannedMs),
-      'focusMs': serializer.toJson<int>(focusMs),
-      'distractionCount': serializer.toJson<int>(distractionCount),
-    };
-  }
-
-  FocusSession copyWith(
-          {String? id,
-          Value<String?> missionId = const Value.absent(),
-          String? questionIds,
-          String? mode,
-          String? status,
-          DateTime? startedAt,
-          Value<DateTime?> endedAt = const Value.absent(),
-          int? plannedMs,
-          int? focusMs,
-          int? distractionCount}) =>
-      FocusSession(
-        id: id ?? this.id,
-        missionId: missionId.present ? missionId.value : this.missionId,
-        questionIds: questionIds ?? this.questionIds,
-        mode: mode ?? this.mode,
-        status: status ?? this.status,
-        startedAt: startedAt ?? this.startedAt,
-        endedAt: endedAt.present ? endedAt.value : this.endedAt,
-        plannedMs: plannedMs ?? this.plannedMs,
-        focusMs: focusMs ?? this.focusMs,
-        distractionCount: distractionCount ?? this.distractionCount,
-      );
-  FocusSession copyWithCompanion(FocusSessionsCompanion data) {
-    return FocusSession(
-      id: data.id.present ? data.id.value : this.id,
-      missionId: data.missionId.present ? data.missionId.value : this.missionId,
-      questionIds:
-          data.questionIds.present ? data.questionIds.value : this.questionIds,
-      mode: data.mode.present ? data.mode.value : this.mode,
-      status: data.status.present ? data.status.value : this.status,
-      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
-      endedAt: data.endedAt.present ? data.endedAt.value : this.endedAt,
-      plannedMs: data.plannedMs.present ? data.plannedMs.value : this.plannedMs,
-      focusMs: data.focusMs.present ? data.focusMs.value : this.focusMs,
-      distractionCount: data.distractionCount.present
-          ? data.distractionCount.value
-          : this.distractionCount,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('FocusSession(')
-          ..write('id: $id, ')
-          ..write('missionId: $missionId, ')
-          ..write('questionIds: $questionIds, ')
-          ..write('mode: $mode, ')
-          ..write('status: $status, ')
-          ..write('startedAt: $startedAt, ')
-          ..write('endedAt: $endedAt, ')
-          ..write('plannedMs: $plannedMs, ')
-          ..write('focusMs: $focusMs, ')
-          ..write('distractionCount: $distractionCount')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(id, missionId, questionIds, mode, status,
-      startedAt, endedAt, plannedMs, focusMs, distractionCount);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is FocusSession &&
-          other.id == this.id &&
-          other.missionId == this.missionId &&
-          other.questionIds == this.questionIds &&
-          other.mode == this.mode &&
-          other.status == this.status &&
-          other.startedAt == this.startedAt &&
-          other.endedAt == this.endedAt &&
-          other.plannedMs == this.plannedMs &&
-          other.focusMs == this.focusMs &&
-          other.distractionCount == this.distractionCount);
-}
-
-class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
-  final Value<String> id;
-  final Value<String?> missionId;
-  final Value<String> questionIds;
-  final Value<String> mode;
-  final Value<String> status;
-  final Value<DateTime> startedAt;
-  final Value<DateTime?> endedAt;
-  final Value<int> plannedMs;
-  final Value<int> focusMs;
-  final Value<int> distractionCount;
-  final Value<int> rowid;
-  const FocusSessionsCompanion({
-    this.id = const Value.absent(),
-    this.missionId = const Value.absent(),
-    this.questionIds = const Value.absent(),
-    this.mode = const Value.absent(),
-    this.status = const Value.absent(),
-    this.startedAt = const Value.absent(),
-    this.endedAt = const Value.absent(),
-    this.plannedMs = const Value.absent(),
-    this.focusMs = const Value.absent(),
-    this.distractionCount = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  FocusSessionsCompanion.insert({
-    required String id,
-    this.missionId = const Value.absent(),
-    this.questionIds = const Value.absent(),
-    this.mode = const Value.absent(),
-    this.status = const Value.absent(),
-    required DateTime startedAt,
-    this.endedAt = const Value.absent(),
-    this.plannedMs = const Value.absent(),
-    this.focusMs = const Value.absent(),
-    this.distractionCount = const Value.absent(),
-    this.rowid = const Value.absent(),
-  })  : id = Value(id),
-        startedAt = Value(startedAt);
-  static Insertable<FocusSession> custom({
-    Expression<String>? id,
-    Expression<String>? missionId,
-    Expression<String>? questionIds,
-    Expression<String>? mode,
-    Expression<String>? status,
-    Expression<DateTime>? startedAt,
-    Expression<DateTime>? endedAt,
-    Expression<int>? plannedMs,
-    Expression<int>? focusMs,
-    Expression<int>? distractionCount,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (missionId != null) 'mission_id': missionId,
-      if (questionIds != null) 'question_ids': questionIds,
-      if (mode != null) 'mode': mode,
-      if (status != null) 'status': status,
-      if (startedAt != null) 'started_at': startedAt,
-      if (endedAt != null) 'ended_at': endedAt,
-      if (plannedMs != null) 'planned_ms': plannedMs,
-      if (focusMs != null) 'focus_ms': focusMs,
-      if (distractionCount != null) 'distraction_count': distractionCount,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  FocusSessionsCompanion copyWith(
-      {Value<String>? id,
-      Value<String?>? missionId,
-      Value<String>? questionIds,
-      Value<String>? mode,
-      Value<String>? status,
-      Value<DateTime>? startedAt,
-      Value<DateTime?>? endedAt,
-      Value<int>? plannedMs,
-      Value<int>? focusMs,
-      Value<int>? distractionCount,
-      Value<int>? rowid}) {
-    return FocusSessionsCompanion(
-      id: id ?? this.id,
-      missionId: missionId ?? this.missionId,
-      questionIds: questionIds ?? this.questionIds,
-      mode: mode ?? this.mode,
-      status: status ?? this.status,
-      startedAt: startedAt ?? this.startedAt,
-      endedAt: endedAt ?? this.endedAt,
-      plannedMs: plannedMs ?? this.plannedMs,
-      focusMs: focusMs ?? this.focusMs,
-      distractionCount: distractionCount ?? this.distractionCount,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (missionId.present) {
-      map['mission_id'] = Variable<String>(missionId.value);
-    }
-    if (questionIds.present) {
-      map['question_ids'] = Variable<String>(questionIds.value);
-    }
-    if (mode.present) {
-      map['mode'] = Variable<String>(mode.value);
-    }
-    if (status.present) {
-      map['status'] = Variable<String>(status.value);
-    }
-    if (startedAt.present) {
-      map['started_at'] = Variable<DateTime>(startedAt.value);
-    }
-    if (endedAt.present) {
-      map['ended_at'] = Variable<DateTime>(endedAt.value);
-    }
-    if (plannedMs.present) {
-      map['planned_ms'] = Variable<int>(plannedMs.value);
-    }
-    if (focusMs.present) {
-      map['focus_ms'] = Variable<int>(focusMs.value);
-    }
-    if (distractionCount.present) {
-      map['distraction_count'] = Variable<int>(distractionCount.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('FocusSessionsCompanion(')
-          ..write('id: $id, ')
-          ..write('missionId: $missionId, ')
-          ..write('questionIds: $questionIds, ')
-          ..write('mode: $mode, ')
-          ..write('status: $status, ')
-          ..write('startedAt: $startedAt, ')
-          ..write('endedAt: $endedAt, ')
-          ..write('plannedMs: $plannedMs, ')
-          ..write('focusMs: $focusMs, ')
-          ..write('distractionCount: $distractionCount, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $FocusEventsTable extends FocusEvents
-    with TableInfo<$FocusEventsTable, FocusEvent> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $FocusEventsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
-  static const VerificationMeta _sessionIdMeta =
-      const VerificationMeta('sessionId');
-  @override
-  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
-      'session_id', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _eventTypeMeta =
-      const VerificationMeta('eventType');
-  @override
-  late final GeneratedColumn<String> eventType = GeneratedColumn<String>(
-      'event_type', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _appPackageMeta =
-      const VerificationMeta('appPackage');
-  @override
-  late final GeneratedColumn<String> appPackage = GeneratedColumn<String>(
-      'app_package', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _atMeta = const VerificationMeta('at');
-  @override
-  late final GeneratedColumn<DateTime> at = GeneratedColumn<DateTime>(
-      'at', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _durationMsMeta =
-      const VerificationMeta('durationMs');
-  @override
-  late final GeneratedColumn<int> durationMs = GeneratedColumn<int>(
-      'duration_ms', aliasedName, true,
-      type: DriftSqlType.int, requiredDuringInsert: false);
-  static const VerificationMeta _payloadMeta =
-      const VerificationMeta('payload');
-  @override
-  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
-      'payload', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('{}'));
-  @override
-  List<GeneratedColumn> get $columns =>
-      [id, sessionId, eventType, appPackage, at, durationMs, payload];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'focus_events';
-  @override
-  VerificationContext validateIntegrity(Insertable<FocusEvent> instance,
-      {bool isInserting = false}) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('session_id')) {
-      context.handle(_sessionIdMeta,
-          sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta));
-    }
-    if (data.containsKey('event_type')) {
-      context.handle(_eventTypeMeta,
-          eventType.isAcceptableOrUnknown(data['event_type']!, _eventTypeMeta));
-    } else if (isInserting) {
-      context.missing(_eventTypeMeta);
-    }
-    if (data.containsKey('app_package')) {
-      context.handle(
-          _appPackageMeta,
-          appPackage.isAcceptableOrUnknown(
-              data['app_package']!, _appPackageMeta));
-    }
-    if (data.containsKey('at')) {
-      context.handle(_atMeta, at.isAcceptableOrUnknown(data['at']!, _atMeta));
-    } else if (isInserting) {
-      context.missing(_atMeta);
-    }
-    if (data.containsKey('duration_ms')) {
-      context.handle(
-          _durationMsMeta,
-          durationMs.isAcceptableOrUnknown(
-              data['duration_ms']!, _durationMsMeta));
-    }
-    if (data.containsKey('payload')) {
-      context.handle(_payloadMeta,
-          payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta));
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  FocusEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return FocusEvent(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      sessionId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}session_id']),
-      eventType: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}event_type'])!,
-      appPackage: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}app_package']),
-      at: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}at'])!,
-      durationMs: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}duration_ms']),
-      payload: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}payload'])!,
-    );
-  }
-
-  @override
-  $FocusEventsTable createAlias(String alias) {
-    return $FocusEventsTable(attachedDatabase, alias);
-  }
-}
-
-class FocusEvent extends DataClass implements Insertable<FocusEvent> {
-  final int id;
-
-  /// 关联会话（可空：监控态事件无会话）
-  final String? sessionId;
-
-  /// app_foreground / app_usage / distraction / lock_shown / lock_dismissed ...
-  final String eventType;
-
-  /// 前台应用包名（app_usage / app_foreground 事件）
-  final String? appPackage;
-  final DateTime at;
-
-  /// 事件持续时长（毫秒，可空）
-  final int? durationMs;
-
-  /// 附加事实，JSON
-  final String payload;
-  const FocusEvent(
-      {required this.id,
-      this.sessionId,
-      required this.eventType,
-      this.appPackage,
-      required this.at,
-      this.durationMs,
-      required this.payload});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    if (!nullToAbsent || sessionId != null) {
-      map['session_id'] = Variable<String>(sessionId);
-    }
-    map['event_type'] = Variable<String>(eventType);
-    if (!nullToAbsent || appPackage != null) {
-      map['app_package'] = Variable<String>(appPackage);
-    }
-    map['at'] = Variable<DateTime>(at);
-    if (!nullToAbsent || durationMs != null) {
-      map['duration_ms'] = Variable<int>(durationMs);
-    }
-    map['payload'] = Variable<String>(payload);
-    return map;
-  }
-
-  FocusEventsCompanion toCompanion(bool nullToAbsent) {
-    return FocusEventsCompanion(
-      id: Value(id),
-      sessionId: sessionId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(sessionId),
-      eventType: Value(eventType),
-      appPackage: appPackage == null && nullToAbsent
-          ? const Value.absent()
-          : Value(appPackage),
-      at: Value(at),
-      durationMs: durationMs == null && nullToAbsent
-          ? const Value.absent()
-          : Value(durationMs),
-      payload: Value(payload),
-    );
-  }
-
-  factory FocusEvent.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return FocusEvent(
-      id: serializer.fromJson<int>(json['id']),
-      sessionId: serializer.fromJson<String?>(json['sessionId']),
-      eventType: serializer.fromJson<String>(json['eventType']),
-      appPackage: serializer.fromJson<String?>(json['appPackage']),
-      at: serializer.fromJson<DateTime>(json['at']),
-      durationMs: serializer.fromJson<int?>(json['durationMs']),
-      payload: serializer.fromJson<String>(json['payload']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'sessionId': serializer.toJson<String?>(sessionId),
-      'eventType': serializer.toJson<String>(eventType),
-      'appPackage': serializer.toJson<String?>(appPackage),
-      'at': serializer.toJson<DateTime>(at),
-      'durationMs': serializer.toJson<int?>(durationMs),
-      'payload': serializer.toJson<String>(payload),
-    };
-  }
-
-  FocusEvent copyWith(
-          {int? id,
-          Value<String?> sessionId = const Value.absent(),
-          String? eventType,
-          Value<String?> appPackage = const Value.absent(),
-          DateTime? at,
-          Value<int?> durationMs = const Value.absent(),
-          String? payload}) =>
-      FocusEvent(
-        id: id ?? this.id,
-        sessionId: sessionId.present ? sessionId.value : this.sessionId,
-        eventType: eventType ?? this.eventType,
-        appPackage: appPackage.present ? appPackage.value : this.appPackage,
-        at: at ?? this.at,
-        durationMs: durationMs.present ? durationMs.value : this.durationMs,
-        payload: payload ?? this.payload,
-      );
-  FocusEvent copyWithCompanion(FocusEventsCompanion data) {
-    return FocusEvent(
-      id: data.id.present ? data.id.value : this.id,
-      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
-      eventType: data.eventType.present ? data.eventType.value : this.eventType,
-      appPackage:
-          data.appPackage.present ? data.appPackage.value : this.appPackage,
-      at: data.at.present ? data.at.value : this.at,
-      durationMs:
-          data.durationMs.present ? data.durationMs.value : this.durationMs,
-      payload: data.payload.present ? data.payload.value : this.payload,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('FocusEvent(')
-          ..write('id: $id, ')
-          ..write('sessionId: $sessionId, ')
-          ..write('eventType: $eventType, ')
-          ..write('appPackage: $appPackage, ')
-          ..write('at: $at, ')
-          ..write('durationMs: $durationMs, ')
-          ..write('payload: $payload')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(
-      id, sessionId, eventType, appPackage, at, durationMs, payload);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is FocusEvent &&
-          other.id == this.id &&
-          other.sessionId == this.sessionId &&
-          other.eventType == this.eventType &&
-          other.appPackage == this.appPackage &&
-          other.at == this.at &&
-          other.durationMs == this.durationMs &&
-          other.payload == this.payload);
-}
-
-class FocusEventsCompanion extends UpdateCompanion<FocusEvent> {
-  final Value<int> id;
-  final Value<String?> sessionId;
-  final Value<String> eventType;
-  final Value<String?> appPackage;
-  final Value<DateTime> at;
-  final Value<int?> durationMs;
-  final Value<String> payload;
-  const FocusEventsCompanion({
-    this.id = const Value.absent(),
-    this.sessionId = const Value.absent(),
-    this.eventType = const Value.absent(),
-    this.appPackage = const Value.absent(),
-    this.at = const Value.absent(),
-    this.durationMs = const Value.absent(),
-    this.payload = const Value.absent(),
-  });
-  FocusEventsCompanion.insert({
-    this.id = const Value.absent(),
-    this.sessionId = const Value.absent(),
-    required String eventType,
-    this.appPackage = const Value.absent(),
-    required DateTime at,
-    this.durationMs = const Value.absent(),
-    this.payload = const Value.absent(),
-  })  : eventType = Value(eventType),
-        at = Value(at);
-  static Insertable<FocusEvent> custom({
-    Expression<int>? id,
-    Expression<String>? sessionId,
-    Expression<String>? eventType,
-    Expression<String>? appPackage,
-    Expression<DateTime>? at,
-    Expression<int>? durationMs,
-    Expression<String>? payload,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (sessionId != null) 'session_id': sessionId,
-      if (eventType != null) 'event_type': eventType,
-      if (appPackage != null) 'app_package': appPackage,
-      if (at != null) 'at': at,
-      if (durationMs != null) 'duration_ms': durationMs,
-      if (payload != null) 'payload': payload,
-    });
-  }
-
-  FocusEventsCompanion copyWith(
-      {Value<int>? id,
-      Value<String?>? sessionId,
-      Value<String>? eventType,
-      Value<String?>? appPackage,
-      Value<DateTime>? at,
-      Value<int?>? durationMs,
-      Value<String>? payload}) {
-    return FocusEventsCompanion(
-      id: id ?? this.id,
-      sessionId: sessionId ?? this.sessionId,
-      eventType: eventType ?? this.eventType,
-      appPackage: appPackage ?? this.appPackage,
-      at: at ?? this.at,
-      durationMs: durationMs ?? this.durationMs,
-      payload: payload ?? this.payload,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (sessionId.present) {
-      map['session_id'] = Variable<String>(sessionId.value);
-    }
-    if (eventType.present) {
-      map['event_type'] = Variable<String>(eventType.value);
-    }
-    if (appPackage.present) {
-      map['app_package'] = Variable<String>(appPackage.value);
-    }
-    if (at.present) {
-      map['at'] = Variable<DateTime>(at.value);
-    }
-    if (durationMs.present) {
-      map['duration_ms'] = Variable<int>(durationMs.value);
-    }
-    if (payload.present) {
-      map['payload'] = Variable<String>(payload.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('FocusEventsCompanion(')
-          ..write('id: $id, ')
-          ..write('sessionId: $sessionId, ')
-          ..write('eventType: $eventType, ')
-          ..write('appPackage: $appPackage, ')
-          ..write('at: $at, ')
-          ..write('durationMs: $durationMs, ')
-          ..write('payload: $payload')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $MissionsTable extends Missions with TableInfo<$MissionsTable, Mission> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $MissionsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-      'id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _titleMeta = const VerificationMeta('title');
-  @override
-  late final GeneratedColumn<String> title = GeneratedColumn<String>(
-      'title', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
-  @override
-  late final GeneratedColumn<String> source = GeneratedColumn<String>(
-      'source', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('manual'));
-  static const VerificationMeta _statusMeta = const VerificationMeta('status');
-  @override
-  late final GeneratedColumn<String> status = GeneratedColumn<String>(
-      'status', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('pending'));
-  static const VerificationMeta _priorityMeta =
-      const VerificationMeta('priority');
-  @override
-  late final GeneratedColumn<int> priority = GeneratedColumn<int>(
-      'priority', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
-  static const VerificationMeta _scheduledForMeta =
-      const VerificationMeta('scheduledFor');
-  @override
-  late final GeneratedColumn<String> scheduledFor = GeneratedColumn<String>(
-      'scheduled_for', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _linkedQuestionIdsMeta =
-      const VerificationMeta('linkedQuestionIds');
-  @override
-  late final GeneratedColumn<String> linkedQuestionIds =
-      GeneratedColumn<String>('linked_question_ids', aliasedName, false,
-          type: DriftSqlType.string,
-          requiredDuringInsert: false,
-          defaultValue: const Constant('[]'));
-  static const VerificationMeta _requirementMeta =
-      const VerificationMeta('requirement');
-  @override
-  late final GeneratedColumn<String> requirement = GeneratedColumn<String>(
-      'requirement', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('{}'));
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
-  @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-      'created_at', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _completedAtMeta =
-      const VerificationMeta('completedAt');
-  @override
-  late final GeneratedColumn<DateTime> completedAt = GeneratedColumn<DateTime>(
-      'completed_at', aliasedName, true,
-      type: DriftSqlType.dateTime, requiredDuringInsert: false);
-  static const VerificationMeta _xpAwardedMeta =
-      const VerificationMeta('xpAwarded');
-  @override
-  late final GeneratedColumn<int> xpAwarded = GeneratedColumn<int>(
-      'xp_awarded', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
-  @override
-  List<GeneratedColumn> get $columns => [
-        id,
-        title,
-        source,
-        status,
-        priority,
-        scheduledFor,
-        linkedQuestionIds,
-        requirement,
-        createdAt,
-        completedAt,
-        xpAwarded
-      ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'missions';
-  @override
-  VerificationContext validateIntegrity(Insertable<Mission> instance,
-      {bool isInserting = false}) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('title')) {
-      context.handle(
-          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
-    } else if (isInserting) {
-      context.missing(_titleMeta);
-    }
-    if (data.containsKey('source')) {
-      context.handle(_sourceMeta,
-          source.isAcceptableOrUnknown(data['source']!, _sourceMeta));
-    }
-    if (data.containsKey('status')) {
-      context.handle(_statusMeta,
-          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
-    }
-    if (data.containsKey('priority')) {
-      context.handle(_priorityMeta,
-          priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta));
-    }
-    if (data.containsKey('scheduled_for')) {
-      context.handle(
-          _scheduledForMeta,
-          scheduledFor.isAcceptableOrUnknown(
-              data['scheduled_for']!, _scheduledForMeta));
-    } else if (isInserting) {
-      context.missing(_scheduledForMeta);
-    }
-    if (data.containsKey('linked_question_ids')) {
-      context.handle(
-          _linkedQuestionIdsMeta,
-          linkedQuestionIds.isAcceptableOrUnknown(
-              data['linked_question_ids']!, _linkedQuestionIdsMeta));
-    }
-    if (data.containsKey('requirement')) {
-      context.handle(
-          _requirementMeta,
-          requirement.isAcceptableOrUnknown(
-              data['requirement']!, _requirementMeta));
-    }
-    if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
-    } else if (isInserting) {
-      context.missing(_createdAtMeta);
-    }
-    if (data.containsKey('completed_at')) {
-      context.handle(
-          _completedAtMeta,
-          completedAt.isAcceptableOrUnknown(
-              data['completed_at']!, _completedAtMeta));
-    }
-    if (data.containsKey('xp_awarded')) {
-      context.handle(_xpAwardedMeta,
-          xpAwarded.isAcceptableOrUnknown(data['xp_awarded']!, _xpAwardedMeta));
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  Mission map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Mission(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      title: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
-      source: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}source'])!,
-      status: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
-      priority: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}priority'])!,
-      scheduledFor: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}scheduled_for'])!,
-      linkedQuestionIds: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}linked_question_ids'])!,
-      requirement: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}requirement'])!,
-      createdAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
-      completedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}completed_at']),
-      xpAwarded: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}xp_awarded'])!,
-    );
-  }
-
-  @override
-  $MissionsTable createAlias(String alias) {
-    return $MissionsTable(attachedDatabase, alias);
-  }
-}
-
-class Mission extends DataClass implements Insertable<Mission> {
-  final String id;
-  final String title;
-  final String source;
-
-  /// pending / active / done / failed / skipped
-  final String status;
-  final int priority;
-
-  /// 计划执行日期 yyyy-MM-dd
-  final String scheduledFor;
-
-  /// 关联题目，JSON 数组（复习任务携带）
-  final String linkedQuestionIds;
-
-  /// 完成条件定义，JSON（如 {type:"review_due", count:8} / {type:"focus", ms:1500000}）
-  final String requirement;
-  final DateTime createdAt;
-  final DateTime? completedAt;
-
-  /// 完成后发放的 XP
-  final int xpAwarded;
-  const Mission(
-      {required this.id,
-      required this.title,
-      required this.source,
-      required this.status,
-      required this.priority,
-      required this.scheduledFor,
-      required this.linkedQuestionIds,
-      required this.requirement,
-      required this.createdAt,
-      this.completedAt,
-      required this.xpAwarded});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['title'] = Variable<String>(title);
-    map['source'] = Variable<String>(source);
-    map['status'] = Variable<String>(status);
-    map['priority'] = Variable<int>(priority);
-    map['scheduled_for'] = Variable<String>(scheduledFor);
-    map['linked_question_ids'] = Variable<String>(linkedQuestionIds);
-    map['requirement'] = Variable<String>(requirement);
-    map['created_at'] = Variable<DateTime>(createdAt);
-    if (!nullToAbsent || completedAt != null) {
-      map['completed_at'] = Variable<DateTime>(completedAt);
-    }
-    map['xp_awarded'] = Variable<int>(xpAwarded);
-    return map;
-  }
-
-  MissionsCompanion toCompanion(bool nullToAbsent) {
-    return MissionsCompanion(
-      id: Value(id),
-      title: Value(title),
-      source: Value(source),
-      status: Value(status),
-      priority: Value(priority),
-      scheduledFor: Value(scheduledFor),
-      linkedQuestionIds: Value(linkedQuestionIds),
-      requirement: Value(requirement),
-      createdAt: Value(createdAt),
-      completedAt: completedAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(completedAt),
-      xpAwarded: Value(xpAwarded),
-    );
-  }
-
-  factory Mission.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Mission(
-      id: serializer.fromJson<String>(json['id']),
-      title: serializer.fromJson<String>(json['title']),
-      source: serializer.fromJson<String>(json['source']),
-      status: serializer.fromJson<String>(json['status']),
-      priority: serializer.fromJson<int>(json['priority']),
-      scheduledFor: serializer.fromJson<String>(json['scheduledFor']),
-      linkedQuestionIds: serializer.fromJson<String>(json['linkedQuestionIds']),
-      requirement: serializer.fromJson<String>(json['requirement']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
-      xpAwarded: serializer.fromJson<int>(json['xpAwarded']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'title': serializer.toJson<String>(title),
-      'source': serializer.toJson<String>(source),
-      'status': serializer.toJson<String>(status),
-      'priority': serializer.toJson<int>(priority),
-      'scheduledFor': serializer.toJson<String>(scheduledFor),
-      'linkedQuestionIds': serializer.toJson<String>(linkedQuestionIds),
-      'requirement': serializer.toJson<String>(requirement),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'completedAt': serializer.toJson<DateTime?>(completedAt),
-      'xpAwarded': serializer.toJson<int>(xpAwarded),
-    };
-  }
-
-  Mission copyWith(
-          {String? id,
-          String? title,
-          String? source,
-          String? status,
-          int? priority,
-          String? scheduledFor,
-          String? linkedQuestionIds,
-          String? requirement,
-          DateTime? createdAt,
-          Value<DateTime?> completedAt = const Value.absent(),
-          int? xpAwarded}) =>
-      Mission(
-        id: id ?? this.id,
-        title: title ?? this.title,
-        source: source ?? this.source,
-        status: status ?? this.status,
-        priority: priority ?? this.priority,
-        scheduledFor: scheduledFor ?? this.scheduledFor,
-        linkedQuestionIds: linkedQuestionIds ?? this.linkedQuestionIds,
-        requirement: requirement ?? this.requirement,
-        createdAt: createdAt ?? this.createdAt,
-        completedAt: completedAt.present ? completedAt.value : this.completedAt,
-        xpAwarded: xpAwarded ?? this.xpAwarded,
-      );
-  Mission copyWithCompanion(MissionsCompanion data) {
-    return Mission(
-      id: data.id.present ? data.id.value : this.id,
-      title: data.title.present ? data.title.value : this.title,
-      source: data.source.present ? data.source.value : this.source,
-      status: data.status.present ? data.status.value : this.status,
-      priority: data.priority.present ? data.priority.value : this.priority,
-      scheduledFor: data.scheduledFor.present
-          ? data.scheduledFor.value
-          : this.scheduledFor,
-      linkedQuestionIds: data.linkedQuestionIds.present
-          ? data.linkedQuestionIds.value
-          : this.linkedQuestionIds,
-      requirement:
-          data.requirement.present ? data.requirement.value : this.requirement,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      completedAt:
-          data.completedAt.present ? data.completedAt.value : this.completedAt,
-      xpAwarded: data.xpAwarded.present ? data.xpAwarded.value : this.xpAwarded,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('Mission(')
-          ..write('id: $id, ')
-          ..write('title: $title, ')
-          ..write('source: $source, ')
-          ..write('status: $status, ')
-          ..write('priority: $priority, ')
-          ..write('scheduledFor: $scheduledFor, ')
-          ..write('linkedQuestionIds: $linkedQuestionIds, ')
-          ..write('requirement: $requirement, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('completedAt: $completedAt, ')
-          ..write('xpAwarded: $xpAwarded')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(
-      id,
-      title,
-      source,
-      status,
-      priority,
-      scheduledFor,
-      linkedQuestionIds,
-      requirement,
-      createdAt,
-      completedAt,
-      xpAwarded);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is Mission &&
-          other.id == this.id &&
-          other.title == this.title &&
-          other.source == this.source &&
-          other.status == this.status &&
-          other.priority == this.priority &&
-          other.scheduledFor == this.scheduledFor &&
-          other.linkedQuestionIds == this.linkedQuestionIds &&
-          other.requirement == this.requirement &&
-          other.createdAt == this.createdAt &&
-          other.completedAt == this.completedAt &&
-          other.xpAwarded == this.xpAwarded);
-}
-
-class MissionsCompanion extends UpdateCompanion<Mission> {
-  final Value<String> id;
-  final Value<String> title;
-  final Value<String> source;
-  final Value<String> status;
-  final Value<int> priority;
-  final Value<String> scheduledFor;
-  final Value<String> linkedQuestionIds;
-  final Value<String> requirement;
-  final Value<DateTime> createdAt;
-  final Value<DateTime?> completedAt;
-  final Value<int> xpAwarded;
-  final Value<int> rowid;
-  const MissionsCompanion({
-    this.id = const Value.absent(),
-    this.title = const Value.absent(),
-    this.source = const Value.absent(),
-    this.status = const Value.absent(),
-    this.priority = const Value.absent(),
-    this.scheduledFor = const Value.absent(),
-    this.linkedQuestionIds = const Value.absent(),
-    this.requirement = const Value.absent(),
-    this.createdAt = const Value.absent(),
-    this.completedAt = const Value.absent(),
-    this.xpAwarded = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  MissionsCompanion.insert({
-    required String id,
-    required String title,
-    this.source = const Value.absent(),
-    this.status = const Value.absent(),
-    this.priority = const Value.absent(),
-    required String scheduledFor,
-    this.linkedQuestionIds = const Value.absent(),
-    this.requirement = const Value.absent(),
-    required DateTime createdAt,
-    this.completedAt = const Value.absent(),
-    this.xpAwarded = const Value.absent(),
-    this.rowid = const Value.absent(),
-  })  : id = Value(id),
-        title = Value(title),
-        scheduledFor = Value(scheduledFor),
-        createdAt = Value(createdAt);
-  static Insertable<Mission> custom({
-    Expression<String>? id,
-    Expression<String>? title,
-    Expression<String>? source,
-    Expression<String>? status,
-    Expression<int>? priority,
-    Expression<String>? scheduledFor,
-    Expression<String>? linkedQuestionIds,
-    Expression<String>? requirement,
-    Expression<DateTime>? createdAt,
-    Expression<DateTime>? completedAt,
-    Expression<int>? xpAwarded,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (title != null) 'title': title,
-      if (source != null) 'source': source,
-      if (status != null) 'status': status,
-      if (priority != null) 'priority': priority,
-      if (scheduledFor != null) 'scheduled_for': scheduledFor,
-      if (linkedQuestionIds != null) 'linked_question_ids': linkedQuestionIds,
-      if (requirement != null) 'requirement': requirement,
-      if (createdAt != null) 'created_at': createdAt,
-      if (completedAt != null) 'completed_at': completedAt,
-      if (xpAwarded != null) 'xp_awarded': xpAwarded,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  MissionsCompanion copyWith(
-      {Value<String>? id,
-      Value<String>? title,
-      Value<String>? source,
-      Value<String>? status,
-      Value<int>? priority,
-      Value<String>? scheduledFor,
-      Value<String>? linkedQuestionIds,
-      Value<String>? requirement,
-      Value<DateTime>? createdAt,
-      Value<DateTime?>? completedAt,
-      Value<int>? xpAwarded,
-      Value<int>? rowid}) {
-    return MissionsCompanion(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      source: source ?? this.source,
-      status: status ?? this.status,
-      priority: priority ?? this.priority,
-      scheduledFor: scheduledFor ?? this.scheduledFor,
-      linkedQuestionIds: linkedQuestionIds ?? this.linkedQuestionIds,
-      requirement: requirement ?? this.requirement,
-      createdAt: createdAt ?? this.createdAt,
-      completedAt: completedAt ?? this.completedAt,
-      xpAwarded: xpAwarded ?? this.xpAwarded,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (title.present) {
-      map['title'] = Variable<String>(title.value);
-    }
-    if (source.present) {
-      map['source'] = Variable<String>(source.value);
-    }
-    if (status.present) {
-      map['status'] = Variable<String>(status.value);
-    }
-    if (priority.present) {
-      map['priority'] = Variable<int>(priority.value);
-    }
-    if (scheduledFor.present) {
-      map['scheduled_for'] = Variable<String>(scheduledFor.value);
-    }
-    if (linkedQuestionIds.present) {
-      map['linked_question_ids'] = Variable<String>(linkedQuestionIds.value);
-    }
-    if (requirement.present) {
-      map['requirement'] = Variable<String>(requirement.value);
-    }
-    if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
-    if (completedAt.present) {
-      map['completed_at'] = Variable<DateTime>(completedAt.value);
-    }
-    if (xpAwarded.present) {
-      map['xp_awarded'] = Variable<int>(xpAwarded.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('MissionsCompanion(')
-          ..write('id: $id, ')
-          ..write('title: $title, ')
-          ..write('source: $source, ')
-          ..write('status: $status, ')
-          ..write('priority: $priority, ')
-          ..write('scheduledFor: $scheduledFor, ')
-          ..write('linkedQuestionIds: $linkedQuestionIds, ')
-          ..write('requirement: $requirement, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('completedAt: $completedAt, ')
-          ..write('xpAwarded: $xpAwarded, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
 class $LearningEventsTable extends LearningEvents
     with TableInfo<$LearningEventsTable, LearningEvent> {
   @override
@@ -5774,14 +4297,6 @@ class $GrowthMetricsTable extends GrowthMetrics
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
-  static const VerificationMeta _focusScoreMeta =
-      const VerificationMeta('focusScore');
-  @override
-  late final GeneratedColumn<double> focusScore = GeneratedColumn<double>(
-      'focus_score', aliasedName, false,
-      type: DriftSqlType.double,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
   static const VerificationMeta _persistenceScoreMeta =
       const VerificationMeta('persistenceScore');
   @override
@@ -5796,14 +4311,6 @@ class $GrowthMetricsTable extends GrowthMetrics
   late final GeneratedColumn<double> recoveryScore = GeneratedColumn<double>(
       'recovery_score', aliasedName, false,
       type: DriftSqlType.double,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
-  static const VerificationMeta _focusMsMeta =
-      const VerificationMeta('focusMs');
-  @override
-  late final GeneratedColumn<int> focusMs = GeneratedColumn<int>(
-      'focus_ms', aliasedName, false,
-      type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
   static const VerificationMeta _reviewDoneMeta =
@@ -5841,10 +4348,8 @@ class $GrowthMetricsTable extends GrowthMetrics
   List<GeneratedColumn> get $columns => [
         date,
         learningScore,
-        focusScore,
         persistenceScore,
         recoveryScore,
-        focusMs,
         reviewDone,
         reviewDue,
         streak,
@@ -5872,12 +4377,6 @@ class $GrowthMetricsTable extends GrowthMetrics
           learningScore.isAcceptableOrUnknown(
               data['learning_score']!, _learningScoreMeta));
     }
-    if (data.containsKey('focus_score')) {
-      context.handle(
-          _focusScoreMeta,
-          focusScore.isAcceptableOrUnknown(
-              data['focus_score']!, _focusScoreMeta));
-    }
     if (data.containsKey('persistence_score')) {
       context.handle(
           _persistenceScoreMeta,
@@ -5889,10 +4388,6 @@ class $GrowthMetricsTable extends GrowthMetrics
           _recoveryScoreMeta,
           recoveryScore.isAcceptableOrUnknown(
               data['recovery_score']!, _recoveryScoreMeta));
-    }
-    if (data.containsKey('focus_ms')) {
-      context.handle(_focusMsMeta,
-          focusMs.isAcceptableOrUnknown(data['focus_ms']!, _focusMsMeta));
     }
     if (data.containsKey('review_done')) {
       context.handle(
@@ -5927,14 +4422,10 @@ class $GrowthMetricsTable extends GrowthMetrics
           .read(DriftSqlType.string, data['${effectivePrefix}date'])!,
       learningScore: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}learning_score'])!,
-      focusScore: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}focus_score'])!,
       persistenceScore: attachedDatabase.typeMapping.read(
           DriftSqlType.double, data['${effectivePrefix}persistence_score'])!,
       recoveryScore: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}recovery_score'])!,
-      focusMs: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}focus_ms'])!,
       reviewDone: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}review_done'])!,
       reviewDue: attachedDatabase.typeMapping
@@ -5956,14 +4447,12 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
   /// yyyy-MM-dd，一天一行
   final String date;
 
-  /// 学习 / 专注 / 坚持 / 恢复，0-100
+  /// 学习 / 坚持 / 恢复，0-100（专注域已删除，三能力模型）
   final double learningScore;
-  final double focusScore;
   final double persistenceScore;
   final double recoveryScore;
 
   /// 当日事实汇总（供快照解释与审计）
-  final int focusMs;
   final int reviewDone;
   final int reviewDue;
   final int streak;
@@ -5973,10 +4462,8 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
   const GrowthMetric(
       {required this.date,
       required this.learningScore,
-      required this.focusScore,
       required this.persistenceScore,
       required this.recoveryScore,
-      required this.focusMs,
       required this.reviewDone,
       required this.reviewDue,
       required this.streak,
@@ -5986,10 +4473,8 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
     final map = <String, Expression>{};
     map['date'] = Variable<String>(date);
     map['learning_score'] = Variable<double>(learningScore);
-    map['focus_score'] = Variable<double>(focusScore);
     map['persistence_score'] = Variable<double>(persistenceScore);
     map['recovery_score'] = Variable<double>(recoveryScore);
-    map['focus_ms'] = Variable<int>(focusMs);
     map['review_done'] = Variable<int>(reviewDone);
     map['review_due'] = Variable<int>(reviewDue);
     map['streak'] = Variable<int>(streak);
@@ -6001,10 +4486,8 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
     return GrowthMetricsCompanion(
       date: Value(date),
       learningScore: Value(learningScore),
-      focusScore: Value(focusScore),
       persistenceScore: Value(persistenceScore),
       recoveryScore: Value(recoveryScore),
-      focusMs: Value(focusMs),
       reviewDone: Value(reviewDone),
       reviewDue: Value(reviewDue),
       streak: Value(streak),
@@ -6018,10 +4501,8 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
     return GrowthMetric(
       date: serializer.fromJson<String>(json['date']),
       learningScore: serializer.fromJson<double>(json['learningScore']),
-      focusScore: serializer.fromJson<double>(json['focusScore']),
       persistenceScore: serializer.fromJson<double>(json['persistenceScore']),
       recoveryScore: serializer.fromJson<double>(json['recoveryScore']),
-      focusMs: serializer.fromJson<int>(json['focusMs']),
       reviewDone: serializer.fromJson<int>(json['reviewDone']),
       reviewDue: serializer.fromJson<int>(json['reviewDue']),
       streak: serializer.fromJson<int>(json['streak']),
@@ -6034,10 +4515,8 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
     return <String, dynamic>{
       'date': serializer.toJson<String>(date),
       'learningScore': serializer.toJson<double>(learningScore),
-      'focusScore': serializer.toJson<double>(focusScore),
       'persistenceScore': serializer.toJson<double>(persistenceScore),
       'recoveryScore': serializer.toJson<double>(recoveryScore),
-      'focusMs': serializer.toJson<int>(focusMs),
       'reviewDone': serializer.toJson<int>(reviewDone),
       'reviewDue': serializer.toJson<int>(reviewDue),
       'streak': serializer.toJson<int>(streak),
@@ -6048,10 +4527,8 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
   GrowthMetric copyWith(
           {String? date,
           double? learningScore,
-          double? focusScore,
           double? persistenceScore,
           double? recoveryScore,
-          int? focusMs,
           int? reviewDone,
           int? reviewDue,
           int? streak,
@@ -6059,10 +4536,8 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
       GrowthMetric(
         date: date ?? this.date,
         learningScore: learningScore ?? this.learningScore,
-        focusScore: focusScore ?? this.focusScore,
         persistenceScore: persistenceScore ?? this.persistenceScore,
         recoveryScore: recoveryScore ?? this.recoveryScore,
-        focusMs: focusMs ?? this.focusMs,
         reviewDone: reviewDone ?? this.reviewDone,
         reviewDue: reviewDue ?? this.reviewDue,
         streak: streak ?? this.streak,
@@ -6074,15 +4549,12 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
       learningScore: data.learningScore.present
           ? data.learningScore.value
           : this.learningScore,
-      focusScore:
-          data.focusScore.present ? data.focusScore.value : this.focusScore,
       persistenceScore: data.persistenceScore.present
           ? data.persistenceScore.value
           : this.persistenceScore,
       recoveryScore: data.recoveryScore.present
           ? data.recoveryScore.value
           : this.recoveryScore,
-      focusMs: data.focusMs.present ? data.focusMs.value : this.focusMs,
       reviewDone:
           data.reviewDone.present ? data.reviewDone.value : this.reviewDone,
       reviewDue: data.reviewDue.present ? data.reviewDue.value : this.reviewDue,
@@ -6098,10 +4570,8 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
     return (StringBuffer('GrowthMetric(')
           ..write('date: $date, ')
           ..write('learningScore: $learningScore, ')
-          ..write('focusScore: $focusScore, ')
           ..write('persistenceScore: $persistenceScore, ')
           ..write('recoveryScore: $recoveryScore, ')
-          ..write('focusMs: $focusMs, ')
           ..write('reviewDone: $reviewDone, ')
           ..write('reviewDue: $reviewDue, ')
           ..write('streak: $streak, ')
@@ -6111,27 +4581,16 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      date,
-      learningScore,
-      focusScore,
-      persistenceScore,
-      recoveryScore,
-      focusMs,
-      reviewDone,
-      reviewDue,
-      streak,
-      snapshotJson);
+  int get hashCode => Object.hash(date, learningScore, persistenceScore,
+      recoveryScore, reviewDone, reviewDue, streak, snapshotJson);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is GrowthMetric &&
           other.date == this.date &&
           other.learningScore == this.learningScore &&
-          other.focusScore == this.focusScore &&
           other.persistenceScore == this.persistenceScore &&
           other.recoveryScore == this.recoveryScore &&
-          other.focusMs == this.focusMs &&
           other.reviewDone == this.reviewDone &&
           other.reviewDue == this.reviewDue &&
           other.streak == this.streak &&
@@ -6141,10 +4600,8 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
 class GrowthMetricsCompanion extends UpdateCompanion<GrowthMetric> {
   final Value<String> date;
   final Value<double> learningScore;
-  final Value<double> focusScore;
   final Value<double> persistenceScore;
   final Value<double> recoveryScore;
-  final Value<int> focusMs;
   final Value<int> reviewDone;
   final Value<int> reviewDue;
   final Value<int> streak;
@@ -6153,10 +4610,8 @@ class GrowthMetricsCompanion extends UpdateCompanion<GrowthMetric> {
   const GrowthMetricsCompanion({
     this.date = const Value.absent(),
     this.learningScore = const Value.absent(),
-    this.focusScore = const Value.absent(),
     this.persistenceScore = const Value.absent(),
     this.recoveryScore = const Value.absent(),
-    this.focusMs = const Value.absent(),
     this.reviewDone = const Value.absent(),
     this.reviewDue = const Value.absent(),
     this.streak = const Value.absent(),
@@ -6166,10 +4621,8 @@ class GrowthMetricsCompanion extends UpdateCompanion<GrowthMetric> {
   GrowthMetricsCompanion.insert({
     required String date,
     this.learningScore = const Value.absent(),
-    this.focusScore = const Value.absent(),
     this.persistenceScore = const Value.absent(),
     this.recoveryScore = const Value.absent(),
-    this.focusMs = const Value.absent(),
     this.reviewDone = const Value.absent(),
     this.reviewDue = const Value.absent(),
     this.streak = const Value.absent(),
@@ -6179,10 +4632,8 @@ class GrowthMetricsCompanion extends UpdateCompanion<GrowthMetric> {
   static Insertable<GrowthMetric> custom({
     Expression<String>? date,
     Expression<double>? learningScore,
-    Expression<double>? focusScore,
     Expression<double>? persistenceScore,
     Expression<double>? recoveryScore,
-    Expression<int>? focusMs,
     Expression<int>? reviewDone,
     Expression<int>? reviewDue,
     Expression<int>? streak,
@@ -6192,10 +4643,8 @@ class GrowthMetricsCompanion extends UpdateCompanion<GrowthMetric> {
     return RawValuesInsertable({
       if (date != null) 'date': date,
       if (learningScore != null) 'learning_score': learningScore,
-      if (focusScore != null) 'focus_score': focusScore,
       if (persistenceScore != null) 'persistence_score': persistenceScore,
       if (recoveryScore != null) 'recovery_score': recoveryScore,
-      if (focusMs != null) 'focus_ms': focusMs,
       if (reviewDone != null) 'review_done': reviewDone,
       if (reviewDue != null) 'review_due': reviewDue,
       if (streak != null) 'streak': streak,
@@ -6207,10 +4656,8 @@ class GrowthMetricsCompanion extends UpdateCompanion<GrowthMetric> {
   GrowthMetricsCompanion copyWith(
       {Value<String>? date,
       Value<double>? learningScore,
-      Value<double>? focusScore,
       Value<double>? persistenceScore,
       Value<double>? recoveryScore,
-      Value<int>? focusMs,
       Value<int>? reviewDone,
       Value<int>? reviewDue,
       Value<int>? streak,
@@ -6219,10 +4666,8 @@ class GrowthMetricsCompanion extends UpdateCompanion<GrowthMetric> {
     return GrowthMetricsCompanion(
       date: date ?? this.date,
       learningScore: learningScore ?? this.learningScore,
-      focusScore: focusScore ?? this.focusScore,
       persistenceScore: persistenceScore ?? this.persistenceScore,
       recoveryScore: recoveryScore ?? this.recoveryScore,
-      focusMs: focusMs ?? this.focusMs,
       reviewDone: reviewDone ?? this.reviewDone,
       reviewDue: reviewDue ?? this.reviewDue,
       streak: streak ?? this.streak,
@@ -6240,17 +4685,11 @@ class GrowthMetricsCompanion extends UpdateCompanion<GrowthMetric> {
     if (learningScore.present) {
       map['learning_score'] = Variable<double>(learningScore.value);
     }
-    if (focusScore.present) {
-      map['focus_score'] = Variable<double>(focusScore.value);
-    }
     if (persistenceScore.present) {
       map['persistence_score'] = Variable<double>(persistenceScore.value);
     }
     if (recoveryScore.present) {
       map['recovery_score'] = Variable<double>(recoveryScore.value);
-    }
-    if (focusMs.present) {
-      map['focus_ms'] = Variable<int>(focusMs.value);
     }
     if (reviewDone.present) {
       map['review_done'] = Variable<int>(reviewDone.value);
@@ -6275,10 +4714,8 @@ class GrowthMetricsCompanion extends UpdateCompanion<GrowthMetric> {
     return (StringBuffer('GrowthMetricsCompanion(')
           ..write('date: $date, ')
           ..write('learningScore: $learningScore, ')
-          ..write('focusScore: $focusScore, ')
           ..write('persistenceScore: $persistenceScore, ')
           ..write('recoveryScore: $recoveryScore, ')
-          ..write('focusMs: $focusMs, ')
           ..write('reviewDone: $reviewDone, ')
           ..write('reviewDue: $reviewDue, ')
           ..write('streak: $streak, ')
@@ -6675,6 +5112,488 @@ class AiProvidersCompanion extends UpdateCompanion<AiProvider> {
   }
 }
 
+class $AiCallLogsTable extends AiCallLogs
+    with TableInfo<$AiCallLogsTable, AiCallLog> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AiCallLogsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _purposeMeta =
+      const VerificationMeta('purpose');
+  @override
+  late final GeneratedColumn<String> purpose = GeneratedColumn<String>(
+      'purpose', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _requestBodyMeta =
+      const VerificationMeta('requestBody');
+  @override
+  late final GeneratedColumn<String> requestBody = GeneratedColumn<String>(
+      'request_body', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _responseBodyMeta =
+      const VerificationMeta('responseBody');
+  @override
+  late final GeneratedColumn<String> responseBody = GeneratedColumn<String>(
+      'response_body', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _httpStatusMeta =
+      const VerificationMeta('httpStatus');
+  @override
+  late final GeneratedColumn<int> httpStatus = GeneratedColumn<int>(
+      'http_status', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _successMeta =
+      const VerificationMeta('success');
+  @override
+  late final GeneratedColumn<bool> success = GeneratedColumn<bool>(
+      'success', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("success" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _errorTierMeta =
+      const VerificationMeta('errorTier');
+  @override
+  late final GeneratedColumn<String> errorTier = GeneratedColumn<String>(
+      'error_tier', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _durationMsMeta =
+      const VerificationMeta('durationMs');
+  @override
+  late final GeneratedColumn<int> durationMs = GeneratedColumn<int>(
+      'duration_ms', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _atMeta = const VerificationMeta('at');
+  @override
+  late final GeneratedColumn<DateTime> at = GeneratedColumn<DateTime>(
+      'at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        purpose,
+        requestBody,
+        responseBody,
+        httpStatus,
+        success,
+        errorTier,
+        durationMs,
+        at
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ai_call_logs';
+  @override
+  VerificationContext validateIntegrity(Insertable<AiCallLog> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('purpose')) {
+      context.handle(_purposeMeta,
+          purpose.isAcceptableOrUnknown(data['purpose']!, _purposeMeta));
+    } else if (isInserting) {
+      context.missing(_purposeMeta);
+    }
+    if (data.containsKey('request_body')) {
+      context.handle(
+          _requestBodyMeta,
+          requestBody.isAcceptableOrUnknown(
+              data['request_body']!, _requestBodyMeta));
+    } else if (isInserting) {
+      context.missing(_requestBodyMeta);
+    }
+    if (data.containsKey('response_body')) {
+      context.handle(
+          _responseBodyMeta,
+          responseBody.isAcceptableOrUnknown(
+              data['response_body']!, _responseBodyMeta));
+    } else if (isInserting) {
+      context.missing(_responseBodyMeta);
+    }
+    if (data.containsKey('http_status')) {
+      context.handle(
+          _httpStatusMeta,
+          httpStatus.isAcceptableOrUnknown(
+              data['http_status']!, _httpStatusMeta));
+    }
+    if (data.containsKey('success')) {
+      context.handle(_successMeta,
+          success.isAcceptableOrUnknown(data['success']!, _successMeta));
+    }
+    if (data.containsKey('error_tier')) {
+      context.handle(_errorTierMeta,
+          errorTier.isAcceptableOrUnknown(data['error_tier']!, _errorTierMeta));
+    }
+    if (data.containsKey('duration_ms')) {
+      context.handle(
+          _durationMsMeta,
+          durationMs.isAcceptableOrUnknown(
+              data['duration_ms']!, _durationMsMeta));
+    }
+    if (data.containsKey('at')) {
+      context.handle(_atMeta, at.isAcceptableOrUnknown(data['at']!, _atMeta));
+    } else if (isInserting) {
+      context.missing(_atMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AiCallLog map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AiCallLog(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      purpose: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}purpose'])!,
+      requestBody: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}request_body'])!,
+      responseBody: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}response_body'])!,
+      httpStatus: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}http_status'])!,
+      success: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}success'])!,
+      errorTier: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}error_tier']),
+      durationMs: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}duration_ms'])!,
+      at: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}at'])!,
+    );
+  }
+
+  @override
+  $AiCallLogsTable createAlias(String alias) {
+    return $AiCallLogsTable(attachedDatabase, alias);
+  }
+}
+
+class AiCallLog extends DataClass implements Insertable<AiCallLog> {
+  final int id;
+
+  /// 用途：classify（知识点分类）/ split（拆题）/ analyze（解析）/ exercise（举一反三）/ review_plan（复习规划）/ path_advice（路径建议）
+  final String purpose;
+
+  /// 请求体 JSON
+  final String requestBody;
+
+  /// 响应体 JSON 或文本摘要
+  final String responseBody;
+
+  /// HTTP 状态码
+  final int httpStatus;
+
+  /// 是否成功
+  final bool success;
+
+  /// 错误档位（AiErrorTier 名），可空
+  final String? errorTier;
+
+  /// 耗时（毫秒）
+  final int durationMs;
+  final DateTime at;
+  const AiCallLog(
+      {required this.id,
+      required this.purpose,
+      required this.requestBody,
+      required this.responseBody,
+      required this.httpStatus,
+      required this.success,
+      this.errorTier,
+      required this.durationMs,
+      required this.at});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['purpose'] = Variable<String>(purpose);
+    map['request_body'] = Variable<String>(requestBody);
+    map['response_body'] = Variable<String>(responseBody);
+    map['http_status'] = Variable<int>(httpStatus);
+    map['success'] = Variable<bool>(success);
+    if (!nullToAbsent || errorTier != null) {
+      map['error_tier'] = Variable<String>(errorTier);
+    }
+    map['duration_ms'] = Variable<int>(durationMs);
+    map['at'] = Variable<DateTime>(at);
+    return map;
+  }
+
+  AiCallLogsCompanion toCompanion(bool nullToAbsent) {
+    return AiCallLogsCompanion(
+      id: Value(id),
+      purpose: Value(purpose),
+      requestBody: Value(requestBody),
+      responseBody: Value(responseBody),
+      httpStatus: Value(httpStatus),
+      success: Value(success),
+      errorTier: errorTier == null && nullToAbsent
+          ? const Value.absent()
+          : Value(errorTier),
+      durationMs: Value(durationMs),
+      at: Value(at),
+    );
+  }
+
+  factory AiCallLog.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AiCallLog(
+      id: serializer.fromJson<int>(json['id']),
+      purpose: serializer.fromJson<String>(json['purpose']),
+      requestBody: serializer.fromJson<String>(json['requestBody']),
+      responseBody: serializer.fromJson<String>(json['responseBody']),
+      httpStatus: serializer.fromJson<int>(json['httpStatus']),
+      success: serializer.fromJson<bool>(json['success']),
+      errorTier: serializer.fromJson<String?>(json['errorTier']),
+      durationMs: serializer.fromJson<int>(json['durationMs']),
+      at: serializer.fromJson<DateTime>(json['at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'purpose': serializer.toJson<String>(purpose),
+      'requestBody': serializer.toJson<String>(requestBody),
+      'responseBody': serializer.toJson<String>(responseBody),
+      'httpStatus': serializer.toJson<int>(httpStatus),
+      'success': serializer.toJson<bool>(success),
+      'errorTier': serializer.toJson<String?>(errorTier),
+      'durationMs': serializer.toJson<int>(durationMs),
+      'at': serializer.toJson<DateTime>(at),
+    };
+  }
+
+  AiCallLog copyWith(
+          {int? id,
+          String? purpose,
+          String? requestBody,
+          String? responseBody,
+          int? httpStatus,
+          bool? success,
+          Value<String?> errorTier = const Value.absent(),
+          int? durationMs,
+          DateTime? at}) =>
+      AiCallLog(
+        id: id ?? this.id,
+        purpose: purpose ?? this.purpose,
+        requestBody: requestBody ?? this.requestBody,
+        responseBody: responseBody ?? this.responseBody,
+        httpStatus: httpStatus ?? this.httpStatus,
+        success: success ?? this.success,
+        errorTier: errorTier.present ? errorTier.value : this.errorTier,
+        durationMs: durationMs ?? this.durationMs,
+        at: at ?? this.at,
+      );
+  AiCallLog copyWithCompanion(AiCallLogsCompanion data) {
+    return AiCallLog(
+      id: data.id.present ? data.id.value : this.id,
+      purpose: data.purpose.present ? data.purpose.value : this.purpose,
+      requestBody:
+          data.requestBody.present ? data.requestBody.value : this.requestBody,
+      responseBody: data.responseBody.present
+          ? data.responseBody.value
+          : this.responseBody,
+      httpStatus:
+          data.httpStatus.present ? data.httpStatus.value : this.httpStatus,
+      success: data.success.present ? data.success.value : this.success,
+      errorTier: data.errorTier.present ? data.errorTier.value : this.errorTier,
+      durationMs:
+          data.durationMs.present ? data.durationMs.value : this.durationMs,
+      at: data.at.present ? data.at.value : this.at,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiCallLog(')
+          ..write('id: $id, ')
+          ..write('purpose: $purpose, ')
+          ..write('requestBody: $requestBody, ')
+          ..write('responseBody: $responseBody, ')
+          ..write('httpStatus: $httpStatus, ')
+          ..write('success: $success, ')
+          ..write('errorTier: $errorTier, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('at: $at')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, purpose, requestBody, responseBody,
+      httpStatus, success, errorTier, durationMs, at);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiCallLog &&
+          other.id == this.id &&
+          other.purpose == this.purpose &&
+          other.requestBody == this.requestBody &&
+          other.responseBody == this.responseBody &&
+          other.httpStatus == this.httpStatus &&
+          other.success == this.success &&
+          other.errorTier == this.errorTier &&
+          other.durationMs == this.durationMs &&
+          other.at == this.at);
+}
+
+class AiCallLogsCompanion extends UpdateCompanion<AiCallLog> {
+  final Value<int> id;
+  final Value<String> purpose;
+  final Value<String> requestBody;
+  final Value<String> responseBody;
+  final Value<int> httpStatus;
+  final Value<bool> success;
+  final Value<String?> errorTier;
+  final Value<int> durationMs;
+  final Value<DateTime> at;
+  const AiCallLogsCompanion({
+    this.id = const Value.absent(),
+    this.purpose = const Value.absent(),
+    this.requestBody = const Value.absent(),
+    this.responseBody = const Value.absent(),
+    this.httpStatus = const Value.absent(),
+    this.success = const Value.absent(),
+    this.errorTier = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.at = const Value.absent(),
+  });
+  AiCallLogsCompanion.insert({
+    this.id = const Value.absent(),
+    required String purpose,
+    required String requestBody,
+    required String responseBody,
+    this.httpStatus = const Value.absent(),
+    this.success = const Value.absent(),
+    this.errorTier = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    required DateTime at,
+  })  : purpose = Value(purpose),
+        requestBody = Value(requestBody),
+        responseBody = Value(responseBody),
+        at = Value(at);
+  static Insertable<AiCallLog> custom({
+    Expression<int>? id,
+    Expression<String>? purpose,
+    Expression<String>? requestBody,
+    Expression<String>? responseBody,
+    Expression<int>? httpStatus,
+    Expression<bool>? success,
+    Expression<String>? errorTier,
+    Expression<int>? durationMs,
+    Expression<DateTime>? at,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (purpose != null) 'purpose': purpose,
+      if (requestBody != null) 'request_body': requestBody,
+      if (responseBody != null) 'response_body': responseBody,
+      if (httpStatus != null) 'http_status': httpStatus,
+      if (success != null) 'success': success,
+      if (errorTier != null) 'error_tier': errorTier,
+      if (durationMs != null) 'duration_ms': durationMs,
+      if (at != null) 'at': at,
+    });
+  }
+
+  AiCallLogsCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? purpose,
+      Value<String>? requestBody,
+      Value<String>? responseBody,
+      Value<int>? httpStatus,
+      Value<bool>? success,
+      Value<String?>? errorTier,
+      Value<int>? durationMs,
+      Value<DateTime>? at}) {
+    return AiCallLogsCompanion(
+      id: id ?? this.id,
+      purpose: purpose ?? this.purpose,
+      requestBody: requestBody ?? this.requestBody,
+      responseBody: responseBody ?? this.responseBody,
+      httpStatus: httpStatus ?? this.httpStatus,
+      success: success ?? this.success,
+      errorTier: errorTier ?? this.errorTier,
+      durationMs: durationMs ?? this.durationMs,
+      at: at ?? this.at,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (purpose.present) {
+      map['purpose'] = Variable<String>(purpose.value);
+    }
+    if (requestBody.present) {
+      map['request_body'] = Variable<String>(requestBody.value);
+    }
+    if (responseBody.present) {
+      map['response_body'] = Variable<String>(responseBody.value);
+    }
+    if (httpStatus.present) {
+      map['http_status'] = Variable<int>(httpStatus.value);
+    }
+    if (success.present) {
+      map['success'] = Variable<bool>(success.value);
+    }
+    if (errorTier.present) {
+      map['error_tier'] = Variable<String>(errorTier.value);
+    }
+    if (durationMs.present) {
+      map['duration_ms'] = Variable<int>(durationMs.value);
+    }
+    if (at.present) {
+      map['at'] = Variable<DateTime>(at.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiCallLogsCompanion(')
+          ..write('id: $id, ')
+          ..write('purpose: $purpose, ')
+          ..write('requestBody: $requestBody, ')
+          ..write('responseBody: $responseBody, ')
+          ..write('httpStatus: $httpStatus, ')
+          ..write('success: $success, ')
+          ..write('errorTier: $errorTier, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('at: $at')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6691,12 +5610,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $GeneratedExercisesTable generatedExercises =
       $GeneratedExercisesTable(this);
   late final $AiMessagesTable aiMessages = $AiMessagesTable(this);
-  late final $FocusSessionsTable focusSessions = $FocusSessionsTable(this);
-  late final $FocusEventsTable focusEvents = $FocusEventsTable(this);
-  late final $MissionsTable missions = $MissionsTable(this);
   late final $LearningEventsTable learningEvents = $LearningEventsTable(this);
   late final $GrowthMetricsTable growthMetrics = $GrowthMetricsTable(this);
   late final $AiProvidersTable aiProviders = $AiProvidersTable(this);
+  late final $AiCallLogsTable aiCallLogs = $AiCallLogsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6711,12 +5628,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         reviewLogs,
         generatedExercises,
         aiMessages,
-        focusSessions,
-        focusEvents,
-        missions,
         learningEvents,
         growthMetrics,
-        aiProviders
+        aiProviders,
+        aiCallLogs
       ];
 }
 
@@ -8673,705 +7588,6 @@ typedef $$AiMessagesTableProcessedTableManager = ProcessedTableManager<
     ),
     AiMessageRow,
     PrefetchHooks Function()>;
-typedef $$FocusSessionsTableCreateCompanionBuilder = FocusSessionsCompanion
-    Function({
-  required String id,
-  Value<String?> missionId,
-  Value<String> questionIds,
-  Value<String> mode,
-  Value<String> status,
-  required DateTime startedAt,
-  Value<DateTime?> endedAt,
-  Value<int> plannedMs,
-  Value<int> focusMs,
-  Value<int> distractionCount,
-  Value<int> rowid,
-});
-typedef $$FocusSessionsTableUpdateCompanionBuilder = FocusSessionsCompanion
-    Function({
-  Value<String> id,
-  Value<String?> missionId,
-  Value<String> questionIds,
-  Value<String> mode,
-  Value<String> status,
-  Value<DateTime> startedAt,
-  Value<DateTime?> endedAt,
-  Value<int> plannedMs,
-  Value<int> focusMs,
-  Value<int> distractionCount,
-  Value<int> rowid,
-});
-
-class $$FocusSessionsTableFilterComposer
-    extends Composer<_$AppDatabase, $FocusSessionsTable> {
-  $$FocusSessionsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get missionId => $composableBuilder(
-      column: $table.missionId, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get questionIds => $composableBuilder(
-      column: $table.questionIds, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get mode => $composableBuilder(
-      column: $table.mode, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get status => $composableBuilder(
-      column: $table.status, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get startedAt => $composableBuilder(
-      column: $table.startedAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get endedAt => $composableBuilder(
-      column: $table.endedAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get plannedMs => $composableBuilder(
-      column: $table.plannedMs, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get focusMs => $composableBuilder(
-      column: $table.focusMs, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get distractionCount => $composableBuilder(
-      column: $table.distractionCount,
-      builder: (column) => ColumnFilters(column));
-}
-
-class $$FocusSessionsTableOrderingComposer
-    extends Composer<_$AppDatabase, $FocusSessionsTable> {
-  $$FocusSessionsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get missionId => $composableBuilder(
-      column: $table.missionId, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get questionIds => $composableBuilder(
-      column: $table.questionIds, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get mode => $composableBuilder(
-      column: $table.mode, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get status => $composableBuilder(
-      column: $table.status, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
-      column: $table.startedAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get endedAt => $composableBuilder(
-      column: $table.endedAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get plannedMs => $composableBuilder(
-      column: $table.plannedMs, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get focusMs => $composableBuilder(
-      column: $table.focusMs, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get distractionCount => $composableBuilder(
-      column: $table.distractionCount,
-      builder: (column) => ColumnOrderings(column));
-}
-
-class $$FocusSessionsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $FocusSessionsTable> {
-  $$FocusSessionsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get missionId =>
-      $composableBuilder(column: $table.missionId, builder: (column) => column);
-
-  GeneratedColumn<String> get questionIds => $composableBuilder(
-      column: $table.questionIds, builder: (column) => column);
-
-  GeneratedColumn<String> get mode =>
-      $composableBuilder(column: $table.mode, builder: (column) => column);
-
-  GeneratedColumn<String> get status =>
-      $composableBuilder(column: $table.status, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get startedAt =>
-      $composableBuilder(column: $table.startedAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get endedAt =>
-      $composableBuilder(column: $table.endedAt, builder: (column) => column);
-
-  GeneratedColumn<int> get plannedMs =>
-      $composableBuilder(column: $table.plannedMs, builder: (column) => column);
-
-  GeneratedColumn<int> get focusMs =>
-      $composableBuilder(column: $table.focusMs, builder: (column) => column);
-
-  GeneratedColumn<int> get distractionCount => $composableBuilder(
-      column: $table.distractionCount, builder: (column) => column);
-}
-
-class $$FocusSessionsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $FocusSessionsTable,
-    FocusSession,
-    $$FocusSessionsTableFilterComposer,
-    $$FocusSessionsTableOrderingComposer,
-    $$FocusSessionsTableAnnotationComposer,
-    $$FocusSessionsTableCreateCompanionBuilder,
-    $$FocusSessionsTableUpdateCompanionBuilder,
-    (
-      FocusSession,
-      BaseReferences<_$AppDatabase, $FocusSessionsTable, FocusSession>
-    ),
-    FocusSession,
-    PrefetchHooks Function()> {
-  $$FocusSessionsTableTableManager(_$AppDatabase db, $FocusSessionsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$FocusSessionsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$FocusSessionsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$FocusSessionsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> id = const Value.absent(),
-            Value<String?> missionId = const Value.absent(),
-            Value<String> questionIds = const Value.absent(),
-            Value<String> mode = const Value.absent(),
-            Value<String> status = const Value.absent(),
-            Value<DateTime> startedAt = const Value.absent(),
-            Value<DateTime?> endedAt = const Value.absent(),
-            Value<int> plannedMs = const Value.absent(),
-            Value<int> focusMs = const Value.absent(),
-            Value<int> distractionCount = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              FocusSessionsCompanion(
-            id: id,
-            missionId: missionId,
-            questionIds: questionIds,
-            mode: mode,
-            status: status,
-            startedAt: startedAt,
-            endedAt: endedAt,
-            plannedMs: plannedMs,
-            focusMs: focusMs,
-            distractionCount: distractionCount,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String id,
-            Value<String?> missionId = const Value.absent(),
-            Value<String> questionIds = const Value.absent(),
-            Value<String> mode = const Value.absent(),
-            Value<String> status = const Value.absent(),
-            required DateTime startedAt,
-            Value<DateTime?> endedAt = const Value.absent(),
-            Value<int> plannedMs = const Value.absent(),
-            Value<int> focusMs = const Value.absent(),
-            Value<int> distractionCount = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              FocusSessionsCompanion.insert(
-            id: id,
-            missionId: missionId,
-            questionIds: questionIds,
-            mode: mode,
-            status: status,
-            startedAt: startedAt,
-            endedAt: endedAt,
-            plannedMs: plannedMs,
-            focusMs: focusMs,
-            distractionCount: distractionCount,
-            rowid: rowid,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ));
-}
-
-typedef $$FocusSessionsTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $FocusSessionsTable,
-    FocusSession,
-    $$FocusSessionsTableFilterComposer,
-    $$FocusSessionsTableOrderingComposer,
-    $$FocusSessionsTableAnnotationComposer,
-    $$FocusSessionsTableCreateCompanionBuilder,
-    $$FocusSessionsTableUpdateCompanionBuilder,
-    (
-      FocusSession,
-      BaseReferences<_$AppDatabase, $FocusSessionsTable, FocusSession>
-    ),
-    FocusSession,
-    PrefetchHooks Function()>;
-typedef $$FocusEventsTableCreateCompanionBuilder = FocusEventsCompanion
-    Function({
-  Value<int> id,
-  Value<String?> sessionId,
-  required String eventType,
-  Value<String?> appPackage,
-  required DateTime at,
-  Value<int?> durationMs,
-  Value<String> payload,
-});
-typedef $$FocusEventsTableUpdateCompanionBuilder = FocusEventsCompanion
-    Function({
-  Value<int> id,
-  Value<String?> sessionId,
-  Value<String> eventType,
-  Value<String?> appPackage,
-  Value<DateTime> at,
-  Value<int?> durationMs,
-  Value<String> payload,
-});
-
-class $$FocusEventsTableFilterComposer
-    extends Composer<_$AppDatabase, $FocusEventsTable> {
-  $$FocusEventsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get sessionId => $composableBuilder(
-      column: $table.sessionId, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get eventType => $composableBuilder(
-      column: $table.eventType, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get appPackage => $composableBuilder(
-      column: $table.appPackage, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get at => $composableBuilder(
-      column: $table.at, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get durationMs => $composableBuilder(
-      column: $table.durationMs, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get payload => $composableBuilder(
-      column: $table.payload, builder: (column) => ColumnFilters(column));
-}
-
-class $$FocusEventsTableOrderingComposer
-    extends Composer<_$AppDatabase, $FocusEventsTable> {
-  $$FocusEventsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get sessionId => $composableBuilder(
-      column: $table.sessionId, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get eventType => $composableBuilder(
-      column: $table.eventType, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get appPackage => $composableBuilder(
-      column: $table.appPackage, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get at => $composableBuilder(
-      column: $table.at, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get durationMs => $composableBuilder(
-      column: $table.durationMs, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get payload => $composableBuilder(
-      column: $table.payload, builder: (column) => ColumnOrderings(column));
-}
-
-class $$FocusEventsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $FocusEventsTable> {
-  $$FocusEventsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get sessionId =>
-      $composableBuilder(column: $table.sessionId, builder: (column) => column);
-
-  GeneratedColumn<String> get eventType =>
-      $composableBuilder(column: $table.eventType, builder: (column) => column);
-
-  GeneratedColumn<String> get appPackage => $composableBuilder(
-      column: $table.appPackage, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get at =>
-      $composableBuilder(column: $table.at, builder: (column) => column);
-
-  GeneratedColumn<int> get durationMs => $composableBuilder(
-      column: $table.durationMs, builder: (column) => column);
-
-  GeneratedColumn<String> get payload =>
-      $composableBuilder(column: $table.payload, builder: (column) => column);
-}
-
-class $$FocusEventsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $FocusEventsTable,
-    FocusEvent,
-    $$FocusEventsTableFilterComposer,
-    $$FocusEventsTableOrderingComposer,
-    $$FocusEventsTableAnnotationComposer,
-    $$FocusEventsTableCreateCompanionBuilder,
-    $$FocusEventsTableUpdateCompanionBuilder,
-    (FocusEvent, BaseReferences<_$AppDatabase, $FocusEventsTable, FocusEvent>),
-    FocusEvent,
-    PrefetchHooks Function()> {
-  $$FocusEventsTableTableManager(_$AppDatabase db, $FocusEventsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$FocusEventsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$FocusEventsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$FocusEventsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String?> sessionId = const Value.absent(),
-            Value<String> eventType = const Value.absent(),
-            Value<String?> appPackage = const Value.absent(),
-            Value<DateTime> at = const Value.absent(),
-            Value<int?> durationMs = const Value.absent(),
-            Value<String> payload = const Value.absent(),
-          }) =>
-              FocusEventsCompanion(
-            id: id,
-            sessionId: sessionId,
-            eventType: eventType,
-            appPackage: appPackage,
-            at: at,
-            durationMs: durationMs,
-            payload: payload,
-          ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String?> sessionId = const Value.absent(),
-            required String eventType,
-            Value<String?> appPackage = const Value.absent(),
-            required DateTime at,
-            Value<int?> durationMs = const Value.absent(),
-            Value<String> payload = const Value.absent(),
-          }) =>
-              FocusEventsCompanion.insert(
-            id: id,
-            sessionId: sessionId,
-            eventType: eventType,
-            appPackage: appPackage,
-            at: at,
-            durationMs: durationMs,
-            payload: payload,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ));
-}
-
-typedef $$FocusEventsTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $FocusEventsTable,
-    FocusEvent,
-    $$FocusEventsTableFilterComposer,
-    $$FocusEventsTableOrderingComposer,
-    $$FocusEventsTableAnnotationComposer,
-    $$FocusEventsTableCreateCompanionBuilder,
-    $$FocusEventsTableUpdateCompanionBuilder,
-    (FocusEvent, BaseReferences<_$AppDatabase, $FocusEventsTable, FocusEvent>),
-    FocusEvent,
-    PrefetchHooks Function()>;
-typedef $$MissionsTableCreateCompanionBuilder = MissionsCompanion Function({
-  required String id,
-  required String title,
-  Value<String> source,
-  Value<String> status,
-  Value<int> priority,
-  required String scheduledFor,
-  Value<String> linkedQuestionIds,
-  Value<String> requirement,
-  required DateTime createdAt,
-  Value<DateTime?> completedAt,
-  Value<int> xpAwarded,
-  Value<int> rowid,
-});
-typedef $$MissionsTableUpdateCompanionBuilder = MissionsCompanion Function({
-  Value<String> id,
-  Value<String> title,
-  Value<String> source,
-  Value<String> status,
-  Value<int> priority,
-  Value<String> scheduledFor,
-  Value<String> linkedQuestionIds,
-  Value<String> requirement,
-  Value<DateTime> createdAt,
-  Value<DateTime?> completedAt,
-  Value<int> xpAwarded,
-  Value<int> rowid,
-});
-
-class $$MissionsTableFilterComposer
-    extends Composer<_$AppDatabase, $MissionsTable> {
-  $$MissionsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get title => $composableBuilder(
-      column: $table.title, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get source => $composableBuilder(
-      column: $table.source, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get status => $composableBuilder(
-      column: $table.status, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get priority => $composableBuilder(
-      column: $table.priority, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get scheduledFor => $composableBuilder(
-      column: $table.scheduledFor, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get linkedQuestionIds => $composableBuilder(
-      column: $table.linkedQuestionIds,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get requirement => $composableBuilder(
-      column: $table.requirement, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get completedAt => $composableBuilder(
-      column: $table.completedAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get xpAwarded => $composableBuilder(
-      column: $table.xpAwarded, builder: (column) => ColumnFilters(column));
-}
-
-class $$MissionsTableOrderingComposer
-    extends Composer<_$AppDatabase, $MissionsTable> {
-  $$MissionsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get title => $composableBuilder(
-      column: $table.title, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get source => $composableBuilder(
-      column: $table.source, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get status => $composableBuilder(
-      column: $table.status, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get priority => $composableBuilder(
-      column: $table.priority, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get scheduledFor => $composableBuilder(
-      column: $table.scheduledFor,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get linkedQuestionIds => $composableBuilder(
-      column: $table.linkedQuestionIds,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get requirement => $composableBuilder(
-      column: $table.requirement, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get completedAt => $composableBuilder(
-      column: $table.completedAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get xpAwarded => $composableBuilder(
-      column: $table.xpAwarded, builder: (column) => ColumnOrderings(column));
-}
-
-class $$MissionsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $MissionsTable> {
-  $$MissionsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get title =>
-      $composableBuilder(column: $table.title, builder: (column) => column);
-
-  GeneratedColumn<String> get source =>
-      $composableBuilder(column: $table.source, builder: (column) => column);
-
-  GeneratedColumn<String> get status =>
-      $composableBuilder(column: $table.status, builder: (column) => column);
-
-  GeneratedColumn<int> get priority =>
-      $composableBuilder(column: $table.priority, builder: (column) => column);
-
-  GeneratedColumn<String> get scheduledFor => $composableBuilder(
-      column: $table.scheduledFor, builder: (column) => column);
-
-  GeneratedColumn<String> get linkedQuestionIds => $composableBuilder(
-      column: $table.linkedQuestionIds, builder: (column) => column);
-
-  GeneratedColumn<String> get requirement => $composableBuilder(
-      column: $table.requirement, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get completedAt => $composableBuilder(
-      column: $table.completedAt, builder: (column) => column);
-
-  GeneratedColumn<int> get xpAwarded =>
-      $composableBuilder(column: $table.xpAwarded, builder: (column) => column);
-}
-
-class $$MissionsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $MissionsTable,
-    Mission,
-    $$MissionsTableFilterComposer,
-    $$MissionsTableOrderingComposer,
-    $$MissionsTableAnnotationComposer,
-    $$MissionsTableCreateCompanionBuilder,
-    $$MissionsTableUpdateCompanionBuilder,
-    (Mission, BaseReferences<_$AppDatabase, $MissionsTable, Mission>),
-    Mission,
-    PrefetchHooks Function()> {
-  $$MissionsTableTableManager(_$AppDatabase db, $MissionsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$MissionsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$MissionsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$MissionsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> id = const Value.absent(),
-            Value<String> title = const Value.absent(),
-            Value<String> source = const Value.absent(),
-            Value<String> status = const Value.absent(),
-            Value<int> priority = const Value.absent(),
-            Value<String> scheduledFor = const Value.absent(),
-            Value<String> linkedQuestionIds = const Value.absent(),
-            Value<String> requirement = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-            Value<DateTime?> completedAt = const Value.absent(),
-            Value<int> xpAwarded = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              MissionsCompanion(
-            id: id,
-            title: title,
-            source: source,
-            status: status,
-            priority: priority,
-            scheduledFor: scheduledFor,
-            linkedQuestionIds: linkedQuestionIds,
-            requirement: requirement,
-            createdAt: createdAt,
-            completedAt: completedAt,
-            xpAwarded: xpAwarded,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String id,
-            required String title,
-            Value<String> source = const Value.absent(),
-            Value<String> status = const Value.absent(),
-            Value<int> priority = const Value.absent(),
-            required String scheduledFor,
-            Value<String> linkedQuestionIds = const Value.absent(),
-            Value<String> requirement = const Value.absent(),
-            required DateTime createdAt,
-            Value<DateTime?> completedAt = const Value.absent(),
-            Value<int> xpAwarded = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              MissionsCompanion.insert(
-            id: id,
-            title: title,
-            source: source,
-            status: status,
-            priority: priority,
-            scheduledFor: scheduledFor,
-            linkedQuestionIds: linkedQuestionIds,
-            requirement: requirement,
-            createdAt: createdAt,
-            completedAt: completedAt,
-            xpAwarded: xpAwarded,
-            rowid: rowid,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ));
-}
-
-typedef $$MissionsTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $MissionsTable,
-    Mission,
-    $$MissionsTableFilterComposer,
-    $$MissionsTableOrderingComposer,
-    $$MissionsTableAnnotationComposer,
-    $$MissionsTableCreateCompanionBuilder,
-    $$MissionsTableUpdateCompanionBuilder,
-    (Mission, BaseReferences<_$AppDatabase, $MissionsTable, Mission>),
-    Mission,
-    PrefetchHooks Function()>;
 typedef $$LearningEventsTableCreateCompanionBuilder = LearningEventsCompanion
     Function({
   Value<int> id,
@@ -9544,10 +7760,8 @@ typedef $$GrowthMetricsTableCreateCompanionBuilder = GrowthMetricsCompanion
     Function({
   required String date,
   Value<double> learningScore,
-  Value<double> focusScore,
   Value<double> persistenceScore,
   Value<double> recoveryScore,
-  Value<int> focusMs,
   Value<int> reviewDone,
   Value<int> reviewDue,
   Value<int> streak,
@@ -9558,10 +7772,8 @@ typedef $$GrowthMetricsTableUpdateCompanionBuilder = GrowthMetricsCompanion
     Function({
   Value<String> date,
   Value<double> learningScore,
-  Value<double> focusScore,
   Value<double> persistenceScore,
   Value<double> recoveryScore,
-  Value<int> focusMs,
   Value<int> reviewDone,
   Value<int> reviewDue,
   Value<int> streak,
@@ -9584,18 +7796,12 @@ class $$GrowthMetricsTableFilterComposer
   ColumnFilters<double> get learningScore => $composableBuilder(
       column: $table.learningScore, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get focusScore => $composableBuilder(
-      column: $table.focusScore, builder: (column) => ColumnFilters(column));
-
   ColumnFilters<double> get persistenceScore => $composableBuilder(
       column: $table.persistenceScore,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get recoveryScore => $composableBuilder(
       column: $table.recoveryScore, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get focusMs => $composableBuilder(
-      column: $table.focusMs, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get reviewDone => $composableBuilder(
       column: $table.reviewDone, builder: (column) => ColumnFilters(column));
@@ -9626,9 +7832,6 @@ class $$GrowthMetricsTableOrderingComposer
       column: $table.learningScore,
       builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get focusScore => $composableBuilder(
-      column: $table.focusScore, builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<double> get persistenceScore => $composableBuilder(
       column: $table.persistenceScore,
       builder: (column) => ColumnOrderings(column));
@@ -9636,9 +7839,6 @@ class $$GrowthMetricsTableOrderingComposer
   ColumnOrderings<double> get recoveryScore => $composableBuilder(
       column: $table.recoveryScore,
       builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get focusMs => $composableBuilder(
-      column: $table.focusMs, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<int> get reviewDone => $composableBuilder(
       column: $table.reviewDone, builder: (column) => ColumnOrderings(column));
@@ -9669,17 +7869,11 @@ class $$GrowthMetricsTableAnnotationComposer
   GeneratedColumn<double> get learningScore => $composableBuilder(
       column: $table.learningScore, builder: (column) => column);
 
-  GeneratedColumn<double> get focusScore => $composableBuilder(
-      column: $table.focusScore, builder: (column) => column);
-
   GeneratedColumn<double> get persistenceScore => $composableBuilder(
       column: $table.persistenceScore, builder: (column) => column);
 
   GeneratedColumn<double> get recoveryScore => $composableBuilder(
       column: $table.recoveryScore, builder: (column) => column);
-
-  GeneratedColumn<int> get focusMs =>
-      $composableBuilder(column: $table.focusMs, builder: (column) => column);
 
   GeneratedColumn<int> get reviewDone => $composableBuilder(
       column: $table.reviewDone, builder: (column) => column);
@@ -9722,10 +7916,8 @@ class $$GrowthMetricsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> date = const Value.absent(),
             Value<double> learningScore = const Value.absent(),
-            Value<double> focusScore = const Value.absent(),
             Value<double> persistenceScore = const Value.absent(),
             Value<double> recoveryScore = const Value.absent(),
-            Value<int> focusMs = const Value.absent(),
             Value<int> reviewDone = const Value.absent(),
             Value<int> reviewDue = const Value.absent(),
             Value<int> streak = const Value.absent(),
@@ -9735,10 +7927,8 @@ class $$GrowthMetricsTableTableManager extends RootTableManager<
               GrowthMetricsCompanion(
             date: date,
             learningScore: learningScore,
-            focusScore: focusScore,
             persistenceScore: persistenceScore,
             recoveryScore: recoveryScore,
-            focusMs: focusMs,
             reviewDone: reviewDone,
             reviewDue: reviewDue,
             streak: streak,
@@ -9748,10 +7938,8 @@ class $$GrowthMetricsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required String date,
             Value<double> learningScore = const Value.absent(),
-            Value<double> focusScore = const Value.absent(),
             Value<double> persistenceScore = const Value.absent(),
             Value<double> recoveryScore = const Value.absent(),
-            Value<int> focusMs = const Value.absent(),
             Value<int> reviewDone = const Value.absent(),
             Value<int> reviewDue = const Value.absent(),
             Value<int> streak = const Value.absent(),
@@ -9761,10 +7949,8 @@ class $$GrowthMetricsTableTableManager extends RootTableManager<
               GrowthMetricsCompanion.insert(
             date: date,
             learningScore: learningScore,
-            focusScore: focusScore,
             persistenceScore: persistenceScore,
             recoveryScore: recoveryScore,
-            focusMs: focusMs,
             reviewDone: reviewDone,
             reviewDue: reviewDue,
             streak: streak,
@@ -9990,6 +8176,226 @@ typedef $$AiProvidersTableProcessedTableManager = ProcessedTableManager<
     (AiProvider, BaseReferences<_$AppDatabase, $AiProvidersTable, AiProvider>),
     AiProvider,
     PrefetchHooks Function()>;
+typedef $$AiCallLogsTableCreateCompanionBuilder = AiCallLogsCompanion Function({
+  Value<int> id,
+  required String purpose,
+  required String requestBody,
+  required String responseBody,
+  Value<int> httpStatus,
+  Value<bool> success,
+  Value<String?> errorTier,
+  Value<int> durationMs,
+  required DateTime at,
+});
+typedef $$AiCallLogsTableUpdateCompanionBuilder = AiCallLogsCompanion Function({
+  Value<int> id,
+  Value<String> purpose,
+  Value<String> requestBody,
+  Value<String> responseBody,
+  Value<int> httpStatus,
+  Value<bool> success,
+  Value<String?> errorTier,
+  Value<int> durationMs,
+  Value<DateTime> at,
+});
+
+class $$AiCallLogsTableFilterComposer
+    extends Composer<_$AppDatabase, $AiCallLogsTable> {
+  $$AiCallLogsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get purpose => $composableBuilder(
+      column: $table.purpose, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get requestBody => $composableBuilder(
+      column: $table.requestBody, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get responseBody => $composableBuilder(
+      column: $table.responseBody, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get httpStatus => $composableBuilder(
+      column: $table.httpStatus, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get success => $composableBuilder(
+      column: $table.success, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get errorTier => $composableBuilder(
+      column: $table.errorTier, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get durationMs => $composableBuilder(
+      column: $table.durationMs, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get at => $composableBuilder(
+      column: $table.at, builder: (column) => ColumnFilters(column));
+}
+
+class $$AiCallLogsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AiCallLogsTable> {
+  $$AiCallLogsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get purpose => $composableBuilder(
+      column: $table.purpose, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get requestBody => $composableBuilder(
+      column: $table.requestBody, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get responseBody => $composableBuilder(
+      column: $table.responseBody,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get httpStatus => $composableBuilder(
+      column: $table.httpStatus, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get success => $composableBuilder(
+      column: $table.success, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get errorTier => $composableBuilder(
+      column: $table.errorTier, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get durationMs => $composableBuilder(
+      column: $table.durationMs, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get at => $composableBuilder(
+      column: $table.at, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AiCallLogsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AiCallLogsTable> {
+  $$AiCallLogsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get purpose =>
+      $composableBuilder(column: $table.purpose, builder: (column) => column);
+
+  GeneratedColumn<String> get requestBody => $composableBuilder(
+      column: $table.requestBody, builder: (column) => column);
+
+  GeneratedColumn<String> get responseBody => $composableBuilder(
+      column: $table.responseBody, builder: (column) => column);
+
+  GeneratedColumn<int> get httpStatus => $composableBuilder(
+      column: $table.httpStatus, builder: (column) => column);
+
+  GeneratedColumn<bool> get success =>
+      $composableBuilder(column: $table.success, builder: (column) => column);
+
+  GeneratedColumn<String> get errorTier =>
+      $composableBuilder(column: $table.errorTier, builder: (column) => column);
+
+  GeneratedColumn<int> get durationMs => $composableBuilder(
+      column: $table.durationMs, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get at =>
+      $composableBuilder(column: $table.at, builder: (column) => column);
+}
+
+class $$AiCallLogsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AiCallLogsTable,
+    AiCallLog,
+    $$AiCallLogsTableFilterComposer,
+    $$AiCallLogsTableOrderingComposer,
+    $$AiCallLogsTableAnnotationComposer,
+    $$AiCallLogsTableCreateCompanionBuilder,
+    $$AiCallLogsTableUpdateCompanionBuilder,
+    (AiCallLog, BaseReferences<_$AppDatabase, $AiCallLogsTable, AiCallLog>),
+    AiCallLog,
+    PrefetchHooks Function()> {
+  $$AiCallLogsTableTableManager(_$AppDatabase db, $AiCallLogsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiCallLogsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AiCallLogsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AiCallLogsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> purpose = const Value.absent(),
+            Value<String> requestBody = const Value.absent(),
+            Value<String> responseBody = const Value.absent(),
+            Value<int> httpStatus = const Value.absent(),
+            Value<bool> success = const Value.absent(),
+            Value<String?> errorTier = const Value.absent(),
+            Value<int> durationMs = const Value.absent(),
+            Value<DateTime> at = const Value.absent(),
+          }) =>
+              AiCallLogsCompanion(
+            id: id,
+            purpose: purpose,
+            requestBody: requestBody,
+            responseBody: responseBody,
+            httpStatus: httpStatus,
+            success: success,
+            errorTier: errorTier,
+            durationMs: durationMs,
+            at: at,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String purpose,
+            required String requestBody,
+            required String responseBody,
+            Value<int> httpStatus = const Value.absent(),
+            Value<bool> success = const Value.absent(),
+            Value<String?> errorTier = const Value.absent(),
+            Value<int> durationMs = const Value.absent(),
+            required DateTime at,
+          }) =>
+              AiCallLogsCompanion.insert(
+            id: id,
+            purpose: purpose,
+            requestBody: requestBody,
+            responseBody: responseBody,
+            httpStatus: httpStatus,
+            success: success,
+            errorTier: errorTier,
+            durationMs: durationMs,
+            at: at,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AiCallLogsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AiCallLogsTable,
+    AiCallLog,
+    $$AiCallLogsTableFilterComposer,
+    $$AiCallLogsTableOrderingComposer,
+    $$AiCallLogsTableAnnotationComposer,
+    $$AiCallLogsTableCreateCompanionBuilder,
+    $$AiCallLogsTableUpdateCompanionBuilder,
+    (AiCallLog, BaseReferences<_$AppDatabase, $AiCallLogsTable, AiCallLog>),
+    AiCallLog,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10013,16 +8419,12 @@ class $AppDatabaseManager {
       $$GeneratedExercisesTableTableManager(_db, _db.generatedExercises);
   $$AiMessagesTableTableManager get aiMessages =>
       $$AiMessagesTableTableManager(_db, _db.aiMessages);
-  $$FocusSessionsTableTableManager get focusSessions =>
-      $$FocusSessionsTableTableManager(_db, _db.focusSessions);
-  $$FocusEventsTableTableManager get focusEvents =>
-      $$FocusEventsTableTableManager(_db, _db.focusEvents);
-  $$MissionsTableTableManager get missions =>
-      $$MissionsTableTableManager(_db, _db.missions);
   $$LearningEventsTableTableManager get learningEvents =>
       $$LearningEventsTableTableManager(_db, _db.learningEvents);
   $$GrowthMetricsTableTableManager get growthMetrics =>
       $$GrowthMetricsTableTableManager(_db, _db.growthMetrics);
   $$AiProvidersTableTableManager get aiProviders =>
       $$AiProvidersTableTableManager(_db, _db.aiProviders);
+  $$AiCallLogsTableTableManager get aiCallLogs =>
+      $$AiCallLogsTableTableManager(_db, _db.aiCallLogs);
 }

@@ -24,6 +24,9 @@ class AiClient {
   final Dio _dio;
   final Duration defaultTimeout;
 
+  /// 只读配置访问（补钉 A：gateway 日志需要 model 名）
+  AiProviderConfig get config => _config;
+
   Map<String, String> get _headers => {
         'Authorization': 'Bearer $_apiKey',
         'Content-Type': 'application/json',
