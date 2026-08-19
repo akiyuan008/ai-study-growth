@@ -52,6 +52,15 @@ class ScannerBridge {
     }
   }
 
+  /// OpenCV 版本（Part 2.3：启动输出日志用）
+  Future<String> getVersion() async {
+    try {
+      return await _channel.invokeMethod<String>('getVersion') ?? 'unknown';
+    } on PlatformException {
+      return 'unavailable';
+    }
+  }
+
   /// 手动四角裁剪（归一化坐标 0-1：tl/tr/br/bl）
   Future<String?> cropByPoints(
     String path, {

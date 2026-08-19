@@ -14,7 +14,7 @@ class AiClient {
     required AiProviderConfig config,
     required String apiKey,
     Dio? dio,
-    this.defaultTimeout = const Duration(seconds: 60),
+    this.defaultTimeout = const Duration(seconds: 30),
   })  : _config = config,
         _apiKey = apiKey,
         _dio = dio ?? Dio();

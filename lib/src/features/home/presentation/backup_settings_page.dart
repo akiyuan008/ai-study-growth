@@ -130,9 +130,7 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
   Future<void> _save() async {
     // Part 4.4：测试连接通过后才能保存
     if (!_testPassed) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先通过连接测试')),
-      );
+      AppToast.error(context, '请先通过连接测试');
       return;
     }
     final config = BackupChannelConfig(
@@ -149,9 +147,7 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
         );
     await ref.read(backupStateProvider).setAllowCellular(_allowCellular);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('备份配置已保存')),
-      );
+      AppToast.success(context, '备份配置已保存');
       if (widget.focusRestore) {
         await _restore();
       }
@@ -167,9 +163,11 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
       _backingUp = false;
       _lastBackupAt = ref.read(backupStateProvider).lastBackupAt;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result.message)),
-    );
+    if (result.ok) {
+      AppToast.success(context, result.message);
+    } else {
+      AppToast.error(context, result.message);
+    }
   }
 
   Future<void> _restore() async {
@@ -187,9 +185,11 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
     final result = await ref.read(backupServiceProvider).restoreLatest();
     if (!mounted) return;
     setState(() => _restoring = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result.message)),
-    );
+    if (result.ok) {
+      AppToast.success(context, result.message);
+    } else {
+      AppToast.error(context, result.message);
+    }
     if (result.ok) {
       // 数据库实例已重建：作废依赖旧实例的所有 provider
       ref.invalidate(databaseProvider);

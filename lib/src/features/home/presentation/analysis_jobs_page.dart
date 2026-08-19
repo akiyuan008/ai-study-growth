@@ -159,9 +159,7 @@ class _JobCard extends ConsumerWidget {
                             .read(analysisPipelineProvider)
                             .saveJob(job.id);
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('已入库 ${ids.length} 道题')),
-                          );
+                          AppToast.info(context, '已入库 ${ids.length} 道题');
                         }
                       },
                     ),

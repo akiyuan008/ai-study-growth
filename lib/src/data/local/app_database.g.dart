@@ -1802,6 +1802,36 @@ class $KnowledgePointsTable extends KnowledgePoints
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant(''));
+  static const VerificationMeta _versionMeta =
+      const VerificationMeta('version');
+  @override
+  late final GeneratedColumn<String> version = GeneratedColumn<String>(
+      'version', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _bookMeta = const VerificationMeta('book');
+  @override
+  late final GeneratedColumn<String> book = GeneratedColumn<String>(
+      'book', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _chapterMeta =
+      const VerificationMeta('chapter');
+  @override
+  late final GeneratedColumn<String> chapter = GeneratedColumn<String>(
+      'chapter', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _lessonMeta = const VerificationMeta('lesson');
+  @override
+  late final GeneratedColumn<String> lesson = GeneratedColumn<String>(
+      'lesson', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -1814,7 +1844,8 @@ class $KnowledgePointsTable extends KnowledgePoints
       'first_seen_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns => [id, subject, name, firstSeenAt];
+  List<GeneratedColumn> get $columns =>
+      [id, subject, version, book, chapter, lesson, name, firstSeenAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1833,6 +1864,22 @@ class $KnowledgePointsTable extends KnowledgePoints
     if (data.containsKey('subject')) {
       context.handle(_subjectMeta,
           subject.isAcceptableOrUnknown(data['subject']!, _subjectMeta));
+    }
+    if (data.containsKey('version')) {
+      context.handle(_versionMeta,
+          version.isAcceptableOrUnknown(data['version']!, _versionMeta));
+    }
+    if (data.containsKey('book')) {
+      context.handle(
+          _bookMeta, book.isAcceptableOrUnknown(data['book']!, _bookMeta));
+    }
+    if (data.containsKey('chapter')) {
+      context.handle(_chapterMeta,
+          chapter.isAcceptableOrUnknown(data['chapter']!, _chapterMeta));
+    }
+    if (data.containsKey('lesson')) {
+      context.handle(_lessonMeta,
+          lesson.isAcceptableOrUnknown(data['lesson']!, _lessonMeta));
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -1865,6 +1912,14 @@ class $KnowledgePointsTable extends KnowledgePoints
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       subject: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}subject'])!,
+      version: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}version'])!,
+      book: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}book'])!,
+      chapter: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}chapter'])!,
+      lesson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}lesson'])!,
       name: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
       firstSeenAt: attachedDatabase.typeMapping.read(
@@ -1881,11 +1936,29 @@ class $KnowledgePointsTable extends KnowledgePoints
 class KnowledgePoint extends DataClass implements Insertable<KnowledgePoint> {
   final String id;
   final String subject;
+
+  /// 教材版本，如 人教版（可推断必须可改）
+  final String version;
+
+  /// 册别，如 八年级上册
+  final String book;
+
+  /// 章
+  final String chapter;
+
+  /// 节
+  final String lesson;
+
+  /// 知识点名称（最末级）
   final String name;
   final DateTime firstSeenAt;
   const KnowledgePoint(
       {required this.id,
       required this.subject,
+      required this.version,
+      required this.book,
+      required this.chapter,
+      required this.lesson,
       required this.name,
       required this.firstSeenAt});
   @override
@@ -1893,6 +1966,10 @@ class KnowledgePoint extends DataClass implements Insertable<KnowledgePoint> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['subject'] = Variable<String>(subject);
+    map['version'] = Variable<String>(version);
+    map['book'] = Variable<String>(book);
+    map['chapter'] = Variable<String>(chapter);
+    map['lesson'] = Variable<String>(lesson);
     map['name'] = Variable<String>(name);
     map['first_seen_at'] = Variable<DateTime>(firstSeenAt);
     return map;
@@ -1902,6 +1979,10 @@ class KnowledgePoint extends DataClass implements Insertable<KnowledgePoint> {
     return KnowledgePointsCompanion(
       id: Value(id),
       subject: Value(subject),
+      version: Value(version),
+      book: Value(book),
+      chapter: Value(chapter),
+      lesson: Value(lesson),
       name: Value(name),
       firstSeenAt: Value(firstSeenAt),
     );
@@ -1913,6 +1994,10 @@ class KnowledgePoint extends DataClass implements Insertable<KnowledgePoint> {
     return KnowledgePoint(
       id: serializer.fromJson<String>(json['id']),
       subject: serializer.fromJson<String>(json['subject']),
+      version: serializer.fromJson<String>(json['version']),
+      book: serializer.fromJson<String>(json['book']),
+      chapter: serializer.fromJson<String>(json['chapter']),
+      lesson: serializer.fromJson<String>(json['lesson']),
       name: serializer.fromJson<String>(json['name']),
       firstSeenAt: serializer.fromJson<DateTime>(json['firstSeenAt']),
     );
@@ -1923,16 +2008,31 @@ class KnowledgePoint extends DataClass implements Insertable<KnowledgePoint> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'subject': serializer.toJson<String>(subject),
+      'version': serializer.toJson<String>(version),
+      'book': serializer.toJson<String>(book),
+      'chapter': serializer.toJson<String>(chapter),
+      'lesson': serializer.toJson<String>(lesson),
       'name': serializer.toJson<String>(name),
       'firstSeenAt': serializer.toJson<DateTime>(firstSeenAt),
     };
   }
 
   KnowledgePoint copyWith(
-          {String? id, String? subject, String? name, DateTime? firstSeenAt}) =>
+          {String? id,
+          String? subject,
+          String? version,
+          String? book,
+          String? chapter,
+          String? lesson,
+          String? name,
+          DateTime? firstSeenAt}) =>
       KnowledgePoint(
         id: id ?? this.id,
         subject: subject ?? this.subject,
+        version: version ?? this.version,
+        book: book ?? this.book,
+        chapter: chapter ?? this.chapter,
+        lesson: lesson ?? this.lesson,
         name: name ?? this.name,
         firstSeenAt: firstSeenAt ?? this.firstSeenAt,
       );
@@ -1940,6 +2040,10 @@ class KnowledgePoint extends DataClass implements Insertable<KnowledgePoint> {
     return KnowledgePoint(
       id: data.id.present ? data.id.value : this.id,
       subject: data.subject.present ? data.subject.value : this.subject,
+      version: data.version.present ? data.version.value : this.version,
+      book: data.book.present ? data.book.value : this.book,
+      chapter: data.chapter.present ? data.chapter.value : this.chapter,
+      lesson: data.lesson.present ? data.lesson.value : this.lesson,
       name: data.name.present ? data.name.value : this.name,
       firstSeenAt:
           data.firstSeenAt.present ? data.firstSeenAt.value : this.firstSeenAt,
@@ -1951,6 +2055,10 @@ class KnowledgePoint extends DataClass implements Insertable<KnowledgePoint> {
     return (StringBuffer('KnowledgePoint(')
           ..write('id: $id, ')
           ..write('subject: $subject, ')
+          ..write('version: $version, ')
+          ..write('book: $book, ')
+          ..write('chapter: $chapter, ')
+          ..write('lesson: $lesson, ')
           ..write('name: $name, ')
           ..write('firstSeenAt: $firstSeenAt')
           ..write(')'))
@@ -1958,13 +2066,18 @@ class KnowledgePoint extends DataClass implements Insertable<KnowledgePoint> {
   }
 
   @override
-  int get hashCode => Object.hash(id, subject, name, firstSeenAt);
+  int get hashCode => Object.hash(
+      id, subject, version, book, chapter, lesson, name, firstSeenAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is KnowledgePoint &&
           other.id == this.id &&
           other.subject == this.subject &&
+          other.version == this.version &&
+          other.book == this.book &&
+          other.chapter == this.chapter &&
+          other.lesson == this.lesson &&
           other.name == this.name &&
           other.firstSeenAt == this.firstSeenAt);
 }
@@ -1972,12 +2085,20 @@ class KnowledgePoint extends DataClass implements Insertable<KnowledgePoint> {
 class KnowledgePointsCompanion extends UpdateCompanion<KnowledgePoint> {
   final Value<String> id;
   final Value<String> subject;
+  final Value<String> version;
+  final Value<String> book;
+  final Value<String> chapter;
+  final Value<String> lesson;
   final Value<String> name;
   final Value<DateTime> firstSeenAt;
   final Value<int> rowid;
   const KnowledgePointsCompanion({
     this.id = const Value.absent(),
     this.subject = const Value.absent(),
+    this.version = const Value.absent(),
+    this.book = const Value.absent(),
+    this.chapter = const Value.absent(),
+    this.lesson = const Value.absent(),
     this.name = const Value.absent(),
     this.firstSeenAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1985,6 +2106,10 @@ class KnowledgePointsCompanion extends UpdateCompanion<KnowledgePoint> {
   KnowledgePointsCompanion.insert({
     required String id,
     this.subject = const Value.absent(),
+    this.version = const Value.absent(),
+    this.book = const Value.absent(),
+    this.chapter = const Value.absent(),
+    this.lesson = const Value.absent(),
     required String name,
     required DateTime firstSeenAt,
     this.rowid = const Value.absent(),
@@ -1994,6 +2119,10 @@ class KnowledgePointsCompanion extends UpdateCompanion<KnowledgePoint> {
   static Insertable<KnowledgePoint> custom({
     Expression<String>? id,
     Expression<String>? subject,
+    Expression<String>? version,
+    Expression<String>? book,
+    Expression<String>? chapter,
+    Expression<String>? lesson,
     Expression<String>? name,
     Expression<DateTime>? firstSeenAt,
     Expression<int>? rowid,
@@ -2001,6 +2130,10 @@ class KnowledgePointsCompanion extends UpdateCompanion<KnowledgePoint> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (subject != null) 'subject': subject,
+      if (version != null) 'version': version,
+      if (book != null) 'book': book,
+      if (chapter != null) 'chapter': chapter,
+      if (lesson != null) 'lesson': lesson,
       if (name != null) 'name': name,
       if (firstSeenAt != null) 'first_seen_at': firstSeenAt,
       if (rowid != null) 'rowid': rowid,
@@ -2010,12 +2143,20 @@ class KnowledgePointsCompanion extends UpdateCompanion<KnowledgePoint> {
   KnowledgePointsCompanion copyWith(
       {Value<String>? id,
       Value<String>? subject,
+      Value<String>? version,
+      Value<String>? book,
+      Value<String>? chapter,
+      Value<String>? lesson,
       Value<String>? name,
       Value<DateTime>? firstSeenAt,
       Value<int>? rowid}) {
     return KnowledgePointsCompanion(
       id: id ?? this.id,
       subject: subject ?? this.subject,
+      version: version ?? this.version,
+      book: book ?? this.book,
+      chapter: chapter ?? this.chapter,
+      lesson: lesson ?? this.lesson,
       name: name ?? this.name,
       firstSeenAt: firstSeenAt ?? this.firstSeenAt,
       rowid: rowid ?? this.rowid,
@@ -2030,6 +2171,18 @@ class KnowledgePointsCompanion extends UpdateCompanion<KnowledgePoint> {
     }
     if (subject.present) {
       map['subject'] = Variable<String>(subject.value);
+    }
+    if (version.present) {
+      map['version'] = Variable<String>(version.value);
+    }
+    if (book.present) {
+      map['book'] = Variable<String>(book.value);
+    }
+    if (chapter.present) {
+      map['chapter'] = Variable<String>(chapter.value);
+    }
+    if (lesson.present) {
+      map['lesson'] = Variable<String>(lesson.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -2048,6 +2201,10 @@ class KnowledgePointsCompanion extends UpdateCompanion<KnowledgePoint> {
     return (StringBuffer('KnowledgePointsCompanion(')
           ..write('id: $id, ')
           ..write('subject: $subject, ')
+          ..write('version: $version, ')
+          ..write('book: $book, ')
+          ..write('chapter: $chapter, ')
+          ..write('lesson: $lesson, ')
           ..write('name: $name, ')
           ..write('firstSeenAt: $firstSeenAt, ')
           ..write('rowid: $rowid')
@@ -7383,6 +7540,10 @@ typedef $$KnowledgePointsTableCreateCompanionBuilder = KnowledgePointsCompanion
     Function({
   required String id,
   Value<String> subject,
+  Value<String> version,
+  Value<String> book,
+  Value<String> chapter,
+  Value<String> lesson,
   required String name,
   required DateTime firstSeenAt,
   Value<int> rowid,
@@ -7391,6 +7552,10 @@ typedef $$KnowledgePointsTableUpdateCompanionBuilder = KnowledgePointsCompanion
     Function({
   Value<String> id,
   Value<String> subject,
+  Value<String> version,
+  Value<String> book,
+  Value<String> chapter,
+  Value<String> lesson,
   Value<String> name,
   Value<DateTime> firstSeenAt,
   Value<int> rowid,
@@ -7410,6 +7575,18 @@ class $$KnowledgePointsTableFilterComposer
 
   ColumnFilters<String> get subject => $composableBuilder(
       column: $table.subject, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get version => $composableBuilder(
+      column: $table.version, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get book => $composableBuilder(
+      column: $table.book, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get chapter => $composableBuilder(
+      column: $table.chapter, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lesson => $composableBuilder(
+      column: $table.lesson, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnFilters(column));
@@ -7433,6 +7610,18 @@ class $$KnowledgePointsTableOrderingComposer
   ColumnOrderings<String> get subject => $composableBuilder(
       column: $table.subject, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get version => $composableBuilder(
+      column: $table.version, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get book => $composableBuilder(
+      column: $table.book, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get chapter => $composableBuilder(
+      column: $table.chapter, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lesson => $composableBuilder(
+      column: $table.lesson, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnOrderings(column));
 
@@ -7454,6 +7643,18 @@ class $$KnowledgePointsTableAnnotationComposer
 
   GeneratedColumn<String> get subject =>
       $composableBuilder(column: $table.subject, builder: (column) => column);
+
+  GeneratedColumn<String> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
+
+  GeneratedColumn<String> get book =>
+      $composableBuilder(column: $table.book, builder: (column) => column);
+
+  GeneratedColumn<String> get chapter =>
+      $composableBuilder(column: $table.chapter, builder: (column) => column);
+
+  GeneratedColumn<String> get lesson =>
+      $composableBuilder(column: $table.lesson, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
@@ -7491,6 +7692,10 @@ class $$KnowledgePointsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> subject = const Value.absent(),
+            Value<String> version = const Value.absent(),
+            Value<String> book = const Value.absent(),
+            Value<String> chapter = const Value.absent(),
+            Value<String> lesson = const Value.absent(),
             Value<String> name = const Value.absent(),
             Value<DateTime> firstSeenAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -7498,6 +7703,10 @@ class $$KnowledgePointsTableTableManager extends RootTableManager<
               KnowledgePointsCompanion(
             id: id,
             subject: subject,
+            version: version,
+            book: book,
+            chapter: chapter,
+            lesson: lesson,
             name: name,
             firstSeenAt: firstSeenAt,
             rowid: rowid,
@@ -7505,6 +7714,10 @@ class $$KnowledgePointsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required String id,
             Value<String> subject = const Value.absent(),
+            Value<String> version = const Value.absent(),
+            Value<String> book = const Value.absent(),
+            Value<String> chapter = const Value.absent(),
+            Value<String> lesson = const Value.absent(),
             required String name,
             required DateTime firstSeenAt,
             Value<int> rowid = const Value.absent(),
@@ -7512,6 +7725,10 @@ class $$KnowledgePointsTableTableManager extends RootTableManager<
               KnowledgePointsCompanion.insert(
             id: id,
             subject: subject,
+            version: version,
+            book: book,
+            chapter: chapter,
+            lesson: lesson,
             name: name,
             firstSeenAt: firstSeenAt,
             rowid: rowid,

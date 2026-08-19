@@ -49,6 +49,11 @@ class MainActivity : FlutterActivity() {
                             result.success(out)
                         }
                     }
+                    "getVersion" -> {
+                        result.success(
+                            try { org.opencv.core.Core.VERSION } catch (_: Throwable) { "unavailable" }
+                        )
+                    }
                     "rotate90" -> {
                         val path = call.argument<String>("path")
                         if (path == null) {

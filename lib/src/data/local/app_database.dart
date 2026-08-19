@@ -42,11 +42,24 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          // v2：知识点层级路径列（Part 3.2）
+          if (from < 2) {
+            await customStatement(
+                'ALTER TABLE knowledge_points ADD COLUMN version TEXT NOT NULL DEFAULT \'\'');
+            await customStatement(
+                'ALTER TABLE knowledge_points ADD COLUMN book TEXT NOT NULL DEFAULT \'\'');
+            await customStatement(
+                'ALTER TABLE knowledge_points ADD COLUMN chapter TEXT NOT NULL DEFAULT \'\'');
+            await customStatement(
+                'ALTER TABLE knowledge_points ADD COLUMN lesson TEXT NOT NULL DEFAULT \'\'');
+          }
+        },
         beforeOpen: (details) async {
           // 外键约束默认关闭，显式开启保证关联完整性
           await customStatement('PRAGMA foreign_keys = ON');

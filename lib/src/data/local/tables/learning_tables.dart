@@ -47,11 +47,26 @@ class QuestionRecords extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// 知识点实体（AI 自动打标沉淀，未来演化为知识点图谱）
+/// 知识点实体（层级路径 Part 3.2：subject/version/book/chapter/lesson/point）
 class KnowledgePoints extends Table {
   TextColumn get id => text()();
   TextColumn get subject => text().withDefault(const Constant(''))();
+
+  /// 教材版本，如 人教版（可推断必须可改）
+  TextColumn get version => text().withDefault(const Constant(''))();
+
+  /// 册别，如 八年级上册
+  TextColumn get book => text().withDefault(const Constant(''))();
+
+  /// 章
+  TextColumn get chapter => text().withDefault(const Constant(''))();
+
+  /// 节
+  TextColumn get lesson => text().withDefault(const Constant(''))();
+
+  /// 知识点名称（最末级）
   TextColumn get name => text()();
+
   DateTimeColumn get firstSeenAt => dateTime()();
 
   @override

@@ -2,6 +2,7 @@
 library;
 
 export 'growth_theme.dart';
+export 'widgets/app_toast.dart';
 export 'tokens.dart';
 export 'widgets/energy_ring.dart';
 export 'widgets/growth_button.dart';

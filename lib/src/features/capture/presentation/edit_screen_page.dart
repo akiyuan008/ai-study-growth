@@ -35,6 +35,12 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
   late List<Offset> _corners;
   bool _busy = false;
 
+  /// 用户是否拖动过四角（手动框选最终裁定依据，Part 2.2）
+  bool _cornersDirty = false;
+
+  /// 自动校准是否应用过（cropSource 判定）
+  bool _autoApplied = false;
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +65,7 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
       _busy = false;
       if (result != null) {
         _currentPath = result.path;
+        _autoApplied = true; // 自动校准只提案，最终保存以用户框为准
         // 自动校准成功后裁剪框复位（已拉正，无需再裁）
         _corners = [
           const Offset(0.02, 0.02),
@@ -66,21 +73,16 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
           const Offset(0.98, 0.98),
           const Offset(0.02, 0.98),
         ];
+        _cornersDirty = false;
         if (!silent) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                result.needsManualHint
-                    ? '未检测到纸面边界，已按全幅处理，建议手动校准'
-                    : '已自动提取纸面并拉正',
-              ),
-            ),
-          );
+          if (result.needsManualHint) {
+            AppToast.error(context, '未检测到纸面边界，已按全幅处理，建议手动校准');
+          } else {
+            AppToast.success(context, '已自动提取纸面并拉正');
+          }
         }
       } else if (!silent) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('校准没成功，请手动调整裁剪框，或直接使用原图')),
-        );
+        AppToast.error(context, '校准没成功，请手动调整裁剪框，或直接使用原图');
       }
     });
   }
@@ -119,6 +121,7 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
           const Offset(0.98, 0.98),
           const Offset(0.02, 0.98),
         ];
+        _cornersDirty = false;
       }
     });
   }
@@ -127,6 +130,8 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
   Future<void> _useOriginal() async {
     setState(() {
       _currentPath = widget.path;
+      _autoApplied = false;
+      _cornersDirty = false;
       _corners = [
         const Offset(0.06, 0.08),
         const Offset(0.94, 0.08),
@@ -136,11 +141,38 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
     });
   }
 
+  /// Part 2.2 手动框选最终裁定：
+  /// 确认保存按用户框渲染裁剪位图写入题目图片（严禁存原图路径）。
   Future<void> _confirm() async {
-    final archived = await archiveImage(_currentPath);
+    if (_busy) return;
+    var finalPath = _currentPath;
+    var cropSource = _autoApplied ? 'auto' : 'original';
+
+    if (_cornersDirty) {
+      setState(() => _busy = true);
+      final scanner = ref.read(scannerBridgeProvider);
+      final cropped = await scanner.cropByPoints(
+        _currentPath,
+        tl: [_corners[0].dx, _corners[0].dy],
+        tr: [_corners[1].dx, _corners[1].dy],
+        br: [_corners[2].dx, _corners[2].dy],
+        bl: [_corners[3].dx, _corners[3].dy],
+      );
+      if (!mounted) return;
+      setState(() => _busy = false);
+      if (cropped == null) {
+        AppToast.error(context, '裁剪没成功，请调整裁剪框再试');
+        return;
+      }
+      finalPath = cropped;
+      cropSource = 'manual';
+    }
+
+    final archived = await archiveImage(finalPath);
     if (!mounted) return;
     context.pushReplacement(
-      '/capture/save?path=${Uri.encodeComponent(archived)}&source=${widget.source.name}',
+      '/capture/save?path=${Uri.encodeComponent(archived)}'
+      '&source=${widget.source.name}&cropSource=$cropSource',
     );
   }
 
@@ -223,6 +255,7 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
                                             d.delta.dy / constraints.maxHeight)
                                         .clamp(0.0, 1.0);
                                     _corners[i] = Offset(nx, ny);
+                                    _cornersDirty = true;
                                   });
                                 },
                                 child: Container(

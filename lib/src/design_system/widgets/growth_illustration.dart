@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'growth_button.dart';
+
 import '../tokens.dart';
 
 /// 品牌空状态插画：一本摊开的线稿书，中间长出一株嫩芽。
@@ -228,6 +230,62 @@ class GrowthEmptyState extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 统一空状态（Part 1.3）：插画 + 主/副文案整体居中，垂直约 40%
+class EmptyState extends StatelessWidget {
+  const EmptyState({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String title;
+  final String? subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: FractionallySizedBox(
+        heightFactor: 0.8,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 视觉上整体位于约 40% 高度（Column 居中 + 顶部配重）
+            const Spacer(flex: 2),
+            const GrowthSproutIllustration(size: 110),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                subtitle!,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 20),
+              GrowthButton(
+                label: actionLabel!,
+                variant: GrowthButtonVariant.secondary,
+                onPressed: onAction,
+              ),
+            ],
+            const Spacer(flex: 3),
+          ],
+        ),
       ),
     );
   }

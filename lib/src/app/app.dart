@@ -70,6 +70,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             (s) => s.name == state.uri.queryParameters['source'],
             orElse: () => CaptureSource.camera,
           ),
+          cropSource: state.uri.queryParameters['cropSource'] ?? 'original',
         ),
       ),
       GoRoute(

@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../domain/models/analysis_result.dart';
+import 'ai_call.dart';
 import '../../domain/models/generated_exercise.dart';
+import '../../domain/models/knowledge_path.dart';
 import 'ai_client.dart';
 import 'ai_message.dart';
 import 'prompts.dart';
@@ -43,6 +45,14 @@ abstract interface class AiAnalysisGateway {
   /// 知识点分类（Part 3.1）：AI 仅输出结构化知识点标签列表。
   /// 严禁生成题干/答案/错因等解析内容。
   Future<List<String>> suggestKnowledgeTags({
+    required List<int> imageBytes,
+    String mimeType = 'image/jpeg',
+  });
+
+  /// 层级知识点路径（Part 3.2 硬门 3）：
+  /// AI 输出完整层级 {subject,version,book,chapter,lesson,point}。
+  /// 视觉不支持时抛 AiCallException(visionUnsupported)，由 UI 守卫转手动。
+  Future<KnowledgePath> suggestKnowledgePath({
     required List<int> imageBytes,
     String mimeType = 'image/jpeg',
   });
@@ -148,25 +158,65 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
     const system = '你是一个知识点分类器。只看题目图片，输出该题涉及的知识点标签。'
         '规则：只输出 JSON 数组（如 ["高中物理","力学","牛顿第二定律"]），3-6 个，'
         '从学科大类到具体知识点递进；不解题、不写答案、不输出任何其他文字。';
-    final raw = await _client.chat(
-      messages: [
-        const AiMessage(role: 'system', content: system),
-        userMessageWithImage(
-          text: '请输出知识点标签。',
-          imageBytes: imageBytes,
-          mimeType: mimeType,
-        ),
-      ],
-      temperature: 0.1,
-      maxTokens: 256,
-    );
+    final raw = await AiCall.run(() => _client.chat(
+          messages: [
+            const AiMessage(role: 'system', content: system),
+            userMessageWithImage(
+              text: '请输出知识点标签。',
+              imageBytes: imageBytes,
+              mimeType: mimeType,
+            ),
+          ],
+          temperature: 0.1,
+          maxTokens: 256,
+        ));
     final json = extractJsonObject(raw) ?? _tryParseArray(raw);
-    if (json == null) return const [];
+    if (json == null) {
+      throw const AiCallException(AiErrorTier.parseFailed, detail: '未识别到标签结构');
+    }
     final list = json['tags'];
     if (list is List) {
       return list.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
     }
     return const [];
+  }
+
+  @override
+  Future<KnowledgePath> suggestKnowledgePath({
+    required List<int> imageBytes,
+    String mimeType = 'image/jpeg',
+  }) async {
+    const system = '你是教材知识点分类器。只看题目图片，输出该题知识点在教材中的层级路径。'
+        '规则：只输出 JSON，不要解题。字段：subject(学科)、version(教材版本，如人教版，可合理推断)、'
+        'book(册别，如八年级上册)、chapter(章)、lesson(节)、point(知识点名称)。'
+        '不确定的层级留空字符串。示例：'
+        '{"subject":"物理","version":"人教版","book":"八年级下册","chapter":"第九章 压强","lesson":"第1节 压强","point":"压强"}';
+    final raw = await AiCall.run(() => _client.chat(
+          messages: [
+            const AiMessage(role: 'system', content: system),
+            userMessageWithImage(
+              text: '请输出知识点层级路径。',
+              imageBytes: imageBytes,
+              mimeType: mimeType,
+            ),
+          ],
+          temperature: 0.1,
+          maxTokens: 300,
+        ));
+    // JSON 提取 + 正则兜底
+    var json = extractJsonObject(raw);
+    if (json == null) {
+      final m = RegExp(r'\{[^{}]*"point"[^{}]*\}').firstMatch(raw);
+      if (m != null) {
+        try {
+          json = jsonDecode(m.group(0)!) as Map<String, dynamic>;
+        } catch (_) {}
+      }
+    }
+    if (json == null) {
+      throw const AiCallException(AiErrorTier.parseFailed, detail: '未识别到层级路径');
+    }
+    return KnowledgePath.fromJson(json);
   }
 
   static Map<String, dynamic>? _tryParseArray(String raw) {

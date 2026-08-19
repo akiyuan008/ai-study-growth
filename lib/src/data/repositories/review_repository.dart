@@ -113,9 +113,9 @@ class ReviewRepository {
         );
   }
 
-  /// 掌握度映射（供成长引擎的学习能力维度消费）：
+  /// 掌握度映射（Part 6.3 标记结果联动）：
   /// 0 新题 → 1-2 学习中 → 3 已入长期（review 态）
-  /// 4 稳定（S≥21 天）→ 5 掌握（S≥60 天）
+  /// 4 稳定（S≥21 天）→ 5 掌握/毕业（连续答对达标，不再推荐）
   Future<void> _updateMastery(
     String questionId,
     Card card,
@@ -123,7 +123,9 @@ class ReviewRepository {
   ) async {
     final stability = card.stability ?? 0;
     final int level;
-    if (card.state == State.review) {
+    if (card.state == State.review && stability >= 21 && reps >= 3) {
+      level = 5; // 毕业：进入「已掌握·不再推荐」
+    } else if (card.state == State.review) {
       if (stability >= 60) {
         level = 5;
       } else if (stability >= 21) {

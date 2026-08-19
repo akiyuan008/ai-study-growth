@@ -55,13 +55,21 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
     _initCamera();
   }
 
+  String _opencvVersion = '';
+  bool _debugOverlay = false;
+
   Future<void> _loadPrefs() async {
     final prefs = ref.read(sharedPreferencesProvider);
     setState(() {
       _gridOn = prefs.getBool('capture.grid_on') ?? true; // 网格默认开
+      _debugOverlay = prefs.getBool('capture.debug_overlay') ?? false;
       // 首次默认显示引导；成功拍题后自动收起（可手动再开）
       _guideVisible = !(prefs.getBool('capture.guide_dismissed') ?? false);
     });
+    // Part 2.3：启动输出 OpenCV 版本日志
+    final version = await ref.read(scannerBridgeProvider).getVersion();
+    debugPrint('[Scanner] OpenCV version: $version');
+    if (mounted) setState(() => _opencvVersion = version);
   }
 
   /// 引导框归一化 ROI 串（传编辑屏作为 OpenCV 感兴趣区域）
@@ -131,6 +139,12 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
     super.dispose();
   }
 
+  Future<void> _toggleDebugOverlay() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    setState(() => _debugOverlay = !_debugOverlay);
+    await prefs.setBool('capture.debug_overlay', _debugOverlay);
+  }
+
   Future<void> _toggleFlash() async {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
@@ -190,8 +204,40 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
     );
   }
 
+  /// 导入选择器：相册 / 文件导入（Part 2.1 底栏严格三元素）
+  void _openImportPicker() {
+    showGrowthSheet<void>(
+      context: context,
+      builder: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading:
+                const Icon(Icons.photo_rounded, color: GrowthColors.primary),
+            title: const Text('从相册选择'),
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              _pickFromAlbum();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.insert_drive_file_rounded,
+                color: GrowthColors.primary),
+            title: const Text('文件导入'),
+            subtitle: const Text('从文件管理器选择图片'),
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              _pickFromFile();
+            },
+          ),
+          const SizedBox(height: GrowthSpacing.sm),
+        ],
+      ),
+    );
+  }
+
   Future<void> _pickFromFile() async {
-    // 文件导入：走相册通道（Android 文件选择器对图片场景等价）
+    // 文件导入：走相册通道（Android 系统选择器对图片场景等价）
     await _pickFromAlbum();
   }
 
@@ -316,11 +362,41 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
                         color: Colors.black.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(GrowthRadii.icon),
                       ),
-                      child: const Text(
-                        '把题目放进框内，对准中心 + 号拍摄。\n'
-                        '纸张在画面内即可自动提取拉正；没对准也能拍，之后可手动校准。',
-                        style: TextStyle(
-                            color: Colors.white70, fontSize: 13, height: 1.6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '把题目放进框内，对准中心 + 号拍摄。\n'
+                            '纸张在画面内即可自动提取拉正；没对准也能拍，之后可手动校准。',
+                            style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                                height: 1.6),
+                          ),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: _toggleDebugOverlay,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _debugOverlay
+                                      ? Icons.check_box_rounded
+                                      : Icons.check_box_outline_blank_rounded,
+                                  size: 16,
+                                  color: Colors.white70,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _debugOverlay
+                                      ? '显示检测信息：开（OpenCV $_opencvVersion）'
+                                      : '显示检测信息（调试）',
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],
@@ -422,21 +498,11 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
                       ),
                     ),
                   ),
-                  // 右槽：相册 + 文件导入
-                  Row(
-                    children: [
-                      _SlotButton(
-                        onTap: _pickFromAlbum,
-                        child: const Icon(Icons.photo_rounded,
-                            color: Colors.white, size: 26),
-                      ),
-                      const SizedBox(width: GrowthSpacing.sm),
-                      _SlotButton(
-                        onTap: _pickFromFile,
-                        child: const Icon(Icons.insert_drive_file_rounded,
-                            color: Colors.white, size: 24),
-                      ),
-                    ],
+                  // 右槽：导入单按钮（相册/文件 为选择器内部选项，Part 2.1）
+                  _SlotButton(
+                    onTap: _openImportPicker,
+                    child: const Icon(Icons.photo_library_rounded,
+                        color: Colors.white, size: 26),
                   ),
                 ],
               ),

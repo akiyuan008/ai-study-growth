@@ -6,6 +6,7 @@ import 'package:ai_study_growth/src/data/local/app_database.dart';
 import 'package:ai_study_growth/src/data/services/analysis_pipeline.dart';
 import 'package:ai_study_growth/src/domain/models/analysis_result.dart';
 import 'package:ai_study_growth/src/domain/models/generated_exercise.dart';
+import 'package:ai_study_growth/src/domain/models/knowledge_path.dart';
 import 'package:ai_study_growth/src/domain/models/subject.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -86,6 +87,13 @@ class FakeGateway implements AiAnalysisGateway {
     String mimeType = 'image/jpeg',
   }) async =>
       const ['测试知识点'];
+
+  @override
+  Future<KnowledgePath> suggestKnowledgePath({
+    required List<int> imageBytes,
+    String mimeType = 'image/jpeg',
+  }) async =>
+      const KnowledgePath(subject: '物理', point: '测试知识点');
 }
 
 Future<AnalysisJob> _getJob(AppDatabase db, String jobId) async {

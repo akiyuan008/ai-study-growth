@@ -1,354 +1,485 @@
+import 'dart:io';
+
+import 'package:drift/drift.dart' hide Column, Table;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
-import '../../../core/ai/ai_message.dart';
-import '../../../core/ai/prompts.dart';
 import '../../../core/di/providers.dart';
 import '../../../data/local/app_database.dart';
 import '../../../data/repositories/question_repository.dart';
+import '../../../data/services/review_scheduler.dart';
 import '../../../design_system/design_system.dart';
 import '../../../domain/models/generated_exercise.dart';
-import 'package:drift/drift.dart' hide Column, Table;
+import '../../../domain/models/knowledge_path.dart';
 import '../../learning/learning_providers.dart';
+import 'notebook_page.dart' show MasteryFlag;
 
-/// 题目详情页：题干/答案/步骤/知识点 + AI 追问 + 举一反三
-class QuestionDetailPage extends ConsumerWidget {
+/// 详情页数据聚合
+class QuestionDetailData {
+  const QuestionDetailData({
+    required this.question,
+    required this.breadcrumb,
+    required this.card,
+    required this.logs,
+  });
+
+  final QuestionRecord question;
+  final KnowledgePath breadcrumb;
+  final ReviewCard? card;
+  final List<ReviewLog> logs;
+}
+
+final questionDetailProvider = FutureProvider.autoDispose
+    .family<QuestionDetailData?, String>((ref, id) async {
+  final db = ref.watch(databaseProvider);
+  final questions = await (db.select(db.questionRecords)
+        ..where((t) => t.id.equals(id)))
+      .get();
+  if (questions.isEmpty) return null;
+  final question = questions.first;
+
+  // 层级面包屑
+  final links = await (db.select(db.questionKnowledgeLinks)
+        ..where((t) => t.questionId.equals(id)))
+      .get();
+  KnowledgePath breadcrumb = const KnowledgePath();
+  if (links.isNotEmpty) {
+    final kps = await (db.select(db.knowledgePoints)
+          ..where((t) => t.id.equals(links.first.knowledgePointId)))
+        .get();
+    if (kps.isNotEmpty) {
+      final kp = kps.first;
+      breadcrumb = KnowledgePath(
+        subject: kp.subject,
+        version: kp.version,
+        book: kp.book,
+        chapter: kp.chapter,
+        lesson: kp.lesson,
+        point: kp.name,
+      );
+    }
+  }
+
+  // 复习卡 + 历史
+  final cards = await (db.select(db.reviewCards)
+        ..where((t) => t.questionId.equals(id)))
+      .get();
+  final logs = await (db.select(db.reviewLogs)
+        ..where((t) => t.questionId.equals(id))
+        ..orderBy([(t) => OrderingTerm.desc(t.reviewedAt)]))
+      .get();
+
+  return QuestionDetailData(
+    question: question,
+    breadcrumb: breadcrumb,
+    card: cards.isEmpty ? null : cards.first,
+    logs: logs,
+  );
+});
+
+/// 题目详情页（Part 4.2 重做）：
+/// 原图/题干分段切换、掌握度旗标点按切换、层级面包屑、
+/// 操作仅留举一反三（删除/编辑进溢出菜单）、记忆状态卡
+class QuestionDetailPage extends ConsumerStatefulWidget {
   const QuestionDetailPage({super.key, required this.questionId});
 
   final String questionId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final questionAsync = ref.watch(_questionProvider(questionId));
+  ConsumerState<QuestionDetailPage> createState() => _QuestionDetailPageState();
+}
 
-    return GrowthBackground(
-        child: Scaffold(
-      backgroundColor: Colors.transparent,
+class _QuestionDetailPageState extends ConsumerState<QuestionDetailPage> {
+  /// 0=原图 1=题干
+  int _segment = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // 有图默认看原图（图片必须可见），无图看题干
+    final data = ref.read(questionDetailProvider(widget.questionId));
+    data.whenData((d) {
+      if (d != null &&
+          (d.question.imagePath == null ||
+              !File(d.question.imagePath!).existsSync())) {
+        _segment = 1;
+      }
+    });
+  }
+
+  Future<void> _delete() async {
+    final ok = await showGrowthDialog(
+      context: context,
+      title: '删除这道题？',
+      message: '删除后复习记录与题库数据一并清除，无法恢复。',
+      confirmLabel: '删除',
+      destructive: true,
+    );
+    if (ok != true || !mounted) return;
+    await ref.read(questionRepositoryProvider).delete(widget.questionId);
+    if (mounted) {
+      AppToast.success(context, '已删除');
+      context.pop();
+    }
+  }
+
+  Future<void> _cycleMastery(int current) async {
+    final next = (current + 1) % 6;
+    await ref
+        .read(questionRepositoryProvider)
+        .updateMastery(widget.questionId, next);
+    ref.invalidate(questionDetailProvider(widget.questionId));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dataAsync = ref.watch(questionDetailProvider(widget.questionId));
+
+    return Scaffold(
       appBar: growthAppBar(
         context,
         title: '错题详情',
         showBack: true,
         onBack: () => context.pop(),
+        actions: [
+          // 溢出菜单：删除/编辑
+          PopupMenuButton<String>(
+            tooltip: '',
+            onSelected: (v) {
+              if (v == 'delete') _delete();
+              if (v == 'edit') {
+                AppToast.info(context, '编辑功能整理中，先用删除+重新拍题代替');
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'edit', child: Text('编辑')),
+              PopupMenuItem(value: 'delete', child: Text('删除')),
+            ],
+          ),
+        ],
       ),
-      body: questionAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('加载失败：$e')),
-        data: (data) {
-          if (data == null) return const GrowthEmptyState(message: '题目不存在');
-          return _DetailBody(question: data);
-        },
+      body: GrowthBackground(
+        child: dataAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => EmptyState(
+            title: '加载出了点问题',
+            subtitle: '$e',
+            actionLabel: '重试',
+            onAction: () =>
+                ref.invalidate(questionDetailProvider(widget.questionId)),
+          ),
+          data: (data) {
+            if (data == null) {
+              return const EmptyState(title: '题目不存在');
+            }
+            return _DetailBody(
+              data: data,
+              segment: _segment,
+              onSegment: (i) => setState(() => _segment = i),
+              onCycleMastery: _cycleMastery,
+            );
+          },
+        ),
       ),
-    ));
+    );
   }
 }
 
-final _questionProvider = FutureProvider.autoDispose
-    .family<QuestionRecord?, String>(
-        (ref, id) => ref.watch(questionRepositoryProvider).get(id));
-
 class _DetailBody extends ConsumerWidget {
-  const _DetailBody({required this.question});
+  const _DetailBody({
+    required this.data,
+    required this.segment,
+    required this.onSegment,
+    required this.onCycleMastery,
+  });
 
-  final QuestionRecord question;
+  final QuestionDetailData data;
+  final int segment;
+  final ValueChanged<int> onSegment;
+  final ValueChanged<int> onCycleMastery;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final steps = QuestionRepository.decodeSteps(question.keySteps);
-    final tags = QuestionRepository.decodeTags(question.tags);
-    final detail =
-        QuestionRepository.decodeAnalysisDetail(question.analysisDetail);
-    final kps = (detail['knowledgePoints'] as List? ?? const [])
-        .map((e) => e.toString())
-        .toList();
-    final advice = (detail['studyAdvice'] ?? '').toString();
+    final q = data.question;
+    final hasImage = q.imagePath != null && File(q.imagePath!).existsSync();
+    final steps = QuestionRepository.decodeSteps(q.keySteps);
 
     return ListView(
       padding: const EdgeInsets.all(GrowthSpacing.lg),
       children: [
+        // 层级面包屑 + 掌握度旗标（点按切换）
         Row(
           children: [
-            GrowthChip(label: question.subject),
-            const SizedBox(width: GrowthSpacing.sm),
-            for (final t in tags.take(3)) ...[
-              GrowthChip(label: t, color: GrowthColors.abilityPersistence),
-              const SizedBox(width: GrowthSpacing.xs),
-            ],
+            Expanded(
+              child: data.breadcrumb.isEmpty
+                  ? Text('未分类', style: Theme.of(context).textTheme.bodySmall)
+                  : Text(
+                      data.breadcrumb.breadcrumb,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: GrowthColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
+            MasteryFlag(
+              level: q.masteryLevel,
+              onTap: () => onCycleMastery(q.masteryLevel),
+            ),
           ],
         ),
         const SizedBox(height: GrowthSpacing.md),
-        GrowthCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GrowthSectionHeader(title: '题干'),
-              const SizedBox(height: GrowthSpacing.sm),
-              Text(question.stem,
-                  style: Theme.of(context).textTheme.bodyMedium),
+
+        // 原图 / 题干 分段切换
+        if (hasImage && q.stem.isNotEmpty && !q.stem.startsWith('（图片题'))
+          SegmentedButton<int>(
+            segments: const [
+              ButtonSegment(value: 0, label: Text('原图')),
+              ButtonSegment(value: 1, label: Text('题干')),
             ],
-          ),
-        ),
-        const SizedBox(height: GrowthSpacing.md),
-        GrowthCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GrowthSectionHeader(title: '答案与步骤'),
-              const SizedBox(height: GrowthSpacing.sm),
-              Text(question.answer ?? '',
-                  style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: GrowthSpacing.sm),
-              for (final (i, s) in steps.indexed) ...[
-                Text('${i + 1}. $s',
-                    style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(height: GrowthSpacing.xs),
-              ],
-            ],
-          ),
-        ),
-        if ((question.errorCause ?? '').isNotEmpty) ...[
-          const SizedBox(height: GrowthSpacing.md),
-          GrowthCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GrowthSectionHeader(title: '错因'),
-                const SizedBox(height: GrowthSpacing.sm),
-                Text(question.errorCause!,
-                    style: Theme.of(context).textTheme.bodyMedium),
-              ],
+            selected: {segment},
+            onSelectionChanged: (s) => onSegment(s.first),
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? GrowthColors.primary
+                    : GrowthColors.primary.withValues(alpha: 0.08),
+              ),
+              foregroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? Colors.white
+                    : GrowthColors.primary,
+              ),
             ),
           ),
-        ],
-        if (kps.isNotEmpty) ...[
-          const SizedBox(height: GrowthSpacing.md),
-          GrowthCard(
+        const SizedBox(height: GrowthSpacing.md),
+
+        // 原图（点按缩放）
+        if (segment == 0 && hasImage)
+          GlassCard(
+            padding: const EdgeInsets.all(GrowthSpacing.sm),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(GrowthRadii.icon),
+              child: InteractiveViewer(
+                maxScale: 4,
+                child: Image.file(File(q.imagePath!), fit: BoxFit.contain),
+              ),
+            ),
+          ),
+
+        // 题干 + 答案 + 步骤
+        if (segment == 1 || !hasImage) ...[
+          GlassCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GrowthSectionHeader(title: '知识点'),
+                GrowthSectionHeader(title: '题干'),
                 const SizedBox(height: GrowthSpacing.sm),
-                for (final kp in kps) ...[
-                  Text('· $kp', style: Theme.of(context).textTheme.bodyMedium),
-                  const SizedBox(height: GrowthSpacing.xs),
+                Text(q.stem, style: Theme.of(context).textTheme.bodyMedium),
+                if ((q.answer ?? '').isNotEmpty) ...[
+                  const SizedBox(height: GrowthSpacing.md),
+                  GrowthSectionHeader(title: '答案'),
+                  const SizedBox(height: GrowthSpacing.sm),
+                  Text(q.answer!,
+                      style: Theme.of(context).textTheme.titleLarge),
+                ],
+                if (steps.isNotEmpty) ...[
+                  const SizedBox(height: GrowthSpacing.md),
+                  GrowthSectionHeader(title: '步骤'),
+                  const SizedBox(height: GrowthSpacing.sm),
+                  for (final (i, s) in steps.indexed) ...[
+                    Text('${i + 1}. $s',
+                        style: Theme.of(context).textTheme.bodyMedium),
+                    const SizedBox(height: GrowthSpacing.xs),
+                  ],
+                ],
+                if ((q.errorCause ?? '').isNotEmpty) ...[
+                  const SizedBox(height: GrowthSpacing.md),
+                  GrowthSectionHeader(title: '错因'),
+                  const SizedBox(height: GrowthSpacing.sm),
+                  Text(q.errorCause!,
+                      style: Theme.of(context).textTheme.bodyMedium),
                 ],
               ],
             ),
           ),
         ],
-        if (advice.isNotEmpty) ...[
-          const SizedBox(height: GrowthSpacing.md),
-          GrowthCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GrowthSectionHeader(title: '学习建议'),
-                const SizedBox(height: GrowthSpacing.sm),
-                Text(advice, style: Theme.of(context).textTheme.bodyMedium),
-              ],
+
+        // 图片题在题干分段也显示文字（若有）
+        if (segment == 1 &&
+            hasImage &&
+            q.stem.isNotEmpty &&
+            q.stem.startsWith('（图片题'))
+          GlassCard(
+            child: Text(
+              '这道题只有图片内容，切到「原图」查看。',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
-        ],
-        const SizedBox(height: GrowthSpacing.lg),
-        GrowthButton(
-          label: '问 MOSS 伴读',
-          icon: Icons.chat_bubble_outline_rounded,
-          variant: GrowthButtonVariant.secondary,
-          expanded: true,
-          onPressed: () => _openFollowUp(context, ref),
-        ),
-        const SizedBox(height: GrowthSpacing.sm),
+
+        const SizedBox(height: GrowthSpacing.md),
+
+        // 记忆状态卡（Part 4.2）
+        _MemoryStateCard(data: data),
+
+        const SizedBox(height: GrowthSpacing.md),
+
+        // 操作仅留举一反三（Part 5 入口守卫）
         GrowthButton(
           label: '举一反三',
           icon: Icons.lightbulb_outline_rounded,
           expanded: true,
           onPressed: () => _openExercises(context, ref),
         ),
-        const SizedBox(height: GrowthSpacing.sm),
-        GrowthButton(
-          label: '专注攻克这道题',
-          icon: Icons.self_improvement_rounded,
-          variant: GrowthButtonVariant.secondary,
-          expanded: true,
-          onPressed: () => context.push('/focus?questionId=${question.id}'),
-        ),
+        const SizedBox(height: GrowthSpacing.xl),
       ],
     );
   }
 
-  void _openFollowUp(BuildContext context, WidgetRef ref) {
-    showGrowthSheet<void>(
-      context: context,
-      builder: (sheetContext) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: _FollowUpPanel(question: question),
-      ),
-    );
-  }
-
+  /// Part 5.1 入口守卫：无知识点 → 提示先添加
   void _openExercises(BuildContext context, WidgetRef ref) {
+    if (data.breadcrumb.isEmpty) {
+      AppToast.info(context, '这道题还没有知识点，先在保存页添加，才能按知识点找练习');
+      return;
+    }
     showGrowthSheet<void>(
       context: context,
       builder: (sheetContext) => SizedBox(
         height: MediaQuery.of(context).size.height * 0.75,
-        child: _ExercisePanel(question: question),
+        child: _ExercisePanel(
+            question: data.question, breadcrumb: data.breadcrumb),
       ),
     );
   }
 }
 
-/// AI 追问面板（流式输出）
-class _FollowUpPanel extends ConsumerStatefulWidget {
-  const _FollowUpPanel({required this.question});
+/// 记忆状态卡：第 N 次 / 间隔 / 强度% / 下次日期 / 历史时间线
+class _MemoryStateCard extends StatelessWidget {
+  const _MemoryStateCard({required this.data});
 
-  final QuestionRecord question;
-
-  @override
-  ConsumerState<_FollowUpPanel> createState() => _FollowUpPanelState();
-}
-
-class _FollowUpPanelState extends ConsumerState<_FollowUpPanel> {
-  final _controller = TextEditingController();
-  final _history = <AiMessage>[];
-  String _streaming = '';
-  bool _busy = false;
-
-  String get _context => AiPrompts.followUpContext(
-        stem: widget.question.stem,
-        answer: widget.question.answer ?? '',
-        steps: QuestionRepository.decodeSteps(widget.question.keySteps),
-        mistakeReason: widget.question.errorCause ?? '',
-        knowledgePoints: const [],
-      );
-
-  Future<void> _ask() async {
-    final q = _controller.text.trim();
-    if (q.isEmpty || _busy) return;
-    _controller.clear();
-    setState(() {
-      _busy = true;
-      _streaming = '';
-      _history.add(AiMessage(role: 'user', content: q));
-    });
-
-    // 持久化用户消息
-    await _persistMessage(q, 'user');
-
-    final buffer = StringBuffer();
-    try {
-      await for (final delta in ref.read(followUpStreamProvider).ask(
-            questionContext: _context,
-            history: _history.sublist(0, _history.length - 1),
-            question: q,
-          )) {
-        buffer.write(delta);
-        if (mounted) setState(() => _streaming = buffer.toString());
-      }
-    } catch (e) {
-      buffer.write('\n（回答中断：$e）');
-      if (mounted) setState(() => _streaming = buffer.toString());
-    }
-
-    _history.add(AiMessage(role: 'assistant', content: buffer.toString()));
-    await _persistMessage(buffer.toString(), 'assistant');
-    if (mounted) setState(() => _busy = false);
-  }
-
-  Future<void> _persistMessage(String content, String role) async {
-    final db = ref.read(databaseProvider);
-    await db.into(db.aiMessages).insert(
-          AiMessagesCompanion.insert(
-            questionId: Value(widget.question.id),
-            role: role,
-            content: content,
-            createdAt: DateTime.now(),
-          ),
-        );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadHistory();
-  }
-
-  Future<void> _loadHistory() async {
-    final db = ref.read(databaseProvider);
-    final rows = await (db.select(db.aiMessages)
-          ..where((t) => t.questionId.equals(widget.question.id))
-          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
-        .get();
-    if (!mounted) return;
-    setState(() {
-      _history
-        ..clear()
-        ..addAll(rows.map((r) => AiMessage(role: r.role, content: r.content)));
-    });
-  }
+  final QuestionDetailData data;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text('MOSS 伴读 · 围绕本题答疑', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: GrowthSpacing.md),
-        Expanded(
-          child: ListView.builder(
-            itemCount: _history.length + (_streaming.isNotEmpty ? 1 : 0),
-            itemBuilder: (context, i) {
-              final isStreaming = i == _history.length;
-              final msg = isStreaming
-                  ? AiMessage(role: 'assistant', content: _streaming)
-                  : _history[i];
-              final mine = msg.role == 'user';
-              return Align(
-                alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: GrowthSpacing.sm),
-                  padding: const EdgeInsets.all(GrowthSpacing.md),
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.82,
+    final card = data.card;
+    final scheduler = ReviewScheduler();
+    final now = DateTime.now();
+
+    String strengthText = '—';
+    String nextText = '—';
+    if (card != null) {
+      final fsrsCard = scheduler.cardFromStorage(
+        cardId: card.createdAt.millisecondsSinceEpoch,
+        state: card.state,
+        step: card.step,
+        stability: card.stability,
+        difficulty: card.difficulty,
+        due: card.due,
+        lastReview: card.lastReviewAt,
+      );
+      final r = scheduler.retrievability(fsrsCard, now: now);
+      strengthText =
+          card.lastReviewAt == null ? '未开始' : '${(r * 100).round()}%';
+      nextText = card.due.isBefore(now)
+          ? '已到期'
+          : DateFormat('MM-dd HH:mm').format(card.due);
+    }
+
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GrowthSectionHeader(title: '记忆状态'),
+          const SizedBox(height: GrowthSpacing.sm),
+          if (card == null)
+            Text('还没有进入复习计划', style: Theme.of(context).textTheme.bodySmall)
+          else ...[
+            Row(
+              children: [
+                _Stat(label: '第 N 次', value: '${card.reps + 1}'),
+                _Stat(label: '强度', value: strengthText),
+                _Stat(label: '下次', value: nextText),
+              ],
+            ),
+            if (data.logs.isNotEmpty) ...[
+              const SizedBox(height: GrowthSpacing.md),
+              Text('复习历史', style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: GrowthSpacing.xs),
+              for (final log in data.logs.take(5))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: GrowthSpacing.xs),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: log.rating >= 3
+                              ? GrowthColors.success
+                              : GrowthColors.warning,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: GrowthSpacing.sm),
+                      Text(
+                        '${DateFormat('MM-dd HH:mm').format(log.reviewedAt)} · '
+                        '${_ratingLabel(log.rating)}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                   ),
-                  decoration: BoxDecoration(
-                    color: mine
-                        ? GrowthColors.primary.withValues(alpha: 0.16)
-                        : GrowthColors.glassLight,
-                    borderRadius: BorderRadius.circular(GrowthRadii.field),
-                  ),
-                  child: Text(msg.content,
-                      style: Theme.of(context).textTheme.bodyMedium),
                 ),
-              );
-            },
-          ),
-        ),
-        Row(
-          children: [
-            Expanded(
-              child: GrowthTextField(
-                controller: _controller,
-                hint: '关于这道题，你还想问…',
-                onSubmitted: (_) => _ask(),
-              ),
-            ),
-            const SizedBox(width: GrowthSpacing.sm),
-            GrowthButton(
-              label: '发送',
-              loading: _busy,
-              onPressed: _ask,
-            ),
+            ],
           ],
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  String _ratingLabel(int rating) => switch (rating) {
+        1 => '忘记',
+        2 => '困难',
+        3 => '记得',
+        _ => '简单',
+      };
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: GrowthColors.primary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
     );
   }
 }
 
-/// 举一反三面板
+/// 举一反三面板（Part 5：L1 优先 + 来源标签 + L4 文本模型兜底）
 class _ExercisePanel extends ConsumerStatefulWidget {
-  const _ExercisePanel({required this.question});
+  const _ExercisePanel({required this.question, required this.breadcrumb});
 
   final QuestionRecord question;
+  final KnowledgePath breadcrumb;
 
   @override
   ConsumerState<_ExercisePanel> createState() => _ExercisePanelState();
@@ -368,7 +499,7 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
       final db = ref.read(databaseProvider);
       final bankRepo = ref.read(questionBankRepositoryProvider);
 
-      // L1：个人真题库同知识点检索（库内同知识点真题 ≥2 道时必须命中）
+      // L1：按 point+chapter 检索个人真题库（未用优先）
       final links = await (db.select(db.questionKnowledgeLinks)
             ..where((t) => t.questionId.equals(widget.question.id)))
           .get();
@@ -379,7 +510,6 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
           knowledgePointId: link.knowledgePointId,
           limit: 3,
         );
-        // 排除当前题目自身
         found.removeWhere((e) =>
             e.question.trim() == widget.question.stem.trim() &&
             e.question.trim().isNotEmpty);
@@ -394,7 +524,7 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
 
       List<ExerciseItem> typed = l1Items;
 
-      // AI 未配置：仅 L1 离线可用 + 解锁引导（Part 3.4）
+      // AI 未配置：仅 L1 离线可用 + 解锁引导
       final gateway = await ref.read(aiGatewayProvider.future);
       if (gateway == null) {
         if (typed.isEmpty) {
@@ -408,34 +538,40 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
         return;
       }
 
-      // L1 不足时用 AI 补齐（L2 引用 / L3 待核实 / L4 拟题，均带来源标签）
+      // L1 不足 → L2/L3/L4（L4 对任意文本模型可用，不依赖视觉）
       if (typed.length < 2) {
         final detail = QuestionRepository.decodeAnalysisDetail(
             widget.question.analysisDetail);
         final kps = (detail['knowledgePoints'] as List? ?? const [])
             .map((e) => e.toString())
             .toList();
-        final generated = await ref.read(exerciseGeneratorProvider).generate(
-              stem: widget.question.stem,
-              answer: widget.question.answer ?? '',
-              steps: QuestionRepository.decodeSteps(widget.question.keySteps),
-              mistakeReason: widget.question.errorCause ?? '',
-              knowledgePoints: kps,
+        try {
+          final generated = await ref.read(exerciseGeneratorProvider).generate(
+                stem: widget.question.stem,
+                answer: widget.question.answer ?? '',
+                steps: QuestionRepository.decodeSteps(widget.question.keySteps),
+                mistakeReason: widget.question.errorCause ?? '',
+                knowledgePoints: kps,
+              );
+          final aiItems = generated.cast<ExerciseItem>();
+          for (final item in aiItems) {
+            await bankRepo.ingestExercise(
+              item: item,
+              knowledgePointId:
+                  links.isEmpty ? null : links.first.knowledgePointId,
+              subject: widget.question.subject,
             );
-        final aiItems = generated.cast<ExerciseItem>();
-        // AI 生成的题也入题库（飞轮）
-        for (final item in aiItems) {
-          await bankRepo.ingestExercise(
-            item: item,
-            knowledgePointId:
-                links.isEmpty ? null : links.first.knowledgePointId,
-          );
+          }
+          typed = [...typed, ...aiItems].take(3).toList();
+        } catch (e) {
+          if (typed.isEmpty) {
+            setState(() => _error = 'AI 生成失败：$e');
+          }
         }
-        typed = [...typed, ...aiItems].take(3).toList();
       }
 
       if (typed.isEmpty) {
-        setState(() => _error = '暂无可用练习：题库没有同知识点真题，AI 也没生成出合格题目');
+        setState(() => _error ??= '暂无可用练习题');
       } else {
         await ref
             .read(exerciseRepositoryProvider)
@@ -454,6 +590,11 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
     return Column(
       children: [
         Text('举一反三', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: GrowthSpacing.xs),
+        Text(
+          '按「${widget.breadcrumb.breadcrumb}」找同类题',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         const SizedBox(height: GrowthSpacing.md),
         if (_items.isEmpty)
           Expanded(
@@ -464,13 +605,19 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (_error != null) ...[
-                          Text(_error!,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: GrowthSpacing.lg),
+                            child: Text(
+                              _error!,
                               style: Theme.of(context).textTheme.bodySmall,
-                              textAlign: TextAlign.center),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
                           const SizedBox(height: GrowthSpacing.md),
                         ],
                         GrowthButton(
-                          label: '生成练习题',
+                          label: _error == null ? '生成练习题' : '重试',
                           icon: Icons.auto_awesome_rounded,
                           onPressed: _generate,
                         ),
@@ -484,7 +631,7 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
               itemCount: _items.length,
               itemBuilder: (context, i) => Padding(
                 padding: const EdgeInsets.only(bottom: GrowthSpacing.md),
-                child: GrowthCard(
+                child: GlassCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -494,7 +641,22 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
                             label: _items[i].difficulty.isEmpty
                                 ? '练习 ${i + 1}'
                                 : _items[i].difficulty,
-                            color: GrowthColors.abilityFocus,
+                            color: GrowthColors.primary,
+                          ),
+                          const SizedBox(width: GrowthSpacing.xs),
+                          // 来源标签必显（Part 5）
+                          GrowthChip(
+                            label: _items[i].displaySourceLabel,
+                            color: switch (_items[i].sourceLevel) {
+                              ExerciseSourceLevel.l1Personal =>
+                                GrowthColors.success,
+                              ExerciseSourceLevel.l2Cited =>
+                                GrowthColors.learning,
+                              ExerciseSourceLevel.l3Unverified =>
+                                GrowthColors.warning,
+                              ExerciseSourceLevel.l4Generated =>
+                                GrowthColors.abilityRecovery,
+                            },
                           ),
                         ],
                       ),

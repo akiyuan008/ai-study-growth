@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../core/ai/ai_call.dart';
 import '../../core/ai/ai_client.dart';
 import '../../core/ai/ai_provider_config.dart';
 import 'ai_provider_repository.dart';
@@ -56,12 +57,14 @@ class AiConfigRepository {
       apiKey: apiKey.trim(),
     );
     try {
-      final models = await client.fetchModels();
+      final models = await AiCall.run(() => client.fetchModels());
       return (models: models, error: null);
+    } on AiCallException catch (e) {
+      return (models: const <String>[], error: e.userMessage);
     } on DioException catch (e) {
       return (models: const <String>[], error: classifyDioError(e));
-    } catch (_) {
-      return (models: const <String>[], error: '请求失败：服务无响应');
+    } catch (e) {
+      return (models: const <String>[], error: '请求失败：$e');
     }
   }
 
@@ -84,10 +87,12 @@ class AiConfigRepository {
       apiKey: apiKey.trim(),
     );
     try {
-      final ok = await client.testConnectionOrThrow();
+      final ok = await AiCall.run(() => client.testConnectionOrThrow());
       return ok
           ? (ok: true, message: '连接成功，服务可用')
           : (ok: false, message: '服务返回异常：响应中没有可用结果');
+    } on AiCallException catch (e) {
+      return (ok: false, message: e.userMessage);
     } on DioException catch (e) {
       return (ok: false, message: classifyDioError(e));
     } catch (e) {

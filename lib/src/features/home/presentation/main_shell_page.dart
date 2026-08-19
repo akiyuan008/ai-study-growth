@@ -99,9 +99,8 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
       if (kDebugModeGuard()) {
         await context.push('/design/gallery');
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('正式版不含调试画廊')),
-        );
+        // 被动提示一次（AppToast 自动去重）
+        AppToast.info(context, '正式版不含调试画廊');
       }
     }
   }
@@ -234,14 +233,11 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
     try {
       final path = await _exportJson();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('备份完成：$path')),
-        );
+        AppToast.success(context, '备份完成：$path');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('备份失败：$e')));
+        AppToast.error(context, '备份失败：$e');
       }
     }
   }
@@ -254,11 +250,8 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
   Future<void> _cleanImageCache() async {
     final freed = await ImageCacheCleaner.cleanCaptures();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                '已清理 ${(freed / 1024 / 1024).toStringAsFixed(1)} MB 图片缓存')),
-      );
+      AppToast.success(
+          context, '已清理 ${(freed / 1024 / 1024).toStringAsFixed(1)} MB 图片缓存');
     }
   }
 }
