@@ -82,7 +82,8 @@ object DocumentScanner {
                 // 回落 1：minAreaRect
                 val rect = minAreaFallback(workMat)
                 if (rect != null) {
-                    val arr = rect.points()
+                    val arr = Array(4) { Point() }
+                    rect.points(arr)
                     // minAreaRect 点序不定，排序为 tl/tr/br/bl
                     val ordered = orderPoints(arr.map {
                         Point(it.x + roiOffX, it.y + roiOffY)
