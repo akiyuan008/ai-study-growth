@@ -81,10 +81,10 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
           _opencvVersion = status['version']?.toString() ?? '';
           _opencvAvailable = status['loaded'] == true;
         });
-      } catch (_) {
-        if (mounted) setState(() => _opencvAvailable = false);
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _opencvAvailable = false);
+    }
   }
 
   /// 引导框归一化 ROI 串
