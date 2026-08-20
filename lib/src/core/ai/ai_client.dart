@@ -6,7 +6,7 @@ import 'package:dio/dio.dart';
 import 'ai_message.dart';
 import 'ai_provider_config.dart';
 
-/// OpenAI 兼容客户端：统一服务错题解析 / 追问 / 举一反三 / MOSS 伴读。
+/// OpenAI 兼容客户端：统一服务知识点识别 / 追问 / 举一反三。
 ///
 /// 多模态（图片）消息在 P2 引入；P0 先落地文本对话 + 流式输出。
 class AiClient {

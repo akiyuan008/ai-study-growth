@@ -15,7 +15,6 @@ import '../../data/repositories/question_repository.dart';
 import '../../data/repositories/review_repository.dart';
 import '../../data/services/ai_learning_services.dart';
 import '../../data/services/settings_service.dart';
-import '../../data/services/analysis_pipeline.dart';
 
 final aiProviderRepositoryProvider = Provider<AiProviderRepository>((ref) {
   return AiProviderRepository(ref.watch(databaseProvider));
@@ -109,19 +108,6 @@ final exerciseRepositoryProvider = Provider<ExerciseRepository>((ref) {
 /// 题库飞轮仓储
 final questionBankRepositoryProvider = Provider<QuestionBankRepository>((ref) {
   return QuestionBankRepository(ref.watch(databaseProvider));
-});
-
-/// 解析管线（全局单例，串行队列）
-final analysisPipelineProvider =
-    ChangeNotifierProvider<AnalysisPipeline>((ref) {
-  final db = ref.watch(databaseProvider);
-  final pipeline = AnalysisPipeline(
-    db: db,
-    gatewayResolver: () async => ref.read(aiGatewayProvider.future),
-  );
-  // 启动恢复中断任务
-  Future.microtask(pipeline.resumeInterrupted);
-  return pipeline;
 });
 
 /// 追问对话（流式）：题目详情页调用

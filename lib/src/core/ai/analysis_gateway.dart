@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../../domain/models/analysis_result.dart';
 import 'ai_call.dart';
+import 'json_extract.dart';
 import '../../domain/models/generated_exercise.dart';
 import '../../domain/models/knowledge_path.dart';
 import 'ai_client.dart';
@@ -13,20 +13,6 @@ import 'prompts.dart';
 ///
 /// 实现可替换：[AiAnalysisGatewayImpl]（真实）/ FakeGateway（测试）。
 abstract interface class AiAnalysisGateway {
-  /// 拆题：一张图中有几道独立题目
-  Future<List<QuestionCandidate>> splitQuestions({
-    required List<int> imageBytes,
-    String mimeType = 'image/jpeg',
-  });
-
-  /// 单题解析：给图片（直接看图）或已确认题干文本
-  Future<AnalysisResult> analyzeQuestion({
-    List<int>? imageBytes,
-    String mimeType = 'image/jpeg',
-    String? questionText,
-  });
-
-  /// 举一反三
   Future<List<ExerciseItem>> generateExercises({
     required String stem,
     required String answer,
@@ -125,69 +111,6 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
       }
       rethrow;
     }
-  }
-
-  @override
-  Future<List<QuestionCandidate>> splitQuestions({
-    required List<int> imageBytes,
-    String mimeType = 'image/jpeg',
-  }) async {
-    final raw = await _chatWithLog(
-      purpose: 'split',
-      messages: [
-        const AiMessage(role: 'system', content: AiPrompts.splitSystem),
-        userMessageWithImage(
-          text: '请拆分这张图片中的题目。',
-          imageBytes: imageBytes,
-          mimeType: mimeType,
-        ),
-      ],
-      temperature: 0.1,
-      maxTokens: 4096,
-    );
-    final json = extractJsonObject(raw);
-    final list = json?['questions'];
-    if (list is! List || list.isEmpty) {
-      throw const AiGatewayException('拆题失败：无法识别图片中的题目');
-    }
-    return list
-        .whereType<Map<String, dynamic>>()
-        .map((e) => QuestionCandidate.fromJson(e))
-        .toList();
-  }
-
-  @override
-  Future<AnalysisResult> analyzeQuestion({
-    List<int>? imageBytes,
-    String mimeType = 'image/jpeg',
-    String? questionText,
-  }) async {
-    final hasText = questionText != null && questionText.trim().isNotEmpty;
-    final userMsg = hasText
-        ? AiMessage(
-            role: 'user',
-            content: '已确认的题目文本如下，请分析：\n$questionText',
-          )
-        : userMessageWithImage(
-            text: '请分析图片中的这道题。',
-            imageBytes: imageBytes ?? const [],
-            mimeType: mimeType,
-          );
-
-    final raw = await _chatWithLog(
-      purpose: 'analyze',
-      messages: [
-        const AiMessage(role: 'system', content: AiPrompts.analysisSystem),
-        userMsg,
-      ],
-      temperature: 0.2,
-      maxTokens: 4096,
-    );
-    final json = extractJsonObject(raw);
-    if (json == null) {
-      throw const AiGatewayException('解析失败：AI 返回内容无法识别');
-    }
-    return AnalysisResult.fromJson(json);
   }
 
   @override

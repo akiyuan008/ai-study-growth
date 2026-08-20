@@ -306,7 +306,7 @@ class _AiProviderSetupPageState extends ConsumerState<AiProviderSetupPage> {
             ),
             const SizedBox(height: GrowthSpacing.md),
             Text(
-              '说明：拍题解析、AI 追问、举一反三、MOSS 伴读共用这一套配置。',
+              '说明：知识点识别、AI 追问、举一反三共用这一套配置。',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: GrowthSpacing.xl),

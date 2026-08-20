@@ -175,7 +175,7 @@ class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
           _section('输入框'),
           GrowthCard(
             child: GrowthTextField(
-              label: '给 MOSS 伴读留言',
+              label: '给 AI 助教留言',
               hint: '例如：今天想先复习物理错题…',
             ),
           ),
