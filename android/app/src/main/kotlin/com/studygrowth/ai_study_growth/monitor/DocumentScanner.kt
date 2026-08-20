@@ -253,7 +253,7 @@ object DocumentScanner {
     }
 
     /** 全幅内缩裁剪 */
-    private fun insetCrop(src: Bitmap, ratio: Float): Bitmap {
+    private fun insetCrop(src: Bitmap, ratio: Double): Bitmap {
         val x = (src.width * ratio).toInt()
         val y = (src.height * ratio).toInt()
         return Bitmap.createBitmap(
