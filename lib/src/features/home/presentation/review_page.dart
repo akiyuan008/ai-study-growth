@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart' hide Column, Table;
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fsrs/fsrs.dart';
@@ -14,6 +15,7 @@ import '../../../data/repositories/question_repository.dart';
 import '../../../data/services/review_scheduler.dart';
 import '../../../design_system/design_system.dart';
 import '../../learning/learning_providers.dart';
+import 'export_preview_page.dart';
 
 /// 推荐复习项（带理由）
 class RecommendedItem {
@@ -23,6 +25,10 @@ class RecommendedItem {
     required this.reasons,
     required this.breadcrumb,
     required this.strength,
+    required this.stabilityDays,
+    required this.elapsedDays,
+    required this.intervalDays,
+    required this.intervalHistory,
   });
 
   final QuestionRecord question;
@@ -30,6 +36,18 @@ class RecommendedItem {
   final List<String> reasons;
   final String breadcrumb;
   final double strength;
+
+  /// FSRS 稳定度（天）——遗忘曲线用
+  final double stabilityDays;
+
+  /// 距上次复习天数
+  final double elapsedDays;
+
+  /// 当前间隔（天）
+  final int? intervalDays;
+
+  /// 历史间隔序列（天）
+  final List<int> intervalHistory;
 }
 
 class ReviewRecommendData {
@@ -86,6 +104,27 @@ final reviewRecommendProvider =
     }
   }
 
+  // 间隔历史：每道题相邻复习之间的天数（v13 6.1）
+  final logsByQ = <String, List<DateTime>>{};
+  if (qIds.isNotEmpty) {
+    final logs = await (db.select(db.reviewLogs)
+          ..where((t) => t.questionId.isIn(qIds))
+          ..orderBy([(t) => OrderingTerm.asc(t.reviewedAt)]))
+        .get();
+    for (final log in logs) {
+      logsByQ.putIfAbsent(log.questionId, () => []).add(log.reviewedAt);
+    }
+  }
+  final intervalsByQ = <String, List<int>>{};
+  for (final entry in logsByQ.entries) {
+    final times = entry.value;
+    final intervals = <int>[];
+    for (var i = 1; i < times.length && i <= 4; i++) {
+      intervals.add(times[i].difference(times[i - 1]).inDays);
+    }
+    intervalsByQ[entry.key] = intervals;
+  }
+
   final items = <RecommendedItem>[];
   final graduated = <QuestionRecord>[];
 
@@ -129,6 +168,10 @@ final reviewRecommendProvider =
       reasons: reasons,
       breadcrumb: linkByQ[q.id] ?? '',
       strength: strength,
+      stabilityDays: card.stability,
+      elapsedDays: now.difference(card.lastReviewAt ?? card.due).inHours / 24,
+      intervalDays: card.due.difference(now).inDays,
+      intervalHistory: intervalsByQ[q.id] ?? const [],
     ));
   }
 
@@ -168,12 +211,31 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
   bool _showGraduated = false;
   int _doneCount = 0;
 
+  /// 推荐列表多选导出（v13 6.1）
+  bool _selectMode = false;
+  final Set<String> _selectedRecs = {};
+
   Future<void> _mark(RecommendedItem item, Rating rating) async {
     unawaited(HapticFeedback.selectionClick());
+    // 标记前记录下次日期（验收证据：仍错变早/已会变晚）
+    final before = item.card.due;
     await ref
         .read(reviewRepositoryProvider)
         .rate(cardId: item.card.id, rating: rating);
     await ref.read(backupStateProvider).markDirty();
+    // 标记后读取新日期
+    final db = ref.read(databaseProvider);
+    final afterCards = await (db.select(db.reviewCards)
+          ..where((t) => t.id.equals(item.card.id)))
+        .get();
+    if (mounted && afterCards.isNotEmpty) {
+      final after = afterCards.first.due;
+      final fmt = DateFormat('MM-dd');
+      AppToast.info(
+        context,
+        '下次复习：${fmt.format(before)} → ${fmt.format(after)}',
+      );
+    }
     setState(() => _doneCount++);
     ref.invalidate(reviewRecommendProvider);
     final msg = switch (rating) {
@@ -255,9 +317,23 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '今日推荐 ${data.items.length} · 已毕业 ${data.graduated.length}',
-                    style: Theme.of(context).textTheme.titleLarge,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '今日推荐 ${data.items.length} · 已毕业 ${data.graduated.length}',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                      if (data.items.isNotEmpty)
+                        TextButton(
+                          onPressed: () => setState(() {
+                            _selectMode = !_selectMode;
+                            if (!_selectMode) _selectedRecs.clear();
+                          }),
+                          child: Text(_selectMode ? '取消' : '多选导出'),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: GrowthSpacing.sm),
                   if (_doneCount > 0)
@@ -295,11 +371,59 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
                 ),
               ),
             for (final item in data.items) ...[
-              _RecommendCard(
-                item: item,
-                onMark: _mark,
+              InkWell(
+                onTap: _selectMode
+                    ? () => setState(() {
+                          if (_selectedRecs.contains(item.question.id)) {
+                            _selectedRecs.remove(item.question.id);
+                          } else {
+                            _selectedRecs.add(item.question.id);
+                          }
+                        })
+                    : null,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_selectMode)
+                      Padding(
+                        padding: const EdgeInsets.only(right: GrowthSpacing.sm),
+                        child: Icon(
+                          _selectedRecs.contains(item.question.id)
+                              ? Icons.check_circle_rounded
+                              : Icons.radio_button_unchecked,
+                          color: _selectedRecs.contains(item.question.id)
+                              ? GrowthColors.primary
+                              : GrowthColors.gray3,
+                          size: 22,
+                        ),
+                      ),
+                    Expanded(
+                      child: _RecommendCard(
+                        item: item,
+                        onMark: _mark,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: GrowthSpacing.sm),
+            ],
+            // 多选导出条
+            if (_selectMode && _selectedRecs.isNotEmpty) ...[
+              const SizedBox(height: GrowthSpacing.sm),
+              GrowthButton(
+                label: '导出所选（${_selectedRecs.length} 题）',
+                icon: Icons.picture_as_pdf_rounded,
+                expanded: true,
+                onPressed: () {
+                  final ids = _selectedRecs.toList();
+                  setState(() {
+                    _selectMode = false;
+                    _selectedRecs.clear();
+                  });
+                  showPdfSettingsSheet(context, ref, ids: ids);
+                },
+              ),
             ],
 
             // 已毕业区（Part 6.1：可拉回）
@@ -490,6 +614,16 @@ class _RecommendCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: GrowthSpacing.sm),
+          // 遗忘曲线小图（推荐理由解释图）
+          ForgettingCurveMini(
+            stability: item.stabilityDays,
+            elapsedDays: item.elapsedDays,
+            nextDueDays: item.intervalDays?.toDouble(),
+          ),
+          const SizedBox(height: GrowthSpacing.xs),
+          // 间隔历史 chips
+          IntervalHistoryChips(intervals: item.intervalHistory),
+          const SizedBox(height: GrowthSpacing.sm),
           // 标记按钮（Part 6.3）
           Row(
             children: [
@@ -619,6 +753,9 @@ class _InScreenReviewState extends ConsumerState<_InScreenReview> {
         );
         final previews = scheduler.previewIntervals(fsrsCard);
 
+        final hasAnswer = (q.answer ?? '').isNotEmpty || steps.isNotEmpty;
+        final hasImage = q.imagePath != null && File(q.imagePath!).existsSync();
+
         return ListView(
           padding: const EdgeInsets.all(GrowthSpacing.lg),
           children: [
@@ -627,44 +764,75 @@ class _InScreenReviewState extends ConsumerState<_InScreenReview> {
                 Text('剩余 ${items.length} 题',
                     style: Theme.of(context).textTheme.bodySmall),
                 const Spacer(),
-                if (q.imagePath != null && File(q.imagePath!).existsSync())
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(GrowthRadii.icon),
-                    child: Image.file(
-                      File(q.imagePath!),
-                      width: 56,
-                      height: 56,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                if (q.subject.isNotEmpty) GrowthChip(label: q.subject),
               ],
             ),
             const SizedBox(height: GrowthSpacing.sm),
-            GlassCard(
-              child:
-                  Text(q.stem, style: Theme.of(context).textTheme.bodyMedium),
-            ),
+
+            // 图即题干：大图展示题目图片（满宽、点按缩放），禁占位文案
+            if (hasImage)
+              GlassCard(
+                padding: const EdgeInsets.all(GrowthSpacing.sm),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(GrowthRadii.icon),
+                  child: InkWell(
+                    onTap: () => _openZoom(context, q.imagePath!),
+                    child: Image.file(
+                      File(q.imagePath!),
+                      width: double.infinity,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+
+            // 题干文字（仅用户真实填写过的内容，无占位）
+            if (q.stem.isNotEmpty && !q.stem.startsWith('（图片题')) ...[
+              const SizedBox(height: GrowthSpacing.sm),
+              GlassCard(
+                child:
+                    Text(q.stem, style: Theme.of(context).textTheme.bodyMedium),
+              ),
+            ],
+
             const SizedBox(height: GrowthSpacing.md),
-            if (!_revealed)
+
+            // 「显示答案」仅在填过答案/步骤时出现
+            if (hasAnswer)
               GrowthButton(
-                label: '显示答案',
-                icon: Icons.visibility_rounded,
+                label: _revealed ? '收起答案' : '显示答案',
+                icon: _revealed
+                    ? Icons.visibility_off_rounded
+                    : Icons.visibility_rounded,
+                variant: GrowthButtonVariant.secondary,
                 expanded: true,
-                onPressed: () => setState(() => _revealed = true),
+                onPressed: () => setState(() => _revealed = !_revealed),
               )
-            else ...[
+            else
+              // 未填写答案：隐藏按钮，提示直接自评
+              GlassCard(
+                child: Text(
+                  '未填写答案，看完题直接自评',
+                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+            if (_revealed && hasAnswer) ...[
+              const SizedBox(height: GrowthSpacing.md),
               GlassCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     GrowthSectionHeader(title: '答案'),
                     const SizedBox(height: GrowthSpacing.sm),
-                    Text(q.answer ?? '',
-                        style: Theme.of(context).textTheme.titleLarge),
+                    if ((q.answer ?? '').isNotEmpty)
+                      Text(q.answer!,
+                          style: Theme.of(context).textTheme.titleLarge),
                     if (steps.isNotEmpty) ...[
                       const SizedBox(height: GrowthSpacing.sm),
-                      for (final (i, s) in steps.indexed) ...[
-                        Text('${i + 1}. $s',
+                      for (final (i, st) in steps.indexed) ...[
+                        Text('${i + 1}. $st',
                             style: Theme.of(context).textTheme.bodyMedium),
                         const SizedBox(height: GrowthSpacing.xs),
                       ],
@@ -672,62 +840,90 @@ class _InScreenReviewState extends ConsumerState<_InScreenReview> {
                   ],
                 ),
               ),
-              const SizedBox(height: GrowthSpacing.md),
-              // 四档评分（下次间隔预览）
-              Row(
-                children: [
-                  for (final (rating, label, color) in [
-                    (Rating.again, '忘记', GrowthColors.warning),
-                    (Rating.hard, '困难', GrowthColors.actionAccent),
-                    (Rating.good, '记得', GrowthColors.success),
-                    (Rating.easy, '简单', GrowthColors.learning),
-                  ])
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: GrowthSpacing.xs),
-                        child: InkWell(
-                          onTap: () => _rate(q, card, rating),
-                          borderRadius:
-                              BorderRadius.circular(GrowthRadii.field),
-                          child: Container(
-                            height: 54,
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.13),
-                              borderRadius:
-                                  BorderRadius.circular(GrowthRadii.field),
-                              border: Border.all(
-                                  color: color.withValues(alpha: 0.5)),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  label,
-                                  style: TextStyle(
-                                      color: color,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13),
-                                ),
-                                Text(
-                                  _intervalLabel(
-                                      previews[rating] ?? Duration.zero),
-                                  style: TextStyle(
-                                      color: color.withValues(alpha: 0.75),
-                                      fontSize: 10),
-                                ),
-                              ],
-                            ),
+            ],
+
+            const SizedBox(height: GrowthSpacing.md),
+
+            // 三档评分常驻复习卡（不藏在显示答案之后）
+            Row(
+              children: [
+                for (final (rating, label, color) in [
+                  (Rating.again, '仍错', GrowthColors.warning),
+                  (Rating.hard, '模糊', GrowthColors.actionAccent),
+                  (Rating.good, '已会', GrowthColors.success),
+                ])
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: GrowthSpacing.xs),
+                      child: InkWell(
+                        onTap: () => _rate(q, card, rating),
+                        borderRadius: BorderRadius.circular(GrowthRadii.field),
+                        child: Container(
+                          height: 54,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.13),
+                            borderRadius:
+                                BorderRadius.circular(GrowthRadii.field),
+                            border:
+                                Border.all(color: color.withValues(alpha: 0.5)),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                label,
+                                style: TextStyle(
+                                    color: color,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13),
+                              ),
+                              Text(
+                                _intervalLabel(
+                                    previews[rating] ?? Duration.zero),
+                                style: TextStyle(
+                                    color: color.withValues(alpha: 0.75),
+                                    fontSize: 10),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
-                ],
-              ),
-            ],
+                  ),
+              ],
+            ),
           ],
         );
       },
+    );
+  }
+
+  /// 点按缩放查看原图
+  void _openZoom(BuildContext context, String path) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              maxScale: 5,
+              child: Image.file(File(path)),
+            ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

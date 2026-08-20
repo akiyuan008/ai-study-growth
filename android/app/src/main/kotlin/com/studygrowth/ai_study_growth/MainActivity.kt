@@ -23,8 +23,6 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        val scanner = DocumentScanner()
-
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SCANNER_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -38,13 +36,22 @@ class MainActivity : FlutterActivity() {
                         val roi: DoubleArray? = if (roiRaw != null && roiRaw.size == 4) {
                             doubleArrayOf(roiRaw[0], roiRaw[1], roiRaw[2], roiRaw[3])
                         } else null
-                        val out = scanner.scan(path, File(filesDir, "scans"), roi)
+                        val out = DocumentScanner.scan(path, File(filesDir, "scans"), roi)
                         result.success(out)
                     }
                     "getVersion" -> {
-                        result.success(
-                            try { org.opencv.core.Core.VERSION } catch (_: Throwable) { "unavailable" }
-                        )
+                        result.success(DocumentScanner.getVersion())
+                    }
+                    "getStatus" -> {
+                        result.success(DocumentScanner.getStatus())
+                    }
+                    "enhance" -> {
+                        val path = call.argument<String>("path")
+                        if (path == null) {
+                            result.success(null)
+                        } else {
+                            result.success(DocumentScanner.enhance(path, File(filesDir, "scans")))
+                        }
                     }
                     "cropByPoints" -> {
                         val path = call.argument<String>("path")
@@ -69,7 +76,7 @@ class MainActivity : FlutterActivity() {
                         val ntr = doubleArrayOf(trRaw[0], trRaw[1])
                         val nbr = doubleArrayOf(brRaw[0], brRaw[1])
                         val nbl = doubleArrayOf(blRaw[0], blRaw[1])
-                        val raw = scanner.cropByNormalizedPoints(
+                        val raw = DocumentScanner.cropByNormalizedPoints(
                             path, File(filesDir, "scans"), ntl, ntr, nbr, nbl
                         )
                         // 解析 JSON 返回 Map
@@ -89,7 +96,7 @@ class MainActivity : FlutterActivity() {
                         if (path == null) {
                             result.success(null)
                         } else {
-                            val out = scanner.rotate90(path, File(filesDir, "scans"))
+                            val out = DocumentScanner.rotate90(path, File(filesDir, "scans"))
                             result.success(out)
                         }
                     }

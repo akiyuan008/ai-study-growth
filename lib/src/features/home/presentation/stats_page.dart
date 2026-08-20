@@ -10,6 +10,18 @@ import '../../../design_system/design_system.dart';
 import '../../learning/learning_providers.dart';
 
 /// 统计数据
+class SubjectGroup {
+  const SubjectGroup({
+    required this.subject,
+    required this.count,
+    required this.avgMastery,
+  });
+
+  final String subject;
+  final int count;
+  final double avgMastery;
+}
+
 class NotebookStats {
   const NotebookStats({
     required this.total,
@@ -17,7 +29,10 @@ class NotebookStats {
     required this.dueToday,
     required this.doneToday,
     required this.knowledgeMastery,
+    required this.subjectGroups,
   });
+
+  final List<SubjectGroup> subjectGroups;
 
   final int total;
   final int mastered;
@@ -71,12 +86,28 @@ final notebookStatsProvider =
       .toList()
     ..sort((a, b) => b.count.compareTo(a.count));
 
+  // 科目分组（v13 7.2）
+  final bySubject = <String, List<int>>{};
+  for (final q in questions) {
+    final key = q.subject.isEmpty ? '其他' : q.subject;
+    bySubject.putIfAbsent(key, () => []).add(q.masteryLevel);
+  }
+  final subjectGroups = bySubject.entries
+      .map((e) => SubjectGroup(
+            subject: e.key,
+            count: e.value.length,
+            avgMastery: e.value.reduce((a, b) => a + b) / e.value.length,
+          ))
+      .toList()
+    ..sort((a, b) => b.count.compareTo(a.count));
+
   return NotebookStats(
     total: questions.length,
     mastered: mastered,
     dueToday: dueCards.length,
     doneToday: doneLogs.length,
     knowledgeMastery: knowledgeMastery.take(12).toList(),
+    subjectGroups: subjectGroups,
   );
 });
 
@@ -146,6 +177,54 @@ class StatsPage extends ConsumerWidget {
 
               // AI 知识点规划：学习路径建议（Part 3.3）
               _LearningPathCard(stats: stats),
+              const SizedBox(height: GrowthSpacing.md),
+
+              // 科目分组（v13 7.2）
+              GlassCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GrowthSectionHeader(title: '科目分组'),
+                    const SizedBox(height: GrowthSpacing.sm),
+                    if (stats.subjectGroups.isEmpty)
+                      Text('暂无数据', style: Theme.of(context).textTheme.bodySmall)
+                    else
+                      for (final g in stats.subjectGroups)
+                        Padding(
+                          padding:
+                              const EdgeInsets.only(bottom: GrowthSpacing.sm),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 48,
+                                child: Text(
+                                  g.subject,
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ),
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: g.avgMastery / 5,
+                                    minHeight: 8,
+                                    backgroundColor: GrowthColors.gray2,
+                                    valueColor: const AlwaysStoppedAnimation(
+                                        GrowthColors.primary),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: GrowthSpacing.sm),
+                              Text(
+                                '${g.count} 题',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                  ],
+                ),
+              ),
               const SizedBox(height: GrowthSpacing.md),
 
               // 知识点掌握度柱状图

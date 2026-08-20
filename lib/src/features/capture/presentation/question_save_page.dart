@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/ai/ai_call.dart';
 import '../../../core/bridge/scanner_bridge.dart';
+import 'taxonomy_selector.dart';
 import '../../../core/di/providers.dart';
 import '../../../data/local/app_database.dart';
 import '../../../design_system/design_system.dart';
@@ -47,7 +48,13 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
   final _answerController = TextEditingController();
   final _mistakeController = TextEditingController();
 
-  String _subject = Subject.other.label;
+  /// 科目必选（v13 4.1）：null = 未选，保存前必须选择
+  String? _subject;
+  String? _subjectError;
+
+  /// 级联选择器选中的知识点（多选）
+  List<String> _selectedPoints = const [];
+
   bool _saving = false;
 
   // ---- 层级知识点（Part 3.2） ----
@@ -85,7 +92,12 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
       if (mounted) {
         setState(() {
           _path = path;
-          if (path.subject.isNotEmpty) _subject = path.subject;
+          // AI 推断学科仅在未手动选择时作为默认
+          if (path.subject.isNotEmpty && _subject == null) {
+            _subject = Subject.values.any((s) => s.label == path.subject)
+                ? path.subject
+                : null;
+          }
           _pathLoading = false;
         });
       }
@@ -122,9 +134,21 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
       final models = await client.fetchModels();
       // 视觉模型关键词匹配
       const visionKeywords = [
-        'vision', 'vl', '4o', 'multimodal', 'image', 'eye',
-        'gpt-4o', 'claude-3', 'gemini', 'qwen-vl', 'qwen2-vl',
-        'glm-4v', 'step-1v', 'yi-vl', 'llava',
+        'vision',
+        'vl',
+        '4o',
+        'multimodal',
+        'image',
+        'eye',
+        'gpt-4o',
+        'claude-3',
+        'gemini',
+        'qwen-vl',
+        'qwen2-vl',
+        'glm-4v',
+        'step-1v',
+        'yi-vl',
+        'llava',
       ];
       final visionModels = models.where((m) {
         final lower = m.toLowerCase();
@@ -147,8 +171,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
       final repo = ref.read(aiProviderRepositoryProvider);
       final config = await repo.defaultProvider();
       if (config == null) return;
-      await (db.update(db.aiProviders)
-            ..where((t) => t.id.equals(config.id)))
+      await (db.update(db.aiProviders)..where((t) => t.id.equals(config.id)))
           .write(AiProvidersCompanion(model: Value(model)));
       // 刷新 gateway provider
       ref.invalidate(aiGatewayProvider);
@@ -165,19 +188,25 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
     }
   }
 
-  /// 手动级联编辑（历史值自动补全）
+  /// 级联选择器（v14：学科→版本→册→章→节→知识点，历史置顶+自定义兜底+多选）
   void _openPathEditor() {
     showGrowthSheet<void>(
       context: context,
-      builder: (sheetContext) => _KnowledgePathEditor(
-        initial: _path,
-        ref: ref,
-        onSave: (p) {
+      builder: (sheetContext) => TaxonomySelectorSheet(
+        initialSubject: _subject ?? '',
+        onConfirm: (sel) {
           setState(() {
-            _path = p;
-            if (p.subject.isNotEmpty) _subject = p.subject;
+            _path = KnowledgePath(
+              subject: sel.subject,
+              version: sel.version,
+              book: sel.book,
+              chapter: sel.chapter,
+              lesson: sel.lesson,
+              point: sel.points.isNotEmpty ? sel.points.join('、') : '',
+            );
+            _selectedPoints = sel.points;
+            if (sel.subject.isNotEmpty) _subject = sel.subject;
           });
-          Navigator.of(sheetContext).pop();
         },
       ),
     );
@@ -185,7 +214,15 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
 
   Future<void> _save() async {
     if (_saving) return;
-    setState(() => _saving = true);
+    // 科目必选校验（v13 4.1）
+    if (_subject == null) {
+      setState(() => _subjectError = '请先选择科目，科目驱动列表、统计与导出');
+      return;
+    }
+    setState(() {
+      _subjectError = null;
+      _saving = true;
+    });
     try {
       final db = ref.read(databaseProvider);
       final now = DateTime.now();
@@ -195,7 +232,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
       await db.into(db.questionRecords).insert(
             QuestionRecordsCompanion.insert(
               id: qid,
-              subject: Value(_subject),
+              subject: Value(_subject!),
               imagePath: Value(widget.path),
               stem: Value(_stemController.text.trim().isEmpty
                   ? '（图片题，未填写题干）'
@@ -214,9 +251,9 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
             ),
           );
 
-      // 层级知识点入库 + 关联
-      if (!_path.isEmpty || _subject.isNotEmpty) {
-        await _saveKnowledgePoint(db, qid, now);
+      // 层级知识点入库 + 关联（多知识点逐个写入）
+      if (!_path.isEmpty || (_subject ?? '').isNotEmpty) {
+        await _saveKnowledgePoints(db, qid, now);
       }
 
       // 题库飞轮：用户真题入库
@@ -224,7 +261,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
             questionId: qid,
             stem: _stemController.text.trim(),
             knowledgePointId: null,
-            subject: _subject,
+            subject: _subject ?? '',
           );
 
       // FSRS 复习卡
@@ -263,44 +300,55 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
 
   String _buildTagsJson() {
     final tags = <String>[
-      if (_subject.isNotEmpty && _subject != Subject.other.label) _subject,
+      if ((_subject ?? '').isNotEmpty && _subject != Subject.other.label)
+        _subject!,
       if (_path.point.isNotEmpty) _path.point,
       if (_path.chapter.isNotEmpty) _path.chapter,
     ];
     return '[${tags.map((t) => '"$t"').join(',')}]';
   }
 
-  Future<void> _saveKnowledgePoint(
+  /// 多知识点写入：级联选中的每个知识点各建一条（含完整层级路径）
+  Future<void> _saveKnowledgePoints(
     AppDatabase db,
     String qid,
     DateTime now,
   ) async {
-    final name = _path.leafName.isNotEmpty ? _path.leafName : _subject;
-    if (name.isEmpty) return;
-    final existing = await (db.select(db.knowledgePoints)
-          ..where((t) => t.subject.equals(_subject) & t.name.equals(name)))
-        .get();
-    final kpId = existing.isEmpty ? _uuid.v4() : existing.first.id;
-    if (existing.isEmpty) {
-      await db.into(db.knowledgePoints).insert(
-            KnowledgePointsCompanion.insert(
-              id: kpId,
-              name: name,
-              subject: Value(_subject),
-              version: Value(_path.version),
-              book: Value(_path.book),
-              chapter: Value(_path.chapter),
-              lesson: Value(_path.lesson),
-              firstSeenAt: now,
+    final subject = _subject ?? '';
+    final names = _selectedPoints.isNotEmpty
+        ? _selectedPoints
+        : (_path.leafName.isNotEmpty ? [_path.leafName] : <String>[]);
+    if (names.isEmpty && subject.isNotEmpty) {
+      // 无知识点时以科目兜底，保证统计/导出可用
+      names.add(subject);
+    }
+    for (final name in names) {
+      if (name.isEmpty) continue;
+      final existing = await (db.select(db.knowledgePoints)
+            ..where((t) => t.subject.equals(subject) & t.name.equals(name)))
+          .get();
+      final kpId = existing.isEmpty ? _uuid.v4() : existing.first.id;
+      if (existing.isEmpty) {
+        await db.into(db.knowledgePoints).insert(
+              KnowledgePointsCompanion.insert(
+                id: kpId,
+                name: name,
+                subject: Value(subject),
+                version: Value(_path.version),
+                book: Value(_path.book),
+                chapter: Value(_path.chapter),
+                lesson: Value(_path.lesson),
+                firstSeenAt: now,
+              ),
+            );
+      }
+      await db.into(db.questionKnowledgeLinks).insert(
+            QuestionKnowledgeLinksCompanion.insert(
+              questionId: qid,
+              knowledgePointId: kpId,
             ),
           );
     }
-    await db.into(db.questionKnowledgeLinks).insert(
-          QuestionKnowledgeLinksCompanion.insert(
-            questionId: qid,
-            knowledgePointId: kpId,
-          ),
-        );
   }
 
   @override
@@ -351,8 +399,8 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
             ),
             const SizedBox(height: GrowthSpacing.md),
 
-            // 科目
-            Text('科目', style: Theme.of(context).textTheme.bodySmall),
+            // 科目（必选，v13 4.1）
+            Text('科目（必选）', style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: GrowthSpacing.sm),
             Wrap(
               spacing: GrowthSpacing.sm,
@@ -362,10 +410,20 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
                   GrowthChip(
                     label: s.label,
                     selected: _subject == s.label,
-                    onTap: () => setState(() => _subject = s.label),
+                    onTap: () => setState(() {
+                      _subject = s.label;
+                      _subjectError = null;
+                    }),
                   ),
               ],
             ),
+            if (_subjectError != null) ...[
+              const SizedBox(height: GrowthSpacing.xs),
+              Text(
+                _subjectError!,
+                style: TextStyle(fontSize: 12, color: GrowthColors.warning),
+              ),
+            ],
             const SizedBox(height: GrowthSpacing.md),
 
             // ---- 层级知识点（硬门 3） ----
@@ -402,7 +460,10 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
                             children: [
                               Text(
                                 '检测到视觉模型「$_recommendedVisionModel」，可一键换用：',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
                                       color: GrowthColors.learning,
                                     ),
                               ),
@@ -540,171 +601,6 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
             const SizedBox(height: GrowthSpacing.xl),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// 手动级联编辑器（历史值自动补全）
-class _KnowledgePathEditor extends ConsumerStatefulWidget {
-  const _KnowledgePathEditor({
-    required this.initial,
-    required this.ref,
-    required this.onSave,
-  });
-
-  final KnowledgePath initial;
-  final WidgetRef ref;
-  final ValueChanged<KnowledgePath> onSave;
-
-  @override
-  ConsumerState<_KnowledgePathEditor> createState() =>
-      _KnowledgePathEditorState();
-}
-
-class _KnowledgePathEditorState extends ConsumerState<_KnowledgePathEditor> {
-  late final TextEditingController _subject;
-  late final TextEditingController _version;
-  late final TextEditingController _book;
-  late final TextEditingController _chapter;
-  late final TextEditingController _lesson;
-  late final TextEditingController _point;
-
-  List<KnowledgePoint> _history = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _subject = TextEditingController(text: widget.initial.subject);
-    _version = TextEditingController(text: widget.initial.version);
-    _book = TextEditingController(text: widget.initial.book);
-    _chapter = TextEditingController(text: widget.initial.chapter);
-    _lesson = TextEditingController(text: widget.initial.lesson);
-    _point = TextEditingController(text: widget.initial.point);
-    _loadHistory();
-  }
-
-  Future<void> _loadHistory() async {
-    final db = widget.ref.read(databaseProvider);
-    final rows = await (db.select(db.knowledgePoints)..limit(200)).get();
-    if (mounted) setState(() => _history = rows);
-  }
-
-  List<String> _distinct(String Function(KnowledgePoint) pick) {
-    final seen = <String>{};
-    final result = <String>[];
-    for (final kp in _history) {
-      final v = pick(kp);
-      if (v.isNotEmpty && seen.add(v)) result.add(v);
-    }
-    return result.take(6).toList();
-  }
-
-  Widget _field({
-    required String label,
-    required TextEditingController controller,
-    List<String> suggestions = const [],
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GrowthTextField(
-          controller: controller,
-          label: label,
-        ),
-        if (suggestions.isNotEmpty) ...[
-          const SizedBox(height: GrowthSpacing.xs),
-          Wrap(
-            spacing: GrowthSpacing.xs,
-            runSpacing: GrowthSpacing.xs,
-            children: [
-              for (final s in suggestions)
-                GrowthChip(
-                  label: s,
-                  onTap: () => setState(() => controller.text = s),
-                ),
-            ],
-          ),
-        ],
-        const SizedBox(height: GrowthSpacing.sm),
-      ],
-    );
-  }
-
-  @override
-  void dispose() {
-    _subject.dispose();
-    _version.dispose();
-    _book.dispose();
-    _chapter.dispose();
-    _lesson.dispose();
-    _point.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.72,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('知识点层级', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: GrowthSpacing.xs),
-          Text('从上到下逐级填写，历史值点选即可补全',
-              style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: GrowthSpacing.md),
-          Expanded(
-            child: ListView(
-              children: [
-                _field(
-                  label: '学科',
-                  controller: _subject,
-                  suggestions: _distinct((kp) => kp.subject),
-                ),
-                _field(
-                  label: '教材版本（如 人教版）',
-                  controller: _version,
-                  suggestions: _distinct((kp) => kp.version),
-                ),
-                _field(
-                  label: '册别（如 八年级上册）',
-                  controller: _book,
-                  suggestions: _distinct((kp) => kp.book),
-                ),
-                _field(
-                  label: '章',
-                  controller: _chapter,
-                  suggestions: _distinct((kp) => kp.chapter),
-                ),
-                _field(
-                  label: '节',
-                  controller: _lesson,
-                  suggestions: _distinct((kp) => kp.lesson),
-                ),
-                _field(
-                  label: '知识点名称',
-                  controller: _point,
-                  suggestions: _distinct((kp) => kp.name),
-                ),
-              ],
-            ),
-          ),
-          GrowthButton(
-            label: '确定',
-            expanded: true,
-            onPressed: () => widget.onSave(
-              KnowledgePath(
-                subject: _subject.text.trim(),
-                version: _version.text.trim(),
-                book: _book.text.trim(),
-                chapter: _chapter.text.trim(),
-                lesson: _lesson.text.trim(),
-                point: _point.text.trim(),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

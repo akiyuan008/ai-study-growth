@@ -41,6 +41,9 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
   bool _guideVisible = true;
   bool _shooting = false;
 
+  /// 缩略图堆叠 +1 脉冲动画
+  bool _stackPulse = false;
+
   /// 本次会话已拍摄/导入的图片（最近扫描）
   final List<String> _sessionShots = [];
 
@@ -173,15 +176,19 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
       final file = await controller.takePicture();
       final archived = await archiveImage(file.path);
       if (!mounted) return;
-      setState(() => _sessionShots.add(archived));
+      // 一次拍多张：快门后停留拍照页，缩略图堆叠 +1（v14）
+      setState(() {
+        _sessionShots.add(archived);
+        _stackPulse = true;
+      });
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (mounted) setState(() => _stackPulse = false);
+      });
       // 成功拍题后引导自动收起（下次可手动再开）
       final prefs = ref.read(sharedPreferencesProvider);
       await prefs.setBool('capture.guide_dismissed', true);
       if (!mounted) return;
       setState(() => _guideVisible = false);
-      await context.push(
-        '/capture/edit?path=${Uri.encodeComponent(archived)}&source=camera&roi=$_roiQuery',
-      );
     } catch (_) {
       // 快门失败静默，允许立即重拍
     } finally {
@@ -198,10 +205,13 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
     if (picked == null || !mounted) return;
     final archived = await archiveImage(picked.path);
     if (!mounted) return;
-    setState(() => _sessionShots.add(archived));
-    await context.push(
-      '/capture/edit?path=${Uri.encodeComponent(archived)}&source=album',
-    );
+    setState(() {
+      _sessionShots.add(archived);
+      _stackPulse = true;
+    });
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) setState(() => _stackPulse = false);
+    });
   }
 
   /// 导入选择器：相册 / 文件导入（Part 2.1 底栏严格三元素）
@@ -249,10 +259,11 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
         shots: _sessionShots,
         onChanged: () => setState(() {}),
         onEdit: (path) async {
+          // 引导框作为默认 ROI 传入（提升纸面检测命中率）
           Navigator.of(sheetContext).pop();
           if (!mounted) return;
           await context.push(
-            '/capture/edit?path=${Uri.encodeComponent(path)}&source=camera',
+            '/capture/edit?path=${Uri.encodeComponent(path)}&source=camera&roi=$_roiQuery',
           );
         },
       ),
@@ -320,7 +331,7 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xCC000000), Color(0x00000000)],
+                  colors: [GrowthColors.cameraOverlayTop, Colors.transparent],
                 ),
               ),
               child: Column(
@@ -404,6 +415,46 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
             ),
           ),
 
+          // ---- 「完成(N)」：连拍后进入多页队列（v14） ----
+          if (_sessionShots.isNotEmpty)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 128,
+              child: Center(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _openMultiPageSheet,
+                    borderRadius: BorderRadius.circular(GrowthRadii.pill),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: GrowthColors.actionAccent,
+                        borderRadius: BorderRadius.circular(GrowthRadii.pill),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x59FF9F43),
+                            blurRadius: 14,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '完成(${_sessionShots.length}) · 进入整理',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
           // ---- 底部三槽（深色） ----
           Positioned(
             bottom: 0,
@@ -420,7 +471,10 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  colors: [Color(0xE6000000), Color(0x00000000)],
+                  colors: [
+                    GrowthColors.cameraOverlayBottom,
+                    Colors.transparent
+                  ],
                 ),
               ),
               child: Row(
@@ -429,52 +483,58 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
                   // 左槽：最近扫描
                   _SlotButton(
                     onTap: _sessionShots.isEmpty ? null : _openMultiPageSheet,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 46,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            borderRadius:
-                                BorderRadius.circular(GrowthRadii.icon),
-                            border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.5)),
-                            image: _sessionShots.isNotEmpty
-                                ? DecorationImage(
-                                    image: FileImage(File(_sessionShots.last)),
-                                    fit: BoxFit.cover,
-                                  )
+                    child: AnimatedScale(
+                      scale: _stackPulse ? 1.18 : 1.0,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutBack,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.circular(GrowthRadii.icon),
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.5)),
+                              image: _sessionShots.isNotEmpty
+                                  ? DecorationImage(
+                                      image:
+                                          FileImage(File(_sessionShots.last)),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                            child: _sessionShots.isEmpty
+                                ? const Icon(Icons.photo_library_outlined,
+                                    color: Colors.white54, size: 22)
                                 : null,
                           ),
-                          child: _sessionShots.isEmpty
-                              ? const Icon(Icons.photo_library_outlined,
-                                  color: Colors.white54, size: 22)
-                              : null,
-                        ),
-                        if (_sessionShots.isNotEmpty)
-                          Positioned(
-                            right: -6,
-                            top: -6,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: GrowthColors.actionAccent,
-                                borderRadius:
-                                    BorderRadius.circular(GrowthRadii.pill),
-                              ),
-                              child: Text(
-                                '${_sessionShots.length}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
+                          if (_sessionShots.isNotEmpty)
+                            Positioned(
+                              right: -6,
+                              top: -6,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: GrowthColors.actionAccent,
+                                  borderRadius:
+                                      BorderRadius.circular(GrowthRadii.pill),
+                                ),
+                                child: Text(
+                                  '${_sessionShots.length}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   // 中槽：大快门（白色圆环）

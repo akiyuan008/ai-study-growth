@@ -12,6 +12,7 @@ import '../../../data/repositories/question_repository.dart';
 import '../../../data/services/review_scheduler.dart';
 import '../../../design_system/design_system.dart';
 import '../../../domain/models/generated_exercise.dart';
+import '../../../domain/models/subject.dart';
 import '../../../domain/models/knowledge_path.dart';
 import '../../learning/learning_providers.dart';
 import 'notebook_page.dart' show MasteryFlag;
@@ -125,6 +126,92 @@ class _QuestionDetailPageState extends ConsumerState<QuestionDetailPage> {
     }
   }
 
+  /// 真实编辑（v13 遗留项补齐）
+  void _openEditSheet() {
+    final data =
+        ref.read(questionDetailProvider(widget.questionId)).valueOrNull;
+    if (data == null) return;
+    final q = data.question;
+    final stemCtrl = TextEditingController(text: q.stem);
+    final answerCtrl = TextEditingController(text: q.answer ?? '');
+    final causeCtrl = TextEditingController(text: q.errorCause ?? '');
+    var subject = q.subject;
+
+    showGrowthSheet<void>(
+      context: context,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheet) => SizedBox(
+          height: MediaQuery.of(context).size.height * 0.72,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('编辑题目', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: GrowthSpacing.md),
+              Expanded(
+                child: ListView(
+                  children: [
+                    Text('科目', style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: GrowthSpacing.xs),
+                    Wrap(
+                      spacing: GrowthSpacing.xs,
+                      runSpacing: GrowthSpacing.xs,
+                      children: [
+                        for (final s in Subject.values)
+                          GrowthChip(
+                            label: s.label,
+                            selected: subject == s.label,
+                            onTap: () => setSheet(() => subject = s.label),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: GrowthSpacing.md),
+                    GrowthTextField(
+                      controller: stemCtrl,
+                      label: '题干',
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: GrowthSpacing.md),
+                    GrowthTextField(
+                      controller: answerCtrl,
+                      label: '答案',
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: GrowthSpacing.md),
+                    GrowthTextField(
+                      controller: causeCtrl,
+                      label: '错因',
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
+              ),
+              GrowthButton(
+                label: '保存修改',
+                expanded: true,
+                onPressed: () async {
+                  final navigator = Navigator.of(sheetContext);
+                  final messenger = ScaffoldMessenger.of(sheetContext);
+                  await ref.read(questionRepositoryProvider).updateQuestion(
+                        id: widget.questionId,
+                        stem: stemCtrl.text.trim(),
+                        answer: answerCtrl.text.trim(),
+                        errorCause: causeCtrl.text.trim(),
+                        subject: subject,
+                      );
+                  ref.invalidate(questionDetailProvider(widget.questionId));
+                  navigator.pop();
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('已保存修改')),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _cycleMastery(int current) async {
     final next = (current + 1) % 6;
     await ref
@@ -149,9 +236,7 @@ class _QuestionDetailPageState extends ConsumerState<QuestionDetailPage> {
             tooltip: '',
             onSelected: (v) {
               if (v == 'delete') _delete();
-              if (v == 'edit') {
-                AppToast.info(context, '编辑功能整理中，先用删除+重新拍题代替');
-              }
+              if (v == 'edit') _openEditSheet();
             },
             itemBuilder: (context) => const [
               PopupMenuItem(value: 'edit', child: Text('编辑')),
@@ -232,8 +317,8 @@ class _DetailBody extends ConsumerWidget {
         ),
         const SizedBox(height: GrowthSpacing.md),
 
-        // 原图 / 题干 分段切换
-        if (hasImage && q.stem.isNotEmpty && !q.stem.startsWith('（图片题'))
+        // 原图 / 题干 分段切换（有图即可切换）
+        if (hasImage)
           SegmentedButton<int>(
             segments: const [
               ButtonSegment(value: 0, label: Text('原图')),
@@ -270,15 +355,34 @@ class _DetailBody extends ConsumerWidget {
             ),
           ),
 
-        // 题干 + 答案 + 步骤
+        // 「题干」视图 = 图片 +（若有）文字；占位文案禁入详情
         if (segment == 1 || !hasImage) ...[
+          if (hasImage) ...[
+            GlassCard(
+              padding: const EdgeInsets.all(GrowthSpacing.sm),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(GrowthRadii.icon),
+                child: InteractiveViewer(
+                  maxScale: 4,
+                  child: Image.file(File(q.imagePath!), fit: BoxFit.contain),
+                ),
+              ),
+            ),
+            const SizedBox(height: GrowthSpacing.sm),
+          ],
           GlassCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 GrowthSectionHeader(title: '题干'),
                 const SizedBox(height: GrowthSpacing.sm),
-                Text(q.stem, style: Theme.of(context).textTheme.bodyMedium),
+                if (q.stem.isNotEmpty && !q.stem.startsWith('（图片题'))
+                  Text(q.stem, style: Theme.of(context).textTheme.bodyMedium)
+                else
+                  Text(
+                    hasImage ? '题目内容见上图' : '暂无题干文字',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 if ((q.answer ?? '').isNotEmpty) ...[
                   const SizedBox(height: GrowthSpacing.md),
                   GrowthSectionHeader(title: '答案'),
@@ -307,18 +411,6 @@ class _DetailBody extends ConsumerWidget {
             ),
           ),
         ],
-
-        // 图片题在题干分段也显示文字（若有）
-        if (segment == 1 &&
-            hasImage &&
-            q.stem.isNotEmpty &&
-            q.stem.startsWith('（图片题'))
-          GlassCard(
-            child: Text(
-              '这道题只有图片内容，切到「原图」查看。',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
 
         const SizedBox(height: GrowthSpacing.md),
 
@@ -362,6 +454,15 @@ class _MemoryStateCard extends StatelessWidget {
 
   final QuestionDetailData data;
 
+  List<int> _intervalHistory() {
+    final times = data.logs.map((l) => l.reviewedAt).toList()..sort();
+    final intervals = <int>[];
+    for (var i = 1; i < times.length && i <= 4; i++) {
+      intervals.add(times[i].difference(times[i - 1]).inDays);
+    }
+    return intervals;
+  }
+
   @override
   Widget build(BuildContext context) {
     final card = data.card;
@@ -404,6 +505,20 @@ class _MemoryStateCard extends StatelessWidget {
                 _Stat(label: '下次', value: nextText),
               ],
             ),
+            // 遗忘曲线小图（v13 5.2）
+            if (card.lastReviewAt != null) ...[
+              const SizedBox(height: GrowthSpacing.sm),
+              ForgettingCurveMini(
+                stability: card.stability,
+                elapsedDays: now.difference(card.lastReviewAt!).inHours / 24,
+                nextDueDays: card.due.difference(now).inDays.toDouble(),
+              ),
+            ],
+            // 间隔历史
+            if (data.logs.length > 1) ...[
+              const SizedBox(height: GrowthSpacing.sm),
+              IntervalHistoryChips(intervals: _intervalHistory()),
+            ],
             if (data.logs.isNotEmpty) ...[
               const SizedBox(height: GrowthSpacing.md),
               Text('复习历史', style: Theme.of(context).textTheme.bodySmall),

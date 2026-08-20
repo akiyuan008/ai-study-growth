@@ -5,8 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/di/providers.dart';
-import '../../../core/export/question_pdf_exporter.dart';
+import 'export_preview_page.dart';
 import '../../../data/local/app_database.dart';
 import '../../../design_system/design_system.dart';
 import '../../learning/learning_providers.dart';
@@ -66,7 +65,6 @@ class NotebookListPage extends ConsumerStatefulWidget {
 class _NotebookListPageState extends ConsumerState<NotebookListPage> {
   bool _selectMode = false;
   final Set<String> _selected = {};
-  bool _exporting = false;
 
   static const _timeRanges = ['全部', '今天', '近7天', '近30天'];
   static const _masteries = ['全部', '已掌握', '未掌握'];
@@ -141,26 +139,15 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
     });
   }
 
-  /// 多选导出 PDF（Part 6.2）
-  Future<void> _exportSelected(List<QuestionRecord> filtered) async {
-    if (_selected.isEmpty || _exporting) return;
-    setState(() => _exporting = true);
-    try {
-      final questions =
-          filtered.where((q) => _selected.contains(q.id)).toList();
-      final path = await QuestionPdfExporter.export(
-        ref.read(databaseProvider),
-        questions,
-      );
-      if (!mounted) return;
-      AppToast.success(context, '已生成 PDF（${questions.length} 题）');
-      _exitSelectMode();
-      await QuestionPdfExporter.share(path);
-    } catch (e) {
-      if (mounted) AppToast.error(context, '导出失败：$e');
-    } finally {
-      if (mounted) setState(() => _exporting = false);
-    }
+  /// 多选导出（v14 流程：多选→打印设置 sheet→白纸预览→出口）
+  void _exportSelected(List<QuestionRecord> filtered) {
+    if (_selected.isEmpty) return;
+    final ids = filtered
+        .where((q) => _selected.contains(q.id))
+        .map((q) => q.id)
+        .toList();
+    _exitSelectMode();
+    showPdfSettingsSheet(context, ref, ids: ids);
   }
 
   @override
@@ -345,7 +332,6 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
                           child: GrowthButton(
                             label: '导出题目（PDF）',
                             icon: Icons.picture_as_pdf_rounded,
-                            loading: _exporting,
                             onPressed: () => _exportSelected(filtered),
                           ),
                         ),

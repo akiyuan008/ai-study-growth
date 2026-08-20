@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -44,6 +45,15 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
   /// 补钉 B：页内 inline 错误提示（裁剪失败时保留上一有效状态）
   String? _inlineError;
 
+  /// 增强图路径（双引擎产出"扫描白"，展示/复习/导出用图，原图保留可回退）
+  String? _enhancedPath;
+
+  /// 「原图/增强」切换，默认增强
+  bool _showEnhanced = true;
+
+  String get _displayPath =>
+      (_showEnhanced && _enhancedPath != null) ? _enhancedPath! : _currentPath;
+
   @override
   void initState() {
     super.initState();
@@ -80,16 +90,28 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
         ];
         _cornersDirty = false;
         if (!silent) {
-          if (result.needsManualHint) {
+          if (result.isEngineMissing) {
+            // OpenCV 未加载：人话提示，手动全可用（v14）
+            _inlineError = '自动校准不可用，已为你保留手动调整：裁剪、旋转、增强都可以正常使用。';
+          } else if (result.needsManualHint) {
             AppToast.error(context, '未检测到纸面边界，已按全幅处理，建议手动校准');
           } else {
             AppToast.success(context, '已自动提取纸面并拉正');
           }
         }
+        unawaited(_reEnhance());
       } else if (!silent) {
         _inlineError = '自动校准未成功，请手动调整裁剪框或使用原图';
       }
     });
+  }
+
+  /// 重新生成增强图（双引擎，失败静默保留原图）
+  Future<void> _reEnhance() async {
+    final scanner = ref.read(scannerBridgeProvider);
+    final enhanced = await scanner.enhance(_currentPath);
+    if (!mounted) return;
+    setState(() => _enhancedPath = enhanced);
   }
 
   Future<void> _rotate() async {
@@ -100,7 +122,10 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
     if (!mounted) return;
     setState(() {
       _busy = false;
-      if (result != null) _currentPath = result;
+      if (result != null) {
+        _currentPath = result;
+        unawaited(_reEnhance());
+      }
     });
   }
 
@@ -142,6 +167,7 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
   Future<void> _useOriginal() async {
     setState(() {
       _currentPath = widget.path;
+      _enhancedPath = null;
       _autoApplied = false;
       _cornersDirty = false;
       _inlineError = null;
@@ -159,7 +185,8 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
   /// 补钉 B：裁剪失败时保留上一有效状态 + 页内 inline 原因（非 toast 死循环）
   Future<void> _confirm() async {
     if (_busy) return;
-    var finalPath = _currentPath;
+    // 增强图为展示/复习/导出用图（默认），原图保留可回退
+    var finalPath = _displayPath;
     var cropSource = _autoApplied ? 'auto' : 'original';
 
     if (_cornersDirty) {
@@ -234,6 +261,35 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
                 ],
               ),
             ),
+            // 「原图/增强」切换（默认增强；增强图为展示/复习/导出用图）
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: GrowthSpacing.lg),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(value: false, label: Text('原图')),
+                        ButtonSegment(value: true, label: Text('增强')),
+                      ],
+                      selected: {_showEnhanced},
+                      onSelectionChanged: (sel) =>
+                          setState(() => _showEnhanced = sel.first),
+                      style: ButtonStyle(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ),
+                  if (_enhancedPath == null) ...[
+                    const SizedBox(width: GrowthSpacing.sm),
+                    Text(
+                      '增强生成中…',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ],
+              ),
+            ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(GrowthSpacing.md),
@@ -248,7 +304,7 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
                             borderRadius:
                                 BorderRadius.circular(GrowthRadii.icon),
                             child: Image.file(
-                              File(_currentPath),
+                              File(_displayPath),
                               fit: BoxFit.contain,
                             ),
                           ),

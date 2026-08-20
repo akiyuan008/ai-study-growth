@@ -11,6 +11,7 @@ import '../../../data/services/settings_service.dart';
 import '../../../design_system/design_system.dart';
 import '../../growth/presentation/growth_home_page.dart';
 import '../../learning/learning_providers.dart';
+import '../../capture/presentation/camera_capture_page.dart';
 import 'notebook_page.dart';
 import 'review_page.dart';
 
@@ -115,7 +116,8 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
     final configName = configAsync.valueOrNull?.name;
 
     // 通知设置
-    final notifyEnabled = ref.watch(settingsServiceProvider).notifyReviewEnabled;
+    final notifyEnabled =
+        ref.watch(settingsServiceProvider).notifyReviewEnabled;
     final notifyTime = ref.watch(settingsServiceProvider).reviewNotifyTime;
 
     return Scaffold(
@@ -124,6 +126,10 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
         child: ListView(
           padding: const EdgeInsets.all(GrowthSpacing.lg),
           children: [
+            // ---- 外观（主题三态） ----
+            const _AppearanceCard(),
+            const SizedBox(height: GrowthSpacing.md),
+
             // ---- AI 服务商 ----
             GlassCard(
               onTap: () => context.push('/settings/ai-provider'),
@@ -191,7 +197,9 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                     value: notifyEnabled,
                     activeThumbColor: GrowthColors.primary,
                     onChanged: (v) {
-                      unawaited(ref.read(settingsServiceProvider).setNotifyReviewEnabled(v));
+                      unawaited(ref
+                          .read(settingsServiceProvider)
+                          .setNotifyReviewEnabled(v));
                       setState(() {});
                     },
                   ),
@@ -260,6 +268,8 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
             const SizedBox(height: GrowthSpacing.lg),
 
             _GroupLabel(label: '数据与关于'),
+            const _EngineStatusCard(),
+            const SizedBox(height: GrowthSpacing.md),
             GlassCard(
               child: Column(
                 children: [
@@ -411,6 +421,144 @@ class _SettingRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 外观设置卡：主题三态（跟随系统/浅色/深色），持久化，默认跟随系统
+class _AppearanceCard extends ConsumerWidget {
+  const _AppearanceCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(themeModeProvider);
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.dark_mode_outlined, color: GrowthColors.primary),
+              const SizedBox(width: GrowthSpacing.md),
+              Expanded(
+                child:
+                    Text('外观', style: Theme.of(context).textTheme.titleLarge),
+              ),
+            ],
+          ),
+          const SizedBox(height: GrowthSpacing.sm),
+          for (final (m, label, icon) in [
+            (ThemeMode.system, '跟随系统', Icons.brightness_auto_rounded),
+            (ThemeMode.light, '浅色', Icons.light_mode_rounded),
+            (ThemeMode.dark, '深色', Icons.dark_mode_rounded),
+          ])
+            InkWell(
+              onTap: () => ref.read(themeModeProvider.notifier).set(m),
+              borderRadius: BorderRadius.circular(GrowthRadii.icon),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: GrowthSpacing.xs),
+                child: Row(
+                  children: [
+                    Icon(icon,
+                        size: 18,
+                        color: mode == m
+                            ? GrowthColors.primary
+                            : GrowthColors.gray4),
+                    const SizedBox(width: GrowthSpacing.sm),
+                    Expanded(
+                      child: Text(label,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                fontWeight: mode == m ? FontWeight.w600 : null,
+                              )),
+                    ),
+                    if (mode == m)
+                      const Icon(Icons.check_circle_rounded,
+                          size: 18, color: GrowthColors.primary),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 增强引擎状态卡（v14：OpenCV 已加载/未加载）
+class _EngineStatusCard extends ConsumerStatefulWidget {
+  const _EngineStatusCard();
+
+  @override
+  ConsumerState<_EngineStatusCard> createState() => _EngineStatusCardState();
+}
+
+class _EngineStatusCardState extends ConsumerState<_EngineStatusCard> {
+  Map<String, dynamic>? _status;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final status = await ref.read(scannerBridgeProvider).getStatus();
+    if (mounted) setState(() => _status = status);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _status;
+    final loaded = status?['loaded'] == true;
+    final version = (status?['version'] ?? '').toString();
+    return GlassCard(
+      padding: const EdgeInsets.all(GrowthSpacing.md),
+      child: Row(
+        children: [
+          Icon(
+            loaded ? Icons.memory_rounded : Icons.memory_outlined,
+            color: loaded ? GrowthColors.success : GrowthColors.gray4,
+            size: 20,
+          ),
+          const SizedBox(width: GrowthSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '增强引擎',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                Text(
+                  loaded
+                      ? '已加载（OpenCV $version）：自动纸面检测 + 高级增强'
+                      : '未加载：手动裁剪/旋转/基础增强仍全可用',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: (loaded ? GrowthColors.success : GrowthColors.gray4)
+                  .withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(GrowthRadii.icon),
+            ),
+            child: Text(
+              loaded ? '已加载' : '未加载',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: loaded ? GrowthColors.success : GrowthColors.gray4,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -42,6 +42,24 @@ class QuestionRepository {
     return result.toList();
   }
 
+  /// 编辑题目（详情页溢出菜单，v13 遗留项）
+  Future<void> updateQuestion({
+    required String id,
+    String? stem,
+    String? answer,
+    String? errorCause,
+    String? subject,
+  }) async {
+    await (_db.update(_db.questionRecords)..where((t) => t.id.equals(id)))
+        .write(QuestionRecordsCompanion(
+      stem: stem == null ? const Value.absent() : Value(stem),
+      answer: answer == null ? const Value.absent() : Value(answer),
+      errorCause: errorCause == null ? const Value.absent() : Value(errorCause),
+      subject: subject == null ? const Value.absent() : Value(subject),
+      updatedAt: Value(DateTime.now()),
+    ));
+  }
+
   Future<void> updateMastery(String id, int level) async {
     await (_db.update(_db.questionRecords)..where((t) => t.id.equals(id)))
         .write(QuestionRecordsCompanion(

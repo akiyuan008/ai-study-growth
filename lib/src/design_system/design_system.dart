@@ -5,6 +5,7 @@ export 'growth_theme.dart';
 export 'widgets/app_toast.dart';
 export 'tokens.dart';
 export 'widgets/energy_ring.dart';
+export 'widgets/forgetting_curve.dart';
 export 'widgets/growth_button.dart';
 export 'widgets/growth_card.dart';
 export 'widgets/growth_chip.dart';

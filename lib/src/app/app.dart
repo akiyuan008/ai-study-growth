@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -17,6 +18,7 @@ import '../features/home/presentation/question_detail_page.dart';
 import '../features/home/presentation/review_page.dart';
 import '../features/home/presentation/stats_page.dart';
 import '../features/home/presentation/ai_call_log_page.dart';
+import '../features/home/presentation/export_preview_page.dart';
 import '../features/onboarding/presentation/onboarding_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -41,6 +43,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/stats',
         builder: (context, state) => const StatsPage(),
+      ),
+      GoRoute(
+        path: '/export/preview',
+        builder: (context, state) => const ExportPreviewPage(),
       ),
       GoRoute(
         path: '/notebook/:id',
@@ -108,14 +114,30 @@ class AiStudyGrowthApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    return MaterialApp.router(
-      title: '智析录',
-      debugShowCheckedModeBanner: false,
-      theme: buildGrowthTheme(Brightness.light),
-      // Prompt F4：深色模式本版冻结，固定浅色
-      darkTheme: buildGrowthTheme(Brightness.light),
-      themeMode: ThemeMode.light,
-      routerConfig: router,
+    final themeMode = ref.watch(themeModeProvider);
+    // 系统栏随主题切 icon 亮暗
+    final platform = MediaQuery.platformBrightnessOf(context);
+    final effectiveDark = themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system && platform == Brightness.dark);
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: effectiveDark
+          ? SystemUiOverlayStyle.light.copyWith(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: GrowthColors.surfaceDarkBottom,
+            )
+          : SystemUiOverlayStyle.dark.copyWith(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: GrowthColors.gray1,
+            ),
+      child: MaterialApp.router(
+        scaffoldMessengerKey: appMessengerKey,
+        title: '智析录',
+        debugShowCheckedModeBanner: false,
+        theme: buildGrowthTheme(Brightness.light),
+        darkTheme: buildGrowthTheme(Brightness.dark),
+        themeMode: themeMode,
+        routerConfig: router,
+      ),
     );
   }
 }

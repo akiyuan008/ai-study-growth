@@ -57,8 +57,56 @@ abstract final class GrowthColors {
   /// 近黑（浅色模式文字 / 深色模式底色）
   static const Color gray6 = Color(0xFF23272F);
 
-  /// 深空底色（深色模式）
-  static const Color surfaceDark = Color(0xFF12151C);
+  /// 深空底色（深色模式，深灰靛渐变两端）
+  static const Color surfaceDarkTop = Color(0xFF12141C);
+  static const Color surfaceDarkBottom = Color(0xFF1A1D29);
+  static const Color surfaceDark = Color(0xFF12141C);
+
+  /// 深色模式表面亮度层级（暗色层级用亮度表达，不用阴影）
+  static const Color surfaceDarkRaised = Color(0xFF232636);
+
+  // ---- 深色模式可读变体（主色提亮、强调与能力色暗色变体） ----
+  static const Color primaryDark = Color(0xFF7C8CF8);
+  static const Color successDark = Color(0xFF5ED69A);
+  static const Color actionAccentDark = Color(0xFFFFB25E);
+  static const Color warningDark = Color(0xFFFF8A7A);
+  static const Color learningDark = Color(0xFF8FA8FF);
+  static const Color persistenceDark = Color(0xFF5ED69A);
+  static const Color recoveryDark = Color(0xFFBCA6FF);
+
+  /// 深色模式文本（对比度 ≥4.5:1）
+  static const Color onSurfaceDark = Color(0xFFEDF0F7);
+  static const Color onSurfaceDarkDim = Color(0xFFA8AFC4);
+
+  /// 玻璃拟物（深色：白 8-12% 透明）
+  static const Color glassDarkFill = Color(0x1AFFFFFF);
+  static const Color glassDarkBorder = Color(0x29FFFFFF);
+
+  /// 能量环轨道色
+  static const Color ringTrackLight = Color(0x14101828);
+  static const Color ringTrackDark = Color(0x29FFFFFF);
+
+  /// 相机腔体遮罩（相机页例外恒定暗色）
+  static const Color cameraOverlayTop = Color(0xCC000000);
+  static const Color cameraOverlayBottom = Color(0xE6000000);
+
+  /// 主题自适应：浅色令牌 → 深色可读变体
+  static Color adapt(Color c, bool isLight) {
+    if (isLight) return c;
+    return switch (c) {
+      primary => primaryDark,
+      success => successDark,
+      actionAccent => actionAccentDark,
+      warning => warningDark,
+      learning => learningDark,
+      abilityLearning => learningDark,
+      abilityPersistence => persistenceDark,
+      abilityRecovery => recoveryDark,
+      gray5 => onSurfaceDarkDim,
+      gray4 => onSurfaceDarkDim,
+      _ => c,
+    };
+  }
 
   // ---- 玻璃拟物 ----
   static const Color glassLight = Color(0xB8FFFFFF);

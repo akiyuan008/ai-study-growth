@@ -60,9 +60,10 @@ class GlassCard extends StatelessWidget {
               child: Container(
                 padding: padding,
                 decoration: BoxDecoration(
+                  // 深色：白 8-12% 透明 + 模糊
                   color: isLight
                       ? GrowthColors.glassLight
-                      : GrowthColors.glassDark,
+                      : GrowthColors.glassDarkFill,
                   borderRadius: BorderRadius.circular(GrowthRadii.card),
                   // 1px 内描边高光
                   border: Border.all(

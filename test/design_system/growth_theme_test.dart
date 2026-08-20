@@ -27,19 +27,35 @@ void main() {
     });
   });
 
-  group('ThemeModeNotifier（深色冻结，Prompt F4）', () {
-    test('固定浅色：set(dark) 也落回浅色并持久化', () async {
+  group('ThemeModeNotifier（主题三态，v14）', () {
+    test('默认跟随系统', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = ThemeModeNotifier(prefs);
+      expect(notifier.state, ThemeMode.system);
+    });
+
+    test('set(dark) 生效并持久化', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final notifier = ThemeModeNotifier(prefs);
 
-      expect(notifier.state, ThemeMode.light);
-
       await notifier.set(ThemeMode.dark);
-      expect(notifier.state, ThemeMode.light);
+      expect(notifier.state, ThemeMode.dark);
 
       final reloaded = ThemeModeNotifier(prefs);
-      expect(reloaded.state, ThemeMode.light);
+      expect(reloaded.state, ThemeMode.dark);
+    });
+
+    test('toggleLightDark 在明暗之间切换', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = ThemeModeNotifier(prefs);
+
+      await notifier.toggleLightDark();
+      expect(notifier.state, ThemeMode.dark);
+      await notifier.toggleLightDark();
+      expect(notifier.state, ThemeMode.light);
     });
   });
 

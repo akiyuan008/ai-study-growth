@@ -79,8 +79,7 @@ class AiCallLogRepository {
   }
 
   /// 清空
-  Future<void> clear() =>
-      _db.delete(_db.aiCallLogs).go();
+  Future<void> clear() => _db.delete(_db.aiCallLogs).go();
 }
 
 final aiCallLogRepositoryProvider = Provider<AiCallLogRepository>((ref) {

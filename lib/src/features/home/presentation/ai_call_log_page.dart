@@ -59,7 +59,8 @@ class _LogCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final successColor = log.success ? GrowthColors.success : GrowthColors.error;
+    final successColor =
+        log.success ? GrowthColors.success : GrowthColors.error;
     final fmt = DateFormat('MM-dd HH:mm:ss');
 
     return GlassCard(
@@ -93,7 +94,11 @@ class _LogCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('请求', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+                Text('请求',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.all(GrowthSpacing.sm),
@@ -103,11 +108,16 @@ class _LogCard extends StatelessWidget {
                   ),
                   child: SelectableText(
                     _prettyJson(log.requestBody),
-                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                    style:
+                        const TextStyle(fontSize: 12, fontFamily: 'monospace'),
                   ),
                 ),
                 const SizedBox(height: GrowthSpacing.sm),
-                Text('响应', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+                Text('响应',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.all(GrowthSpacing.sm),
@@ -117,7 +127,8 @@ class _LogCard extends StatelessWidget {
                   ),
                   child: SelectableText(
                     _prettyJson(log.responseBody),
-                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                    style:
+                        const TextStyle(fontSize: 12, fontFamily: 'monospace'),
                   ),
                 ),
               ],

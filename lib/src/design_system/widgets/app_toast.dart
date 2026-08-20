@@ -8,7 +8,17 @@ import '../tokens.dart';
 /// - 同消息 2s 内去重
 enum ToastKind { success, info, error }
 
+/// 全局 ScaffoldMessenger 键：toast 随路由清理，禁跨页残留
+final GlobalKey<ScaffoldMessengerState> appMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
 abstract final class AppToast {
+  /// 路由切换时清理残留 toast
+  static void clearAll() {
+    appMessengerKey.currentState?.clearSnackBars();
+    _lastMessage = null;
+  }
+
   static const Duration _successDuration = Duration(milliseconds: 2200);
   static const Duration _errorDuration = Duration(seconds: 4);
   static const Duration _dedupeWindow = Duration(seconds: 2);
@@ -25,7 +35,8 @@ abstract final class AppToast {
     _lastMessage = message;
     _lastAt = now;
 
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger =
+        appMessengerKey.currentState ?? ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
 
     final isError = kind == ToastKind.error;

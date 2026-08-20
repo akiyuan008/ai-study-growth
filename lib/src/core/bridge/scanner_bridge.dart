@@ -14,16 +14,19 @@ class ScanResult {
 
   final String path;
 
-  /// none=检测到纸面 / minarea=旋转矩形回落 / fullframe=全幅内缩（建议手动校准）
+  /// none=检测到纸面 / minarea=旋转矩形回落 / fullframe=全幅内缩 /
+  /// noengine=OpenCV 未加载（自动检测不可用，手动全可用）
   final String fallback;
 
   bool get needsManualHint => fallback == 'fullframe';
+
+  /// OpenCV 未加载：自动校准不可用，手动四角/裁剪/旋转/基础增强仍全可用
+  bool get isEngineMissing => fallback == 'noengine';
 }
 
 /// 裁剪结果：成功返回路径，失败返回具体原因（补钉 B）
 class CropResult {
-  const CropResult.success(this.path)
-      : error = null;
+  const CropResult.success(this.path) : error = null;
   const CropResult.failure(this.error) : path = null;
 
   final String? path;
@@ -79,7 +82,8 @@ class ScannerBridge {
     required List<double> bl,
   }) async {
     try {
-      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('cropByPoints', {
+      final result =
+          await _channel.invokeMethod<Map<dynamic, dynamic>>('cropByPoints', {
         'path': path,
         'tl': tl,
         'tr': tr,
@@ -105,6 +109,29 @@ class ScannerBridge {
       return CropResult.failure('插件异常: ${e.code} ${e.message ?? ''}');
     } catch (e) {
       return CropResult.failure('意外错误: $e');
+    }
+  }
+
+  /// 增强引擎状态：{"loaded":true/false,"version":"4.x","error":"..."}
+  Future<Map<String, dynamic>> getStatus() async {
+    try {
+      final raw = await _channel.invokeMethod<String>('getStatus');
+      if (raw == null) return const {'loaded': false};
+      return (jsonDecode(raw) as Map).cast<String, dynamic>();
+    } on PlatformException {
+      return const {'loaded': false};
+    }
+  }
+
+  /// 增强（双引擎：OpenCV 背景压平+CLAHE / Bitmap 直方图拉伸+白平衡）
+  Future<String?> enhance(String path) async {
+    try {
+      return await _channel.invokeMethod<String>(
+        'enhance',
+        {'path': path},
+      );
+    } on PlatformException {
+      return null;
     }
   }
 

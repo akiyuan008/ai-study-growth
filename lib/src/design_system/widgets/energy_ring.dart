@@ -63,8 +63,8 @@ class _EnergyRingState extends State<EnergyRing> {
         strokeWidth: widget.strokeWidth,
         idle: widget.idle,
         trackColor: Theme.of(context).brightness == Brightness.light
-            ? const Color(0x14101828)
-            : const Color(0x29FFFFFF),
+            ? GrowthColors.ringTrackLight
+            : GrowthColors.ringTrackDark,
       ),
     );
 
@@ -212,6 +212,29 @@ class _EnergyRingPainter extends CustomPainter {
           fillPaint,
         );
       }
+
+      // 三环带数值（v13 7.1）：弧端外侧标注百分数
+      final score = (value * 100).round();
+      final midAngle = _deg(startAngle + _segmentDegrees / 2);
+      final labelRadius = radius + strokeWidth * 1.15;
+      final tp = TextPainter(
+        text: TextSpan(
+          text: '$score',
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: arc.color,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(
+        canvas,
+        Offset(
+          center.dx + math.cos(midAngle) * labelRadius - tp.width / 2,
+          center.dy + math.sin(midAngle) * labelRadius - tp.height / 2,
+        ),
+      );
 
       startAngle += _segmentDegrees + _gapDegrees;
     }

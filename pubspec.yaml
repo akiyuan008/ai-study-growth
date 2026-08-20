@@ -1,7 +1,7 @@
 name: ai_study_growth
 description: "智析录：AI 学习成长系统——自律学习 × AI 错题本 融合重构"
 publish_to: 'none'
-version: 0.7.0+1
+version: 0.9.0+1
 
 environment:
   sdk: ^3.5.0
@@ -59,6 +59,12 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/taxonomy/high_school_taxonomy.json
+  fonts:
+    - family: LxgwWenKai
+      fonts:
+        - asset: assets/fonts/LxgwWenKaiLite.ttf
 
 flutter_launcher_icons:
   android: true

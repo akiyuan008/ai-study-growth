@@ -21,7 +21,8 @@ class GrowthChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = color ?? GrowthColors.primary;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final base = GrowthColors.adapt(color ?? GrowthColors.primary, isLight);
 
     return Material(
       color: Colors.transparent,

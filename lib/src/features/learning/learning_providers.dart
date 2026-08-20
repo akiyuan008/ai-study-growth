@@ -55,8 +55,14 @@ final aiGatewayProvider = FutureProvider<AiAnalysisGateway?>((ref) async {
   final logRepo = ref.watch(aiCallLogRepositoryProvider);
   return AiAnalysisGatewayImpl(
     client,
-    logger: ({required purpose, required requestBody, required responseBody,
-        required httpStatus, required success, errorTier, required durationMs}) async {
+    logger: (
+        {required purpose,
+        required requestBody,
+        required responseBody,
+        required httpStatus,
+        required success,
+        errorTier,
+        required durationMs}) async {
       await logRepo.log(
         purpose: purpose,
         requestBody: requestBody,
