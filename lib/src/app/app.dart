@@ -16,11 +16,14 @@ import '../features/home/presentation/main_shell_page.dart';
 import '../features/home/presentation/notebook_page.dart';
 import '../features/home/presentation/question_detail_page.dart';
 import '../features/home/presentation/review_page.dart';
-import '../features/home/presentation/stats_page.dart';
 import '../features/home/presentation/ai_call_log_page.dart';
 import '../features/home/presentation/export_preview_page.dart';
 import '../features/onboarding/presentation/onboarding_page.dart';
 
+/// 路由配置（v15 终版）：
+/// - 删除 /stats（统计独立页已删除）
+/// - 删除成长页相关路由
+/// - 保留：错题本/拍照/复习/设置/备份/AI/导出/画廊(debug)
 final routerProvider = Provider<GoRouter>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   final onboarded = prefs.getBool('onboarding_done') ?? false;
@@ -39,10 +42,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/notebook',
         builder: (context, state) => const NotebookListPage(),
-      ),
-      GoRoute(
-        path: '/stats',
-        builder: (context, state) => const StatsPage(),
       ),
       GoRoute(
         path: '/export/preview',
@@ -98,8 +97,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AiCallLogPage(),
       ),
       GoRoute(
-        // Prompt E：画廊仅 debug 可见；release 包中该路由重定向回首页，
-        // 画廊内的演示控件（模拟涨落/心流演示）不会在 release 被触达
+        // 画廊仅 debug 可见；release 包中该路由重定向回首页
         path: '/design/gallery',
         builder: (context, state) =>
             kDebugMode ? const DesignGalleryPage() : const MainShellPage(),
@@ -156,7 +154,7 @@ List<double>? _parseRoi(String? raw) {
   return vals;
 }
 
-/// 路由级 SnackBar 清理（Part 1.1）：
+/// 路由级 SnackBar 清理：
 /// toast 不得跨页残留——每次路由变更时清除当前 SnackBar。
 class SnackBarClearObserver extends NavigatorObserver {
   @override

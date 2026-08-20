@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fsrs/fsrs.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/di/providers.dart';
@@ -17,73 +16,38 @@ import '../../../design_system/design_system.dart';
 import '../../learning/learning_providers.dart';
 import 'export_preview_page.dart';
 
-/// 推荐复习项（带理由）
-class RecommendedItem {
-  const RecommendedItem({
+/// SM-2 推荐复习项（带理由标签）
+class Sm2RecommendedItem {
+  const Sm2RecommendedItem({
     required this.question,
     required this.card,
     required this.reasons,
     required this.breadcrumb,
-    required this.strength,
-    required this.stabilityDays,
-    required this.elapsedDays,
-    required this.intervalDays,
+    required this.overdueDays,
     required this.intervalHistory,
   });
 
   final QuestionRecord question;
-  final ReviewCard card;
+  final Sm2Card card;
   final List<String> reasons;
   final String breadcrumb;
-  final double strength;
-
-  /// FSRS 稳定度（天）——遗忘曲线用
-  final double stabilityDays;
-
-  /// 距上次复习天数
-  final double elapsedDays;
-
-  /// 当前间隔（天）
-  final int? intervalDays;
-
-  /// 历史间隔序列（天）
+  final int overdueDays;
   final List<int> intervalHistory;
 }
 
-class ReviewRecommendData {
-  const ReviewRecommendData({
-    required this.items,
-    required this.graduated,
-    required this.forecast,
-  });
-
-  final List<RecommendedItem> items;
-  final List<QuestionRecord> graduated;
-
-  /// 未来 7 天每日到期数
-  final List<int> forecast;
-}
-
-/// 推荐引擎（Part 6.1）：到期队列 + 理由标签 + 毕业区 + 7 天预测
-final reviewRecommendProvider =
-    FutureProvider.autoDispose<ReviewRecommendData>((ref) async {
+/// SM-2 推荐引擎（v15 终版）：到期队列 + 理由标签 + 毕业区
+final reviewRecommendProvider = FutureProvider.autoDispose<ReviewRecommendData>((ref) async {
   final db = ref.watch(databaseProvider);
-  final scheduler = ReviewScheduler();
+  final scheduler = Sm2Scheduler();
   final now = DateTime.now();
 
-  final cards = await db.select(db.reviewCards).get();
+  final cards = await (db.select(db.reviewCards)..orderBy([(t) => OrderingTerm.asc(t.due)])).get();
   if (cards.isEmpty) {
-    return const ReviewRecommendData(
-      items: [],
-      graduated: [],
-      forecast: [0, 0, 0, 0, 0, 0, 0],
-    );
+    return const ReviewRecommendData(items: [], graduated: [], forecast: [0, 0, 0, 0, 0, 0, 0]);
   }
 
-  final qIds = cards.map((c) => c.questionId).toList();
-  final questions = await (db.select(db.questionRecords)
-        ..where((t) => t.id.isIn(qIds)))
-      .get();
+  final qIds = cards.map((c) => c.questionId).toSet().toList();
+  final questions = await (db.select(db.questionRecords)..where((t) => t.id.isIn(qIds))).get();
   final qById = {for (final q in questions) q.id: q};
 
   // 面包屑批量查询
@@ -91,20 +55,17 @@ final reviewRecommendProvider =
   final linkByQ = <String, String>{};
   final kpIds = links.map((l) => l.knowledgePointId).toSet().toList();
   if (kpIds.isNotEmpty) {
-    final kps = await (db.select(db.knowledgePoints)
-          ..where((t) => t.id.isIn(kpIds)))
-        .get();
+    final kps = await (db.select(db.knowledgePoints)..where((t) => t.id.isIn(kpIds))).get();
     final kpById = {for (final k in kps) k.id: k};
     for (final l in links) {
       final kp = kpById[l.knowledgePointId];
       if (kp == null) continue;
-      final parts =
-          [kp.subject, kp.chapter, kp.name].where((s) => s.isNotEmpty).toList();
+      final parts = [kp.subject, kp.chapter, kp.name].where((s) => s.isNotEmpty).toList();
       linkByQ[l.questionId] = parts.join(' · ');
     }
   }
 
-  // 间隔历史：每道题相邻复习之间的天数（v13 6.1）
+  // 间隔历史：每道题相邻复习之间的天数
   final logsByQ = <String, List<DateTime>>{};
   if (qIds.isNotEmpty) {
     final logs = await (db.select(db.reviewLogs)
@@ -125,7 +86,7 @@ final reviewRecommendProvider =
     intervalsByQ[entry.key] = intervals;
   }
 
-  final items = <RecommendedItem>[];
+  final items = <Sm2RecommendedItem>[];
   final graduated = <QuestionRecord>[];
 
   for (final card in cards) {
@@ -139,44 +100,36 @@ final reviewRecommendProvider =
     }
 
     // 只推荐已到期
-    if (card.due.isAfter(now)) continue;
+    if (!scheduler.isDue(card, now: now)) continue;
 
-    final fsrsCard = scheduler.cardFromStorage(
+    final sm2Card = scheduler.cardFromStorage(
       cardId: card.createdAt.millisecondsSinceEpoch,
-      state: card.state,
-      step: card.step,
-      stability: card.stability,
-      difficulty: card.difficulty,
+      reps: card.reps,
+      easinessFactor: card.easinessFactor,
+      intervalDays: card.intervalDays,
       due: card.due,
       lastReview: card.lastReviewAt,
     );
-    final strength = scheduler.retrievability(fsrsCard, now: now);
 
-    // 理由标签（Part 6.1）
-    final reasons = <String>['第 ${card.reps + 1} 次复习'];
-    final overdueDays = now.difference(card.due).inDays;
-    if (overdueDays >= 1) {
-      reasons.add('逾期 $overdueDays 天');
-    }
-    if (card.lastReviewAt != null && strength < 0.7 && strength > 0.3) {
-      reasons.add('强度将跌破阈值');
+    // 理由标签（v15 终版）
+    final reasons = <String>['第 ${card.reps + 1} 次'];
+    final overdue = scheduler.overdueDays(sm2Card, now: now);
+    if (overdue > 0) {
+      reasons.add('逾期 $overdue 天');
     }
 
-    items.add(RecommendedItem(
+    items.add(Sm2RecommendedItem(
       question: q,
-      card: card,
+      card: sm2Card,
       reasons: reasons,
       breadcrumb: linkByQ[q.id] ?? '',
-      strength: strength,
-      stabilityDays: card.stability,
-      elapsedDays: now.difference(card.lastReviewAt ?? card.due).inHours / 24,
-      intervalDays: card.due.difference(now).inDays,
+      overdueDays: overdue,
       intervalHistory: intervalsByQ[q.id] ?? const [],
     ));
   }
 
   // 按逾期程度排序
-  items.sort((a, b) => a.card.due.compareTo(b.card.due));
+  items.sort((a, b) => a.overdueDays.compareTo(b.overdueDays));
 
   // 7 天到期预测（实时计算）
   final forecast = List<int>.filled(7, 0);
@@ -190,13 +143,13 @@ final reviewRecommendProvider =
   }
 
   return ReviewRecommendData(
-    items: items,
+    items: items.cast(),
     graduated: graduated,
     forecast: forecast,
   );
 });
 
-/// 复习页（Part 6）：推荐复习（主视图）+ 屏内复习（备选路径）
+/// 复习页（v15 终版）：大图展示题目图片 + 三档标记（仍错/模糊/已会）
 class ReviewSessionPage extends ConsumerStatefulWidget {
   const ReviewSessionPage({super.key, this.embedded = false});
 
@@ -207,450 +160,219 @@ class ReviewSessionPage extends ConsumerStatefulWidget {
 }
 
 class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
-  int _tab = 0;
-  bool _showGraduated = false;
-  int _doneCount = 0;
-
-  /// 推荐列表多选导出（v13 6.1）
-  bool _selectMode = false;
-  final Set<String> _selectedRecs = {};
-
-  Future<void> _mark(RecommendedItem item, Rating rating) async {
-    unawaited(HapticFeedback.selectionClick());
-    // 标记前记录下次日期（验收证据：仍错变早/已会变晚）
-    final before = item.card.due;
-    await ref
-        .read(reviewRepositoryProvider)
-        .rate(cardId: item.card.id, rating: rating);
-    await ref.read(backupStateProvider).markDirty();
-    // 标记后读取新日期
-    final db = ref.read(databaseProvider);
-    final afterCards = await (db.select(db.reviewCards)
-          ..where((t) => t.id.equals(item.card.id)))
-        .get();
-    if (mounted && afterCards.isNotEmpty) {
-      final after = afterCards.first.due;
-      final fmt = DateFormat('MM-dd');
-      AppToast.info(
-        context,
-        '下次复习：${fmt.format(before)} → ${fmt.format(after)}',
-      );
-    }
-    setState(() => _doneCount++);
-    ref.invalidate(reviewRecommendProvider);
-    final msg = switch (rating) {
-      Rating.again => '已标记「仍错」：间隔缩短，重新进入推荐',
-      Rating.hard => '已标记「模糊」：间隔小幅缩短',
-      _ => '已标记「已会」：间隔拉长，连续答对将毕业',
-    };
-    if (mounted) AppToast.info(context, msg);
-  }
-
-  /// 毕业区拉回
-  Future<void> _pullBack(QuestionRecord q) async {
-    await ref.read(questionRepositoryProvider).updateMastery(q.id, 3);
-    ref.invalidate(reviewRecommendProvider);
-    if (mounted) AppToast.info(context, '已拉回推荐池');
-  }
-
   @override
   Widget build(BuildContext context) {
-    final recAsync = ref.watch(reviewRecommendProvider);
-
+    final dataAsync = ref.watch(reviewRecommendProvider);
     return Scaffold(
-      appBar: growthAppBar(
-        context,
-        title: '复习',
-        showBack: !widget.embedded,
-        onBack: () => context.pop(),
-      ),
+      appBar: growthAppBar(context, title: '复习'),
       body: GrowthBackground(
-        child: Column(
-          children: [
-            // Tab：推荐 / 屏内
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: GrowthSpacing.lg),
-              child: SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment(value: 0, label: Text('推荐复习')),
-                  ButtonSegment(value: 1, label: Text('屏内复习')),
+        child: dataAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => EmptyState(title: '加载失败', subtitle: '$e'),
+          data: (data) {
+            if (data.items.isEmpty && data.graduated.isEmpty) {
+              return EmptyState(
+                title: '太棒了！',
+                subtitle: '没有需要复习的题目',
+                actionLabel: '去拍题',
+                onAction: () => context.push('/capture'),
+              );
+            }
+            return ListView(
+              padding: const EdgeInsets.all(GrowthSpacing.lg),
+              children: [
+                // 到期列表
+                if (data.items.isNotEmpty) ...[
+                  Text('待复习 (${data.items.length})',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: GrowthSpacing.md),
+                  for (final item in data.items) _ReviewCard(item: item),
+                  const SizedBox(height: GrowthSpacing.xl),
                 ],
-                selected: {_tab},
-                onSelectionChanged: (s) => setState(() => _tab = s.first),
-              ),
-            ),
-            const SizedBox(height: GrowthSpacing.sm),
-            Expanded(
-              child: _tab == 0
-                  ? _buildRecommendTab(recAsync)
-                  : const _InScreenReview(),
-            ),
-          ],
+                // 毕业区
+                if (data.graduated.isNotEmpty) ...[
+                  Text('已毕业 (${data.graduated.length})',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: GrowthSpacing.md),
+                  for (final q in data.graduated.take(5)) _GraduatedCard(question: q),
+                ],
+              ],
+            );
+          },
         ),
       ),
     );
   }
-
-  Widget _buildRecommendTab(AsyncValue<ReviewRecommendData> recAsync) {
-    return recAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => EmptyState(
-        title: '加载出了点问题',
-        subtitle: '$e',
-        actionLabel: '重试',
-        onAction: () => ref.invalidate(reviewRecommendProvider),
-      ),
-      data: (data) {
-        if (data.items.isEmpty && data.graduated.isEmpty) {
-          return EmptyState(
-            title: '暂无复习安排',
-            subtitle: '拍题入库后，记忆曲线会自动为你安排',
-            actionLabel: '去拍题',
-            onAction: () => context.push('/capture'),
-          );
-        }
-        return ListView(
-          padding: const EdgeInsets.all(GrowthSpacing.lg),
-          children: [
-            // 顶部摘要（Part 6.1）
-            GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '今日推荐 ${data.items.length} · 已毕业 ${data.graduated.length}',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                      if (data.items.isNotEmpty)
-                        TextButton(
-                          onPressed: () => setState(() {
-                            _selectMode = !_selectMode;
-                            if (!_selectMode) _selectedRecs.clear();
-                          }),
-                          child: Text(_selectMode ? '取消' : '多选导出'),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: GrowthSpacing.sm),
-                  if (_doneCount > 0)
-                    Text(
-                      '本次已完成 $_doneCount 个标记',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  const SizedBox(height: GrowthSpacing.sm),
-                  // 7 天到期预测（实时计算）
-                  Row(
-                    children: [
-                      for (var i = 0; i < 7; i++)
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                            child: _ForecastBar(
-                              count: data.forecast[i],
-                              label: i == 0 ? '今' : '+$i',
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: GrowthSpacing.md),
-
-            // 推荐列表
-            if (data.items.isEmpty)
-              GlassCard(
-                child: Text(
-                  '今天的推荐都完成了，剩下的还没到期。',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-            for (final item in data.items) ...[
-              InkWell(
-                onTap: _selectMode
-                    ? () => setState(() {
-                          if (_selectedRecs.contains(item.question.id)) {
-                            _selectedRecs.remove(item.question.id);
-                          } else {
-                            _selectedRecs.add(item.question.id);
-                          }
-                        })
-                    : null,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_selectMode)
-                      Padding(
-                        padding: const EdgeInsets.only(right: GrowthSpacing.sm),
-                        child: Icon(
-                          _selectedRecs.contains(item.question.id)
-                              ? Icons.check_circle_rounded
-                              : Icons.radio_button_unchecked,
-                          color: _selectedRecs.contains(item.question.id)
-                              ? GrowthColors.primary
-                              : GrowthColors.gray3,
-                          size: 22,
-                        ),
-                      ),
-                    Expanded(
-                      child: _RecommendCard(
-                        item: item,
-                        onMark: _mark,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: GrowthSpacing.sm),
-            ],
-            // 多选导出条
-            if (_selectMode && _selectedRecs.isNotEmpty) ...[
-              const SizedBox(height: GrowthSpacing.sm),
-              GrowthButton(
-                label: '导出所选（${_selectedRecs.length} 题）',
-                icon: Icons.picture_as_pdf_rounded,
-                expanded: true,
-                onPressed: () {
-                  final ids = _selectedRecs.toList();
-                  setState(() {
-                    _selectMode = false;
-                    _selectedRecs.clear();
-                  });
-                  showPdfSettingsSheet(context, ref, ids: ids);
-                },
-              ),
-            ],
-
-            // 已毕业区（Part 6.1：可拉回）
-            if (data.graduated.isNotEmpty) ...[
-              const SizedBox(height: GrowthSpacing.md),
-              InkWell(
-                onTap: () => setState(() => _showGraduated = !_showGraduated),
-                child: Row(
-                  children: [
-                    Icon(
-                      _showGraduated
-                          ? Icons.expand_more_rounded
-                          : Icons.chevron_right_rounded,
-                      size: 20,
-                      color: GrowthColors.gray5,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '已掌握 · 不再推荐（${data.graduated.length}）',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: GrowthColors.success,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (_showGraduated)
-                for (final q in data.graduated)
-                  Padding(
-                    padding: const EdgeInsets.only(top: GrowthSpacing.sm),
-                    child: GlassCard(
-                      padding: const EdgeInsets.all(GrowthSpacing.md),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.verified_rounded,
-                              size: 18, color: GrowthColors.success),
-                          const SizedBox(width: GrowthSpacing.sm),
-                          Expanded(
-                            child: Text(
-                              q.stem,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () => _pullBack(q),
-                            child: const Text('拉回'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-            ],
-            const SizedBox(height: GrowthSpacing.xl),
-          ],
-        );
-      },
-    );
-  }
 }
 
-class _ForecastBar extends StatelessWidget {
-  const _ForecastBar({required this.count, required this.label});
+/// 复习卡片（v15：大图展示 + 三档评分常驻）
+class _ReviewCard extends ConsumerWidget {
+  const _ReviewCard({required this.item});
 
-  final int count;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final h = count == 0 ? 4.0 : (12.0 + count * 4.0).clamp(12.0, 36.0);
-    return Column(
-      children: [
-        AnimatedContainer(
-          duration: GrowthMotion.base,
-          height: h,
-          decoration: BoxDecoration(
-            color: count == 0 ? GrowthColors.gray3 : GrowthColors.primary,
-            borderRadius: BorderRadius.circular(3),
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          style: TextStyle(fontSize: 9.5, color: GrowthColors.gray5),
-        ),
-      ],
-    );
-  }
-}
-
-/// 推荐卡：缩略图 + 题干 + 面包屑 + 理由标签 + 标记按钮
-class _RecommendCard extends StatelessWidget {
-  const _RecommendCard({required this.item, required this.onMark});
-
-  final RecommendedItem item;
-  final void Function(RecommendedItem, Rating) onMark;
+  final Sm2RecommendedItem item;
 
   @override
-  Widget build(BuildContext context) {
-    final q = item.question;
-    final hasImage = q.imagePath != null && File(q.imagePath!).existsSync();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasImage = item.question.imagePath != null &&
+        File(item.question.imagePath!).existsSync();
+    final scheduler = Sm2Scheduler();
+    final intervals = scheduler.previewIntervals(item.card);
 
     return GlassCard(
       padding: const EdgeInsets.all(GrowthSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 顶部：学科标签 + 理由
           Row(
             children: [
-              if (hasImage)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(GrowthRadii.icon),
-                  child: Image.file(
-                    File(q.imagePath!),
-                    width: 48,
-                    height: 48,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              else
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: GrowthColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(GrowthRadii.icon),
-                  ),
-                  child: const Icon(Icons.description_outlined,
-                      size: 20, color: GrowthColors.primary),
-                ),
-              const SizedBox(width: GrowthSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      q.stem,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    if (item.breadcrumb.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        item.breadcrumb,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ],
-                ),
+              GrowthChip(
+                label: item.question.subject,
+                color: GrowthColors.primary,
               ),
-              // 强度
-              Column(
-                children: [
-                  Text(
-                    '${(item.strength * 100).round()}%',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: GrowthColors.primary,
-                    ),
-                  ),
-                  Text('强度', style: Theme.of(context).textTheme.bodySmall),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: GrowthSpacing.sm),
-          // 理由标签
-          Wrap(
-            spacing: GrowthSpacing.xs,
-            runSpacing: GrowthSpacing.xs,
-            children: [
-              for (final r in item.reasons)
+              const SizedBox(width: GrowthSpacing.xs),
+              for (final r in item.reasons) ...[
+                const SizedBox(width: GrowthSpacing.xs),
                 GrowthChip(
                   label: r,
-                  color: r.contains('逾期')
-                      ? GrowthColors.warning
-                      : r.contains('跌破')
-                          ? GrowthColors.actionAccent
-                          : GrowthColors.learning,
+                  color: r.contains('逾期') ? GrowthColors.warning : GrowthColors.gray4,
                 ),
+              ],
             ],
           ),
           const SizedBox(height: GrowthSpacing.sm),
-          // 遗忘曲线小图（推荐理由解释图）
-          ForgettingCurveMini(
-            stability: item.stabilityDays,
-            elapsedDays: item.elapsedDays,
-            nextDueDays: item.intervalDays?.toDouble(),
-          ),
-          const SizedBox(height: GrowthSpacing.xs),
-          // 间隔历史 chips
-          IntervalHistoryChips(intervals: item.intervalHistory),
-          const SizedBox(height: GrowthSpacing.sm),
-          // 标记按钮（Part 6.3）
+          // 面包屑
+          if (item.breadcrumb.isNotEmpty)
+            Text(item.breadcrumb,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: GrowthColors.primary,
+                      fontWeight: FontWeight.w600,
+                    )),
+          const SizedBox(height: GrowthSpacing.md),
+          // 题目大图（v15：禁止占位文案）
+          if (hasImage)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(GrowthRadii.card),
+              child: InteractiveViewer(
+                maxScale: 4,
+                child: Image.file(
+                  File(item.question.imagePath!),
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const SizedBox(height: 200),
+                ),
+              ),
+            )
+          else
+            Container(
+              height: 200,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: GrowthColors.gray2.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(GrowthRadii.card),
+              ),
+              child: Text('暂无图片', style: Theme.of(context).textTheme.bodySmall),
+            ),
+          const SizedBox(height: GrowthSpacing.md),
+          // 题干文字（若有真实填写）
+          if (item.question.stem.isNotEmpty &&
+              !item.question.stem.startsWith('（图片题'))
+            Text(item.question.stem,
+                style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: GrowthSpacing.md),
+          // 三档评分按钮（常驻）
           Row(
             children: [
               Expanded(
-                child: _MarkButton(
+                child: GrowthButton(
                   label: '仍错',
-                  color: GrowthColors.warning,
-                  onTap: () => onMark(item, Rating.again),
+                  color: GrowthColors.error,
+                  onPressed: () => _rate(ref, item, 1),
                 ),
               ),
               const SizedBox(width: GrowthSpacing.sm),
               Expanded(
-                child: _MarkButton(
+                child: GrowthButton(
                   label: '模糊',
-                  color: GrowthColors.actionAccent,
-                  onTap: () => onMark(item, Rating.hard),
+                  color: GrowthColors.warning,
+                  onPressed: () => _rate(ref, item, 3),
                 ),
               ),
               const SizedBox(width: GrowthSpacing.sm),
               Expanded(
-                child: _MarkButton(
+                child: GrowthButton(
                   label: '已会',
                   color: GrowthColors.success,
-                  onTap: () => onMark(item, Rating.good),
+                  onPressed: () => _rate(ref, item, 5),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: GrowthSpacing.xs),
+          // 下次复习日期预览
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _NextDate(label: '1 天后', days: intervals[1]?.inDays ?? 1),
+              _NextDate(label: '${(intervals[3]?.inDays ?? 3)}天后', days: intervals[3]?.inDays ?? 3),
+              _NextDate(label: '${(intervals[5]?.inDays ?? 7)}天后', days: intervals[5]?.inDays ?? 7),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _rate(WidgetRef ref, Sm2RecommendedItem item, int quality) async {
+    final db = ref.read(databaseProvider);
+    final scheduler = Sm2Scheduler();
+    final result = scheduler.rate(item.card, quality);
+    await (db.transaction(() async {
+      await (db.update(db.reviewCards)
+            ..where((t) => t.questionId.equals(item.question.id)))
+        .write(ReviewCardsCompanion.insert(
+        questionId: item.question.id,
+        reps: result.card.reps,
+        easinessFactor: result.card.easinessFactor,
+        intervalDays: result.card.intervalDays,
+        due: result.card.due,
+        lastReviewAt: result.card.lastReview,
+      ));
+      await db.into(db.reviewLogs).insert(ReviewLogsCompanion.insert(
+        questionId: item.question.id,
+        reviewedAt: result.reviewLog.reviewedAt,
+        rating: result.reviewLog.quality,
+      ));
+    }));
+    ref.invalidate(reviewRecommendProvider);
+    AppToast.success(context, '已标记为"${result.reviewLog.qualityLabel}"');
+  }
+}
+
+class _NextDate extends StatelessWidget {
+  const _NextDate({required this.label, required this.days});
+  final String label;
+  final int days;
+  @override
+  Widget build(BuildContext context) {
+    return Text(label, style: Theme.of(context).textTheme.bodySmall);
+  }
+}
+
+/// 毕业卡片
+class _GraduatedCard extends StatelessWidget {
+  const _GraduatedCard({required this.question});
+  final QuestionRecord question;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: GrowthSpacing.sm),
+      child: Row(
+        children: [
+          const Icon(Icons.school_rounded, color: GrowthColors.success, size: 18),
+          const SizedBox(width: GrowthSpacing.sm),
+          Expanded(
+            child: Text(question.stem.length > 40 ? '${question.stem.substring(0, 40)}...' : question.stem,
+                style: Theme.of(context).textTheme.bodySmall),
           ),
         ],
       ),
@@ -658,307 +380,13 @@ class _RecommendCard extends StatelessWidget {
   }
 }
 
-class _MarkButton extends StatelessWidget {
-  const _MarkButton({
-    required this.label,
-    required this.color,
-    required this.onTap,
+class ReviewRecommendData {
+  const ReviewRecommendData({
+    required this.items,
+    required this.graduated,
+    required this.forecast,
   });
-
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(GrowthRadii.field),
-      child: Container(
-        height: 44,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.13),
-          borderRadius: BorderRadius.circular(GrowthRadii.field),
-          border: Border.all(color: color.withValues(alpha: 0.5)),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-              color: color, fontWeight: FontWeight.w700, fontSize: 13.5),
-        ),
-      ),
-    );
-  }
-}
-
-/// 屏内复习（Part 6.4 备选路径）：逐题→显示答案→四档评分→反馈卡
-class _InScreenReview extends ConsumerStatefulWidget {
-  const _InScreenReview();
-
-  @override
-  ConsumerState<_InScreenReview> createState() => _InScreenReviewState();
-}
-
-class _InScreenReviewState extends ConsumerState<_InScreenReview> {
-  bool _revealed = false;
-  int _doneCount = 0;
-
-  void _next() {
-    setState(() => _revealed = false);
-    ref.invalidate(_inScreenQueueProvider);
-  }
-
-  Future<void> _rate(QuestionRecord q, ReviewCard card, Rating rating) async {
-    unawaited(HapticFeedback.selectionClick());
-    await ref
-        .read(reviewRepositoryProvider)
-        .rate(cardId: card.id, rating: rating);
-    await ref.read(backupStateProvider).markDirty();
-    setState(() => _doneCount++);
-    ref.invalidate(reviewRecommendProvider);
-    _next();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final queueAsync = ref.watch(_inScreenQueueProvider);
-
-    return queueAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('加载失败：$e')),
-      data: (items) {
-        if (items.isEmpty) {
-          return EmptyState(
-            title: _doneCount > 0 ? '今天的屏内复习完成了' : '暂无到期复习',
-            subtitle: _doneCount > 0
-                ? '已完成 $_doneCount 题，休息一下或去拍新题'
-                : '拍题入库后，记忆曲线会自动为你安排',
-          );
-        }
-
-        final item = items.first;
-        final q = item.question;
-        final card = item.card;
-        final steps = QuestionRepository.decodeSteps(q.keySteps);
-        final scheduler = ReviewScheduler();
-        final fsrsCard = scheduler.cardFromStorage(
-          cardId: card.createdAt.millisecondsSinceEpoch,
-          state: card.state,
-          step: card.step,
-          stability: card.stability,
-          difficulty: card.difficulty,
-          due: card.due,
-          lastReview: card.lastReviewAt,
-        );
-        final previews = scheduler.previewIntervals(fsrsCard);
-
-        final hasAnswer = (q.answer ?? '').isNotEmpty || steps.isNotEmpty;
-        final hasImage = q.imagePath != null && File(q.imagePath!).existsSync();
-
-        return ListView(
-          padding: const EdgeInsets.all(GrowthSpacing.lg),
-          children: [
-            Row(
-              children: [
-                Text('剩余 ${items.length} 题',
-                    style: Theme.of(context).textTheme.bodySmall),
-                const Spacer(),
-                if (q.subject.isNotEmpty) GrowthChip(label: q.subject),
-              ],
-            ),
-            const SizedBox(height: GrowthSpacing.sm),
-
-            // 图即题干：大图展示题目图片（满宽、点按缩放），禁占位文案
-            if (hasImage)
-              GlassCard(
-                padding: const EdgeInsets.all(GrowthSpacing.sm),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(GrowthRadii.icon),
-                  child: InkWell(
-                    onTap: () => _openZoom(context, q.imagePath!),
-                    child: Image.file(
-                      File(q.imagePath!),
-                      width: double.infinity,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ),
-
-            // 题干文字（仅用户真实填写过的内容，无占位）
-            if (q.stem.isNotEmpty && !q.stem.startsWith('（图片题')) ...[
-              const SizedBox(height: GrowthSpacing.sm),
-              GlassCard(
-                child:
-                    Text(q.stem, style: Theme.of(context).textTheme.bodyMedium),
-              ),
-            ],
-
-            const SizedBox(height: GrowthSpacing.md),
-
-            // 「显示答案」仅在填过答案/步骤时出现
-            if (hasAnswer)
-              GrowthButton(
-                label: _revealed ? '收起答案' : '显示答案',
-                icon: _revealed
-                    ? Icons.visibility_off_rounded
-                    : Icons.visibility_rounded,
-                variant: GrowthButtonVariant.secondary,
-                expanded: true,
-                onPressed: () => setState(() => _revealed = !_revealed),
-              )
-            else
-              // 未填写答案：隐藏按钮，提示直接自评
-              GlassCard(
-                child: Text(
-                  '未填写答案，看完题直接自评',
-                  style: Theme.of(context).textTheme.bodySmall,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-
-            if (_revealed && hasAnswer) ...[
-              const SizedBox(height: GrowthSpacing.md),
-              GlassCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GrowthSectionHeader(title: '答案'),
-                    const SizedBox(height: GrowthSpacing.sm),
-                    if ((q.answer ?? '').isNotEmpty)
-                      Text(q.answer!,
-                          style: Theme.of(context).textTheme.titleLarge),
-                    if (steps.isNotEmpty) ...[
-                      const SizedBox(height: GrowthSpacing.sm),
-                      for (final (i, st) in steps.indexed) ...[
-                        Text('${i + 1}. $st',
-                            style: Theme.of(context).textTheme.bodyMedium),
-                        const SizedBox(height: GrowthSpacing.xs),
-                      ],
-                    ],
-                  ],
-                ),
-              ),
-            ],
-
-            const SizedBox(height: GrowthSpacing.md),
-
-            // 三档评分常驻复习卡（不藏在显示答案之后）
-            Row(
-              children: [
-                for (final (rating, label, color) in [
-                  (Rating.again, '仍错', GrowthColors.warning),
-                  (Rating.hard, '模糊', GrowthColors.actionAccent),
-                  (Rating.good, '已会', GrowthColors.success),
-                ])
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: GrowthSpacing.xs),
-                      child: InkWell(
-                        onTap: () => _rate(q, card, rating),
-                        borderRadius: BorderRadius.circular(GrowthRadii.field),
-                        child: Container(
-                          height: 54,
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.13),
-                            borderRadius:
-                                BorderRadius.circular(GrowthRadii.field),
-                            border:
-                                Border.all(color: color.withValues(alpha: 0.5)),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                label,
-                                style: TextStyle(
-                                    color: color,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13),
-                              ),
-                              Text(
-                                _intervalLabel(
-                                    previews[rating] ?? Duration.zero),
-                                style: TextStyle(
-                                    color: color.withValues(alpha: 0.75),
-                                    fontSize: 10),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// 点按缩放查看原图
-  void _openZoom(BuildContext context, String path) {
-    showDialog<void>(
-      context: context,
-      barrierColor: Colors.black87,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(12),
-        child: Stack(
-          children: [
-            InteractiveViewer(
-              maxScale: 5,
-              child: Image.file(File(path)),
-            ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: IconButton(
-                icon: const Icon(Icons.close_rounded, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _QueueItem {
-  const _QueueItem({required this.question, required this.card});
-  final QuestionRecord question;
-  final ReviewCard card;
-}
-
-/// 屏内复习队列（到期 + 未毕业）
-final _inScreenQueueProvider =
-    FutureProvider.autoDispose<List<_QueueItem>>((ref) async {
-  final db = ref.watch(databaseProvider);
-  final now = DateTime.now();
-  final cards = await (db.select(db.reviewCards)
-        ..where((t) => t.due.isSmallerOrEqualValue(now))
-        ..orderBy([(t) => OrderingTerm.asc(t.due)]))
-      .get();
-  if (cards.isEmpty) return const [];
-  final ids = cards.map((c) => c.questionId).toList();
-  final questions =
-      await (db.select(db.questionRecords)..where((t) => t.id.isIn(ids))).get();
-  final byId = {for (final q in questions) q.id: q};
-  return cards
-      .where((c) =>
-          byId.containsKey(c.questionId) &&
-          (byId[c.questionId]!.masteryLevel < 5))
-      .map((c) => _QueueItem(question: byId[c.questionId]!, card: c))
-      .toList();
-});
-
-String _intervalLabel(Duration d) {
-  if (d.inMinutes < 1) return '<1分钟';
-  if (d.inMinutes < 60) return '${d.inMinutes}分钟';
-  if (d.inHours < 24) return '${d.inHours}小时';
-  return '${d.inDays}天';
+  final List<dynamic> items;
+  final List<QuestionRecord> graduated;
+  final List<int> forecast;
 }

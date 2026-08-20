@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'ai_call.dart';
 import 'json_extract.dart';
@@ -13,6 +12,8 @@ import 'prompts.dart';
 ///
 /// 实现可替换：[AiAnalysisGatewayImpl]（真实）/ FakeGateway（测试）。
 abstract interface class AiAnalysisGateway {
+  /// v15 终版：AI 举一反三 —— 调用必出≥1 题
+  /// 解析放宽（多种结构）→ 格式强化重试一次 → 仍失败将 AI 原文作为练习卡（标"AI 拟题"）
   Future<List<ExerciseItem>> generateExercises({
     required String stem,
     required String answer,
@@ -114,6 +115,10 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
   }
 
   @override
+  /// v15 终版：AI 举一反三 —— 必出≥1 题
+  /// 第一轮：正常解析（宽松）
+  /// 第二轮：格式强化重试一次
+  /// 兜底：仍失败将 AI 原文作为练习卡，标"AI 拟题"
   Future<List<ExerciseItem>> generateExercises({
     required String stem,
     required String answer,
@@ -121,6 +126,7 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
     required String mistakeReason,
     required List<String> knowledgePoints,
   }) async {
+    // ---- 第一轮：正常解析（宽松） ----
     final context = AiPrompts.followUpContext(
       stem: stem,
       answer: answer,
@@ -128,16 +134,84 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
       mistakeReason: mistakeReason,
       knowledgePoints: knowledgePoints,
     );
-    final raw = await _chatWithLog(
-      purpose: 'exercise',
-      messages: [
-        const AiMessage(role: 'system', content: AiPrompts.exerciseSystem),
-        AiMessage(role: 'user', content: '请基于以下错题生成举一反三练习：\n$context'),
-      ],
-      temperature: 0.5,
-      maxTokens: 4096,
-    );
-    return parseExercises(raw);
+
+    try {
+      final raw = await _chatWithLog(
+        purpose: 'exercise',
+        messages: [
+          const AiMessage(role: 'system', content: AiPrompts.exerciseSystem),
+          AiMessage(role: 'user', content: '请基于以下错题生成举一反三练习：\n$context'),
+        ],
+        temperature: 0.5,
+        maxTokens: 4096,
+      );
+      final items = parseExercises(raw);
+      if (items.isNotEmpty) return items;
+    } catch (_) {}
+
+    // ---- 第二轮：格式强化重试 ----
+    try {
+      final retryRaw = await _chatWithLog(
+        purpose: 'exercise_retry',
+        messages: [
+          const AiMessage(
+            role: 'system',
+            content: AiPrompts.exerciseSystemStrict,
+          ),
+          AiMessage(
+            role: 'user',
+            content: '请严格按 JSON 格式输出至少一道练习题：\n$context',
+          ),
+        ],
+        temperature: 0.3,
+        maxTokens: 4096,
+      );
+      final retryItems = parseExercises(retryRaw);
+      if (retryItems.isNotEmpty) return retryItems;
+    } catch (_) {}
+
+    // ---- 兜底：将 AI 原文作为练习卡（标"AI 拟题"） ----
+    // 尝试获取原始响应文本作为兜底
+    try {
+      final fallbackRaw = await _chatWithLog(
+        purpose: 'exercise_fallback',
+        messages: [
+          const AiMessage(
+            role: 'system',
+            content: '你是一个高中教师。请直接给出一道与原题同知识点的练习题，包含题目、选项、答案和简要解析。',
+          ),
+          AiMessage(
+            role: 'user',
+            content: '原题：$stem\n答案：$answer\n请出一道同类练习题。',
+          ),
+        ],
+        temperature: 0.7,
+        maxTokens: 2048,
+      );
+      // 将 AI 原文包装为 ExerciseItem，标来源为 L4(AI 拟题)
+      return [
+        ExerciseItem(
+          question: fallbackRaw.trim(),
+          answer: '',
+          explanation: 'AI 拟题（原文输出）',
+          difficulty: 'AI 拟题',
+          sourceLevel: ExerciseSourceLevel.l4Generated,
+          bankId: null,
+        ),
+      ];
+    } catch (e) {
+      // 最终兜底：返回一个空壳提示用户
+      return [
+        ExerciseItem(
+          question: 'AI 生成暂时不可用，请稍后重试或手动添加同类题。',
+          answer: '',
+          explanation: e.toString(),
+          difficulty: '暂无',
+          sourceLevel: ExerciseSourceLevel.l4Generated,
+          bankId: null,
+        ),
+      ];
+    }
   }
 
   @override
@@ -179,9 +253,9 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
   }) async {
     const system = '你是教材知识点分类器。只看题目图片，输出该题知识点在教材中的层级路径。'
         '规则：只输出 JSON，不要解题。字段：subject(学科)、version(教材版本，如人教版，可合理推断)、'
-        'book(册别，如八年级上册)、chapter(章)、lesson(节)、point(知识点名称)。'
+        'book(册别，如必修第一册)、chapter(章)、lesson(节)、point(知识点名称)。'
         '不确定的层级留空字符串。示例：'
-        '{"subject":"物理","version":"人教版","book":"八年级下册","chapter":"第九章 压强","lesson":"第1节 压强","point":"压强"}';
+        '{"subject":"物理","version":"人教版2019","book":"必修第一册","chapter":"第三章 相互作用","lesson":"第3节 牛顿第三定律","point":"牛顿第三定律"}';
     final raw = await _chatWithLog(
       purpose: 'classify',
       messages: [

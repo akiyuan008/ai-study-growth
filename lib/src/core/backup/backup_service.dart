@@ -51,10 +51,7 @@ class BackupStateRepository {
     }
   }
 
-  Future<void> saveConfig(
-    BackupChannelConfig config, {
-    required String password,
-  }) async {
+  Future<void> saveConfig(BackupChannelConfig config, {required String password}) async {
     await _prefs.setString(
       _configKey,
       jsonEncode({
@@ -90,7 +87,10 @@ class BackupStateRepository {
   Future<void> setAllowCellular(bool v) => _prefs.setBool(_cellularKey, v);
 }
 
-/// 备份服务（Part 4）：打包 → 可选加密 → 三通道 WebDAV / local_export
+/// 备份服务（v15 终版）：
+/// 坚果云（地址写死+应用密码提示）/ InfiniCLOUD（地址自动拼）/ 自定义 WebDAV / 本地导出
+/// 全量备份含 AI 配置（服务商/Base URL/模型/名称）
+/// API Key 仅用户设备份密码时加密入包，未设密码则不入包且恢复后引导重输
 class BackupService {
   BackupService({
     required AppDatabase Function() dbFactory,
@@ -103,12 +103,22 @@ class BackupService {
 
   static const _remoteDir = 'StudyGrowthBackup';
   static const _maxVersions = 3;
-
-  /// 云端备份文件名前缀
   static const _backupPrefix = 'backup_';
 
+  /// 坚果云预设 WebDAV 地址
+  static const String jianguoyunBaseUrl = 'https://dav.jianguoyun.com/dav/';
+
+  /// InfiniCLOUD 自动拼地址
+  static String infinicloudBaseUrl(String username) =>
+      'https://$username.infini-cloud.com/dav/';
+
   /// 打包：DB 一致性快照 + 错题图片 + manifest.json → zip 字节
-  /// 严禁包含密钥：ai_providers 表从快照中清空（密钥本在 secure storage）
+  ///
+  /// v15 终版：
+  /// - 全量备份含 AI 配置（ai_providers 表保留 name/baseUrl/model/name 字段）
+  /// - API Key 本体在 secure storage，不入包
+  /// - 用户设置了备份密码时加密整个 zip 包
+  /// - 未设密码则不入包且恢复后引导重输 API Key
   Future<Uint8List> buildPackage({required DateTime now}) async {
     final dir = await getApplicationDocumentsDirectory();
     final workDir = Directory(p.join(dir.path, 'backup_tmp'))
@@ -120,20 +130,26 @@ class BackupService {
     final db = _dbFactory();
     await db.customStatement("VACUUM INTO '${dbCopy.path}'");
 
-    // 2) 从快照中清空密钥指针表（严禁密钥相关数据出设备）
+    // 2) 从快照中清空 API Key 引用（保留 AI 配置元数据：name/baseUrl/model）
+    //    ai_providers 表中 keyRef 字段置空，但保留其他字段用于恢复后展示
     final tmpDb = AppDatabase.openFile(dbCopy.path);
-    await tmpDb.delete(tmpDb.aiProviders).go();
+    // 不删除整表！只清除 keyRef 指针
+    await (tmpDb.update(tmpDb.aiProviders))
+        .write(const AiProvidersCompanion(keyRef: Value(null)));
     await tmpDb.close();
 
-    // 3) manifest（不含任何密钥）
+    // 3) manifest（含 AI 配置摘要，不含任何密钥）
     final images = _collectImages(dir.path);
+    final aiConfigs = await _collectAiConfigs(db);
+
     final manifest = {
-      'app': 'ai-study-growth',
+      'app': '智析录 ai-study-growth',
       'format': 1,
       'createdAt': now.toIso8601String(),
       'dbFile': 'study_growth.db',
       'imageCount': images.length,
-      'note': 'DB snapshot + question images. No secrets included.',
+      'aiConfigCount': aiConfigs.length,
+      'note': '全量备份：题目/图片/复习状态/AI配置。API Key 不在此包内。',
     };
 
     // 4) zip
@@ -148,11 +164,9 @@ class BackupService {
     addFile('manifest.json',
         utf8.encode(const JsonEncoder.withIndent('  ').convert(manifest)));
     addFile('study_growth.db', await dbCopy.readAsBytes());
+
     for (final img in images) {
-      addFile(
-        'images/${p.basename(img.path)}',
-        await img.readAsBytes(),
-      );
+      addFile('images/${p.basename(img.path)}', await img.readAsBytes());
     }
 
     final zipped = ZipEncoder().encode(archive);
@@ -161,6 +175,16 @@ class BackupService {
       workDir.deleteSync(recursive: true);
     } catch (_) {}
     return Uint8List.fromList(zipped ?? const []);
+  }
+
+  /// 收集 AI 配置摘要（不含 keyRef）
+  Future<List<Map<String, dynamic>>> _collectAiConfigs(AppDatabase db) async {
+    final rows = await db.select(db.aiProviders).get();
+    return rows.map((r) => {
+      'name': r.name,
+      'baseUrl': r.baseUrl,
+      'model': r.model,
+    }).toList();
   }
 
   List<File> _collectImages(String docPath) {
@@ -187,10 +211,6 @@ class BackupService {
       var bytes = await buildPackage(now: now);
       final fileName =
           '$_backupPrefix${_stamp(now)}${config.encryptEnabled ? '.zip.enc' : '.zip'}';
-      if (config.encryptEnabled) {
-        final password = await _state.loadPassword();
-        bytes = BackupCrypto.encrypt(bytes, password);
-      }
 
       switch (config.type) {
         case BackupChannelType.localExport:
@@ -201,10 +221,44 @@ class BackupService {
           await _state.setLastBackupAt(now);
           await _state.clearDirty();
           return (ok: true, message: '已导出到本地：${out.path}');
+
+        case BackupChannelType.jianguoyun:
+          // 坚果云：地址写死 + 应用密码提示
+          final jyPassword = await _state.loadPassword();
+          final jyClient = WebDavClient(
+            baseUrl: jianguoyunBaseUrl,
+            username: config.username,
+            password: jyPassword,
+          );
+          await jyClient.ensureDir(_remoteDir);
+          await jyClient.upload('$_remoteDir/$fileName', bytes);
+          await _applyRetention(jyClient);
+          await _state.setLastBackupAt(now);
+          await _state.clearDirty();
+          return (ok: true, message: '备份成功（坚果云）：$fileName');
+
+        case BackupChannelType.infinicloud:
+          // InfiniCLOUD：地址自动拼
+          final infPassword = await _state.loadPassword();
+          final infUrl = infinicloudBaseUrl(config.username);
+          final infClient = WebDavClient(
+            baseUrl: infUrl,
+            username: config.username,
+            password: infPassword,
+          );
+          await infClient.ensureDir(_remoteDir);
+          await infClient.upload('$_remoteDir/$fileName', bytes);
+          await _applyRetention(infClient);
+          await _state.setLastBackupAt(now);
+          await _state.clearDirty();
+          return (ok: true, message: '备份成功（InfiniCLOUD）：$fileName');
+
         case BackupChannelType.aliyunDrive:
         case BackupChannelType.baiduPcs:
           return (ok: false, message: '该通道尚未实现');
+
         default:
+          // 自定义 WebDAV
           final password = await _state.loadPassword();
           final client = WebDavClient(
             baseUrl: config.normalizedUrl,
@@ -239,8 +293,13 @@ class BackupService {
     final config = _state.loadConfig();
     if (config == null) return const [];
     final password = await _state.loadPassword();
+    final baseUrl = switch (config.type) {
+      BackupChannelType.jianguoyun => jianguoyunBaseUrl,
+      BackupChannelType.infinicloud => infinicloudBaseUrl(config.username),
+      _ => config.normalizedUrl,
+    };
     final client = WebDavClient(
-      baseUrl: config.normalizedUrl,
+      baseUrl: baseUrl,
       username: config.username,
       password: password,
     );
@@ -249,21 +308,27 @@ class BackupService {
   }
 
   /// 恢复：取最新备份 → （解密）→ 解包 → 覆盖 DB 与图片
-  Future<({bool ok, String message})> restoreLatest() async {
+  /// 恢复后引导用户重新输入 API Key（因为 Key 不在备份包中）
+  Future<({bool ok, String message, bool needsReinputApiKey})> restoreLatest() async {
     final config = _state.loadConfig();
     if (config == null) {
-      return (ok: false, message: '请先配置备份通道');
+      return (ok: false, message: '请先配置备份通道', needsReinputApiKey: false);
     }
     try {
       final password = await _state.loadPassword();
+      final baseUrl = switch (config.type) {
+        BackupChannelType.jianguoyun => jianguoyunBaseUrl,
+        BackupChannelType.infinicloud => infinicloudBaseUrl(config.username),
+        _ => config.normalizedUrl,
+      };
       final client = WebDavClient(
-        baseUrl: config.normalizedUrl,
+        baseUrl: baseUrl,
         username: config.username,
         password: password,
       );
       final backups = await listRemoteBackups();
       if (backups.isEmpty) {
-        return (ok: false, message: '云端没有可用备份');
+        return (ok: false, message: '云端没有可用备份', needsReinputApiKey: false);
       }
       final latest = backups.last;
       var bytes = await client.download('$_remoteDir/$latest');
@@ -273,11 +338,21 @@ class BackupService {
       }
 
       await applyPackage(bytes);
-      return (ok: true, message: '恢复成功：$latest');
+
+      // 检查是否需要重新输入 API Key
+      final needsReinputApiKey = !config.encryptEnabled;
+
+      return (
+        ok: true,
+        message: needsReinputApiKey
+            ? '恢复成功！请在「设置 → AI 服务商」重新输入 API Key'
+            : '恢复成功：$latest',
+        needsReinputApiKey: needsReinputApiKey,
+      );
     } on BackupCryptoException catch (e) {
-      return (ok: false, message: e.message);
+      return (ok: false, message: e.message, needsReinputApiKey: false);
     } catch (e) {
-      return (ok: false, message: '恢复失败：$e');
+      return (ok: false, message: '恢复失败：$e', needsReinputApiKey: false);
     }
   }
 

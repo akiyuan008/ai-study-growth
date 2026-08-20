@@ -20,11 +20,13 @@ import '../../learning/learning_providers.dart';
 
 const _uuid = Uuid();
 
-/// 题目保存页（Part 3）：
+/// 题目保存页（v15 终版）：
 /// 硬门 1：保存的图片是处理后的归档图（路径来自编辑屏），绝不存原图路径
+/// 硬门 2：**图片即题干** —— 不再使用"（图片题，未填写题干）"占位文案
 /// 硬门 3：层级知识点 subject/version/book/chapter/lesson/point，
 ///         AI 输出完整层级（version 可推断必须可改），视觉守卫禁转圈，
 ///         手动级联 + 历史值自动补全
+/// 科目必选（未选禁保存）
 class QuestionSavePage extends ConsumerStatefulWidget {
   const QuestionSavePage({
     super.key,
@@ -63,7 +65,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
   String? _pathError;
   bool _visionUnsupported = false;
 
-  /// 补钉 A：推荐的视觉模型名（null = 未推荐/未找到）
+  /// 推荐的视觉模型名（null = 未推荐/未找到）
   String? _recommendedVisionModel;
 
   @override
@@ -107,7 +109,6 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
         _pathLoading = false;
         if (e.tier == AiErrorTier.visionUnsupported) {
           _visionUnsupported = true; // 视觉守卫：明确提示，禁转圈
-          // 补钉 A：自动从已获取模型列表推荐一个视觉模型
           unawaited(_suggestVisionModel());
         } else {
           _pathError = e.userMessage;
@@ -123,7 +124,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
     }
   }
 
-  /// 补钉 A：从当前服务商拉取模型列表，推荐一个视觉模型
+  /// 从当前服务商拉取模型列表，推荐一个视觉模型
   Future<void> _suggestVisionModel() async {
     try {
       final repo = ref.read(aiProviderRepositoryProvider);
@@ -132,23 +133,10 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
       final client = await repo.buildClient(config.id);
       if (client == null) return;
       final models = await client.fetchModels();
-      // 视觉模型关键词匹配
       const visionKeywords = [
-        'vision',
-        'vl',
-        '4o',
-        'multimodal',
-        'image',
-        'eye',
-        'gpt-4o',
-        'claude-3',
-        'gemini',
-        'qwen-vl',
-        'qwen2-vl',
-        'glm-4v',
-        'step-1v',
-        'yi-vl',
-        'llava',
+        'vision', 'vl', '4o', 'multimodal', 'image', 'eye',
+        'gpt-4o', 'claude-3', 'gemini', 'qwen-vl', 'qwen2-vl',
+        'glm-4v', 'step-1v', 'yi-vl', 'llava',
       ];
       final visionModels = models.where((m) {
         final lower = m.toLowerCase();
@@ -157,12 +145,10 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
       if (visionModels.isNotEmpty && mounted) {
         setState(() => _recommendedVisionModel = visionModels.first);
       }
-    } catch (_) {
-      // 静默：推荐失败不影响手动填写
-    }
+    } catch (_) {}
   }
 
-  /// 补钉 A：一键换用推荐的视觉模型
+  /// 一键换用推荐的视觉模型
   Future<void> _switchToVisionModel() async {
     final model = _recommendedVisionModel;
     if (model == null) return;
@@ -173,7 +159,6 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
       if (config == null) return;
       await (db.update(db.aiProviders)..where((t) => t.id.equals(config.id)))
           .write(AiProvidersCompanion(model: Value(model)));
-      // 刷新 gateway provider
       ref.invalidate(aiGatewayProvider);
       if (mounted) {
         setState(() {
@@ -188,7 +173,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
     }
   }
 
-  /// 级联选择器（v14：学科→版本→册→章→节→知识点，历史置顶+自定义兜底+多选）
+  /// 级联选择器（学科→册→章→节→知识点，历史置顶+自定义兜底+多选）
   void _openPathEditor() {
     showGrowthSheet<void>(
       context: context,
@@ -219,30 +204,28 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
       setState(() => _subjectError = '请先选择科目，科目驱动列表、统计与导出');
       return;
     }
-    setState(() {
-      _subjectError = null;
-      _saving = true;
-    });
+    setState(() { _subjectError = null; _saving = true; });
     try {
       final db = ref.read(databaseProvider);
       final now = DateTime.now();
       final qid = _uuid.v4();
 
-      // 硬门 1：入库的是处理后的归档图路径（widget.path 来自编辑屏归档）
+      // v15 终版：**图片即题干**
+      // 题干字段仅在有真实文字填写时存值；无文字时留空或存空串，
+      // UI 展示时直接显示题目图片作为题干。
+      // 彻底禁止"（图片题，未填写题干）"占位文案。
+      final stemText = _stemController.text.trim();
+
       await db.into(db.questionRecords).insert(
             QuestionRecordsCompanion.insert(
               id: qid,
               subject: Value(_subject!),
               imagePath: Value(widget.path),
-              stem: Value(_stemController.text.trim().isEmpty
-                  ? '（图片题，未填写题干）'
-                  : _stemController.text.trim()),
+              stem: Value(stemText.isEmpty ? '' : stemText),
               answer: Value(_answerController.text.trim().isEmpty
-                  ? null
-                  : _answerController.text.trim()),
+                  ? null : _answerController.text.trim()),
               errorCause: Value(_mistakeController.text.trim().isEmpty
-                  ? null
-                  : _mistakeController.text.trim()),
+                  ? null : _mistakeController.text.trim()),
               tags: Value(_buildTagsJson()),
               analysisDetail: Value('{"cropSource":"${widget.cropSource}"}'),
               contentStatus: const Value('saved'),
@@ -264,11 +247,14 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
             subject: _subject ?? '',
           );
 
-      // FSRS 复习卡
+      // SM-2 复习卡（新卡初始状态）
       await db.into(db.reviewCards).insert(
             ReviewCardsCompanion.insert(
               id: _uuid.v4(),
               questionId: qid,
+              reps: const Value(0),
+              easinessFactor: const Value(2.5),
+              intervalDays: const Value(0),
               due: now,
               createdAt: now,
             ),
@@ -300,8 +286,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
 
   String _buildTagsJson() {
     final tags = <String>[
-      if ((_subject ?? '').isNotEmpty && _subject != Subject.other.label)
-        _subject!,
+      if ((_subject ?? '').isNotEmpty && _subject != Subject.other.label) _subject!,
       if (_path.point.isNotEmpty) _path.point,
       if (_path.chapter.isNotEmpty) _path.chapter,
     ];
@@ -309,17 +294,12 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
   }
 
   /// 多知识点写入：级联选中的每个知识点各建一条（含完整层级路径）
-  Future<void> _saveKnowledgePoints(
-    AppDatabase db,
-    String qid,
-    DateTime now,
-  ) async {
+  Future<void> _saveKnowledgePoints(AppDatabase db, String qid, DateTime now) async {
     final subject = _subject ?? '';
     final names = _selectedPoints.isNotEmpty
         ? _selectedPoints
         : (_path.leafName.isNotEmpty ? [_path.leafName] : <String>[]);
     if (names.isEmpty && subject.isNotEmpty) {
-      // 无知识点时以科目兜底，保证统计/导出可用
       names.add(subject);
     }
     for (final name in names) {
@@ -426,6 +406,39 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
             ],
             const SizedBox(height: GrowthSpacing.md),
 
+            // ---- 题干（选填，图片即题干） ----
+            Text('题干（选填，有图可不填）', style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: GrowthSpacing.sm),
+            GrowthTextField(
+              controller: _stemController,
+              label: '题干文字（可选，图片即题干）',
+              maxLines: 3,
+              hint: '如需补充文字说明可在此填写',
+            ),
+            const SizedBox(height: GrowthSpacing.md),
+
+            // ---- 答案（选填） ----
+            Text('答案（选填）', style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: GrowthSpacing.sm),
+            GrowthTextField(
+              controller: _answerController,
+              label: '答案',
+              maxLines: 2,
+              hint: '复习时可对照查看',
+            ),
+            const SizedBox(height: GrowthSpacing.md),
+
+            // ---- 错因（选填） ----
+            Text('错因（选填）', style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: GrowthSpacing.sm),
+            GrowthTextField(
+              controller: _mistakeController,
+              label: '错因分析',
+              maxLines: 2,
+              hint: '帮助后续复习定位薄弱点',
+            ),
+            const SizedBox(height: GrowthSpacing.md),
+
             // ---- 层级知识点（硬门 3） ----
             GlassCard(
               child: Column(
@@ -463,9 +476,7 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodySmall
-                                    ?.copyWith(
-                                      color: GrowthColors.learning,
-                                    ),
+                                    ?.copyWith(color: GrowthColors.learning),
                               ),
                               const SizedBox(height: GrowthSpacing.xs),
                               GrowthButton(
@@ -489,14 +500,10 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
                       ],
                     )
                   else if (_pathError != null)
-                    // 错误态可点重试
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _pathError!,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
+                        Text(_pathError!, style: Theme.of(context).textTheme.bodySmall),
                         const SizedBox(height: GrowthSpacing.sm),
                         Row(
                           children: [
@@ -549,56 +556,31 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
                               _path.point,
                             ])
                               if (seg.isNotEmpty)
-                                GrowthChip(
-                                  label: seg,
-                                  color: seg == _path.point
-                                      ? GrowthColors.primary
-                                      : GrowthColors.gray5,
-                                ),
+                                GrowthChip(label: seg, color: GrowthColors.primary),
                           ],
                         ),
-                        const SizedBox(height: GrowthSpacing.xs),
-                        Text(
-                          'AI 识别，version 可推断也可改——点「手动编辑」调整任意层级',
-                          style: Theme.of(context).textTheme.bodySmall,
+                        const SizedBox(height: GrowthSpacing.sm),
+                        GrowthButton(
+                          label: '修改知识点',
+                          variant: GrowthButtonVariant.ghost,
+                          onPressed: _openPathEditor,
                         ),
                       ],
                     ),
                 ],
               ),
             ),
-            const SizedBox(height: GrowthSpacing.md),
 
-            // 手动填写（解析内容只来自用户）
-            GrowthTextField(
-              controller: _stemController,
-              label: '题干（可留空，直接保存图片）',
-              hint: '抄录或简述题目…',
-              maxLines: 3,
-            ),
-            const SizedBox(height: GrowthSpacing.md),
-            GrowthTextField(
-              controller: _answerController,
-              label: '答案（选填）',
-              hint: '正确答案…',
-              maxLines: 2,
-            ),
-            const SizedBox(height: GrowthSpacing.md),
-            GrowthTextField(
-              controller: _mistakeController,
-              label: '错因（选填）',
-              hint: '当时为什么错了…',
-              maxLines: 2,
+            const SizedBox(height: GrowthSpacing.xl),
+
+            // 保存按钮
+            GrowthButton(
+              label: _saving ? '保存中…' : '保存到错题本',
+              expanded: true,
+              icon: Icons.save_rounded,
+              onPressed: _saving ? null : _save,
             ),
             const SizedBox(height: GrowthSpacing.lg),
-            GrowthButton(
-              label: '保存到错题本',
-              icon: Icons.check_rounded,
-              expanded: true,
-              loading: _saving,
-              onPressed: _save,
-            ),
-            const SizedBox(height: GrowthSpacing.xl),
           ],
         ),
       ),

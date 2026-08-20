@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:drift/drift.dart' hide Column, Table;
 import 'package:flutter/services.dart' show rootBundle;
@@ -11,12 +12,14 @@ import 'package:pdf/widgets.dart' as pw;
 import '../../data/local/app_database.dart';
 import '../bridge/scanner_bridge.dart';
 
-/// PDF 打印设置（v14：字号/图片内容/含举一反三）
+/// PDF 打印设置（v15 终版：字号/图片内容/答案开关/答案位置/多选）
 class PdfSettings {
   const PdfSettings({
     this.largeFont = false,
     this.useEnhanced = true,
     this.includeExercises = false,
+    this.includeAnswers = true,
+    this.answersAtEnd = false,
   });
 
   /// 字号：标准(12)/大号(15)
@@ -28,13 +31,21 @@ class PdfSettings {
   /// 附举一反三同类题
   final bool includeExercises;
 
+  /// 是否包含答案
+  final bool includeAnswers;
+
+  /// 答案位置：false=题后 / true=统一最后
+  final bool answersAtEnd;
+
   double get fontSize => largeFont ? 15 : 12;
 }
 
-/// 题目 PDF 导出（v14 重做）：
+/// 题目 PDF 导出（v15 终版）：
 /// - 嵌中文字体（霞鹜文屏 Lite，开源 OFL），豆腐块清零
 /// - 页面用增强图（可选原图）；白纸页面
-/// - 含举一反三开关（附同类题）
+/// - 多选支持（可勾选同类题一并导出）
+/// - 答案开关 + 答案位置（题后/统一最后）
+/// - 保存/分享/系统打印
 abstract final class QuestionPdfExporter {
   static pw.Font? _fontCache;
 
@@ -45,7 +56,7 @@ abstract final class QuestionPdfExporter {
     return _fontCache!;
   }
 
-  /// 生成 PDF 字节
+  /// 生成 PDF 字节（多选模式）
   static Future<Uint8List> buildPdf(
     AppDatabase db,
     List<QuestionRecord> questions,
@@ -57,7 +68,12 @@ abstract final class QuestionPdfExporter {
     final doc = pw.Document();
     final fs = settings.fontSize;
 
+    // 收集所有题目页面和答案页（如果 answersAtEnd）
+    final answerPages = <pw.Widget>[];
+
     for (var i = 0; i < questions.length; i++) {
+      onProgress?.call(i + 1, questions.length);
+
       final q = questions[i];
       final breadcrumb = await _breadcrumbOf(db, q.id);
       final imageBytes = await _imageBytes(q, settings, scanner);
@@ -93,16 +109,8 @@ abstract final class QuestionPdfExporter {
                 ],
               ),
               pw.SizedBox(height: 14),
-              // 题干文字（若有真实填写）
-              if (q.stem.isNotEmpty && !q.stem.startsWith('（图片题'))
-                pw.Padding(
-                  padding: const pw.EdgeInsets.only(bottom: 12),
-                  child: pw.Text(
-                    q.stem,
-                    style: pw.TextStyle(fontSize: fs, lineSpacing: 4),
-                  ),
-                ),
-              // 题目图片（图即题干）
+
+              // 题目图片（v15：大图展示，禁止占位文案）
               if (imageBytes != null)
                 pw.SizedBox(
                   height: 340,
@@ -113,7 +121,23 @@ abstract final class QuestionPdfExporter {
                     ),
                   ),
                 ),
+
+              // 题干文字（仅在有真实填写时显示）
+              if (q.stem.isNotEmpty && !q.stem.startsWith('（图片题'))
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 12),
+                  child: pw.Text(
+                    q.stem,
+                    style: pw.TextStyle(fontSize: fs, lineSpacing: 4),
+                  ),
+                ),
+
+              // 答案（题后模式）
+              if (settings.includeAnswers && !settings.answersAtEnd)
+                _buildAnswerSection(q, fs),
+
               pw.Spacer(),
+
               // 作答空白区（横线）
               pw.Text(
                 '作答区',
@@ -139,6 +163,30 @@ abstract final class QuestionPdfExporter {
         ),
       );
 
+      // 收集答案页（统一最后模式）
+      if (settings.includeAnswers && settings.answersAtEnd) {
+        answerPages.add(pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(
+              '第 ${i + 1} 题答案',
+              style: pw.TextStyle(fontSize: fs, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 6),
+            if ((q.answer ?? '').isNotEmpty)
+              pw.Text(q.answer, style: pw.TextStyle(fontSize: fs)),
+            if ((q.errorCause ?? '').isNotEmpty)
+              pw.Padding(
+                padding: const pw.EdgeInsets.only(top: 6),
+                child: pw.Text(
+                  '错因：${q.errorCause}',
+                  style: pw.TextStyle(fontSize: fs - 1, color: PdfColors.grey600),
+                ),
+              ),
+          ],
+        ));
+      }
+
       // 举一反三附页
       if (settings.includeExercises) {
         final exercises = await _exercisesOf(db, q.id);
@@ -154,23 +202,24 @@ abstract final class QuestionPdfExporter {
                   pw.Text(
                     '第 ${i + 1} 题 · 举一反三',
                     style: pw.TextStyle(
-                      fontSize: fs + 2,
+                      fontSize: fs + 1,
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
                   pw.SizedBox(height: 12),
-                  for (final (j, ex) in exercises.indexed) ...[
+                  for (final ex in exercises.take(3)) ...[
                     pw.Text(
-                      '${j + 1}. ${ex['question']}',
+                      ex.question,
                       style: pw.TextStyle(fontSize: fs, lineSpacing: 3),
                     ),
-                    pw.SizedBox(height: 4),
-                    for (final opt in (ex['options'] as List))
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.only(left: 16),
-                        child: pw.Text('$opt',
-                            style: pw.TextStyle(fontSize: fs - 1)),
+                    pw.SizedBox(height: 6),
+                    pw.Text(
+                      '答案：${ex.answer}',
+                      style: pw.TextStyle(
+                        fontSize: fs - 1,
+                        color: PdfColors.grey700,
                       ),
+                    ),
                     pw.SizedBox(height: 10),
                   ],
                 ],
@@ -179,78 +228,63 @@ abstract final class QuestionPdfExporter {
           );
         }
       }
-      onProgress?.call(i + 1, questions.length);
+    }
+
+    // 统一最后：追加答案汇总页
+    if (settings.includeAnswers && settings.answersAtEnd && answerPages.isNotEmpty) {
+      doc.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(36),
+          theme: pw.ThemeData.withFont(base: font),
+          build: (context) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                '答案汇总',
+                style: pw.TextStyle(
+                  fontSize: fs + 2,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 16),
+              ...answerPages,
+            ],
+          ),
+        ),
+      );
     }
 
     return doc.save();
   }
 
-  /// 生成并落盘，返回本地路径
-  static Future<String> exportToFile(
-    AppDatabase db,
-    List<QuestionRecord> questions,
-    PdfSettings settings, {
-    ScannerBridge? scanner,
-    void Function(int done, int total)? onProgress,
-  }) async {
-    final bytes = await buildPdf(db, questions, settings,
-        scanner: scanner, onProgress: onProgress);
-    final dir = await getApplicationDocumentsDirectory();
-    final exportDir = Directory(p.join(dir.path, 'exports'))
-      ..createSync(recursive: true);
-    final file = File(p.join(
-        exportDir.path, '错题导出_${DateTime.now().millisecondsSinceEpoch}.pdf'));
-    await file.writeAsBytes(bytes);
-    return file.path;
-  }
-
-  /// 取题目图片字节（增强图优先，失败回落原图）
-  static Future<Uint8List?> _imageBytes(
-    QuestionRecord q,
-    PdfSettings settings,
-    ScannerBridge? scanner,
-  ) async {
-    if (q.imagePath == null) return null;
-    var path = q.imagePath!;
-    if (settings.useEnhanced && scanner != null) {
-      final enhanced = await scanner.enhance(path);
-      if (enhanced != null) path = enhanced;
-    }
-    final file = File(path);
-    if (!file.existsSync()) {
-      // 增强路径无效回落原图
-      final fallback = File(q.imagePath!);
-      if (!fallback.existsSync()) return null;
-      return fallback.readAsBytes();
-    }
-    return file.readAsBytes();
-  }
-
-  /// 题目关联的同类练习题（题库飞轮，按知识点检索）
-  static Future<List<Map<String, dynamic>>> _exercisesOf(
-    AppDatabase db,
-    String questionId,
-  ) async {
-    final links = await (db.select(db.questionKnowledgeLinks)
-          ..where((t) => t.questionId.equals(questionId)))
-        .get();
-    if (links.isEmpty) return const [];
-    final kpIds = links.map((l) => l.knowledgePointId).toList();
-    final banks = await (db.select(db.questionBank)
-          ..where((t) => t.knowledgePointId.isIn(kpIds))
-          ..orderBy([(t) => OrderingTerm.asc(t.usedCount)])
-          ..limit(3))
-        .get();
-    final result = <Map<String, dynamic>>[];
-    for (final b in banks) {
-      try {
-        final content = Map<String, dynamic>.from(jsonDecode(b.content) as Map);
-        if ((content['question'] ?? '').toString().isNotEmpty) {
-          result.add(content);
-        }
-      } catch (_) {}
-    }
-    return result;
+  static pw.Widget _buildAnswerSection(QuestionRecord q, double fs) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Divider(),
+        pw.SizedBox(height: 6),
+        pw.Text(
+          '答案',
+          style: pw.TextStyle(
+            fontSize: fs - 1,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.grey600,
+          ),
+        ),
+        pw.SizedBox(height: 4),
+        if ((q.answer ?? '').isNotEmpty)
+          pw.Text(q.answer, style: pw.TextStyle(fontSize: fs)),
+        if ((q.errorCause ?? '').isNotEmpty)
+          pw.Padding(
+            padding: const pw.EdgeInsets.only(top: 4),
+            child: pw.Text(
+              '错因：${q.errorCause}',
+              style: pw.TextStyle(fontSize: fs - 1, color: PdfColors.grey600),
+            ),
+          ),
+      ],
+    );
   }
 
   static Future<String> _breadcrumbOf(AppDatabase db, String qid) async {
@@ -258,14 +292,47 @@ abstract final class QuestionPdfExporter {
           ..where((t) => t.questionId.equals(qid)))
         .get();
     if (links.isEmpty) return '';
-    final kpIds = links.map((l) => l.knowledgePointId).toList();
+    final kpIds = links.map((l) => l.knowledgePointId).toSet().toList();
     final kps = await (db.select(db.knowledgePoints)
           ..where((t) => t.id.isIn(kpIds)))
         .get();
-    if (kps.isEmpty) return '';
-    final kp = kps.first;
-    return [kp.subject, kp.version, kp.book, kp.chapter, kp.lesson, kp.name]
-        .where((s) => s.isNotEmpty)
-        .join(' · ');
+    final segs = kps.map((k) {
+      final parts = [k.subject, k.chapter, k.name]
+          .where((s) => s.isNotEmpty)
+          .toList();
+      return parts.join(' · ');
+    }).toList();
+    return segs.join('；');
+  }
+
+  static Future<Uint8List?> _imageBytes(
+    QuestionRecord q,
+    PdfSettings settings,
+    ScannerBridge? scanner,
+  ) async {
+    final path = q.imagePath;
+    if (path == null || !File(path).existsSync()) return null;
+    // 如果要求增强图且增强引擎可用，返回增强后的路径
+    if (settings.useEnhanced && scanner != null) {
+      try {
+        final enhanced = await scanner.enhanceImage(path);
+        if (enhanced != null && File(enhanced).existsSync()) {
+          return File(enhanced).readAsBytes();
+        }
+      } catch (_) {}
+    }
+    return File(path).readAsBytes();
+  }
+
+  static Future<List<Map<String, dynamic>>> _exercisesOf(
+      AppDatabase db, String qid) async {
+    final rows = await (db.select(db.exerciseItems)
+          ..where((t) => t.questionId.equals(qid)))
+        .get();
+    return rows.map((r) => {
+      'question': r.question,
+      'answer': r.answer ?? '',
+      'explanation': r.explanation ?? '',
+    }).toList();
   }
 }

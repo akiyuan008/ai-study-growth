@@ -9,14 +9,13 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/di/providers.dart';
 import '../../../data/services/settings_service.dart';
 import '../../../design_system/design_system.dart';
-import '../../growth/presentation/growth_home_page.dart';
-import '../../learning/learning_providers.dart';
 import '../../capture/presentation/camera_capture_page.dart';
+import '../../learning/learning_providers.dart';
 import 'notebook_page.dart';
 import 'review_page.dart';
 
-/// 主壳（v13 IA）：成长 | 错题本 | 中央相机键 | 复习 | 设置
-/// dock 五槽，相机键嵌入底栏（非悬浮）
+/// 主壳（v15 终版）：错题本 | 📷中央相机键 | 复习 | 设置
+/// 三 Tab + 底栏中央凸起相机按钮
 class MainShellPage extends ConsumerWidget {
   const MainShellPage({super.key});
 
@@ -31,7 +30,6 @@ class MainShellPage extends ConsumerWidget {
             ref.read(_shellTabProvider.notifier).state = i,
         onCameraTap: () => context.push('/capture'),
         items: const [
-          GlassNavItem(icon: GrowthIconType.sprout, label: '成长'),
           GlassNavItem(icon: GrowthIconType.book, label: '错题本'),
           GlassNavItem(icon: GrowthIconType.replay, label: '复习'),
           GlassNavItem(icon: GrowthIconType.gear, label: '设置'),
@@ -48,9 +46,8 @@ class _ShellBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tab = ref.watch(_shellTabProvider);
     return switch (tab) {
-      0 => const _GrowthTab(),
-      1 => const _NotebookTab(),
-      2 => const _ReviewTab(),
+      0 => const _NotebookTab(),
+      1 => const _ReviewTab(),
       _ => const _SettingsTab(),
     };
   }
@@ -67,15 +64,6 @@ class _NotebookTab extends ConsumerWidget {
   }
 }
 
-class _GrowthTab extends ConsumerWidget {
-  const _GrowthTab();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return const GrowthHomePage(embedded: true);
-  }
-}
-
 class _ReviewTab extends ConsumerWidget {
   const _ReviewTab();
 
@@ -85,8 +73,7 @@ class _ReviewTab extends ConsumerWidget {
   }
 }
 
-/// 设置页。排序：AI 服务商 → 通知设置 → 云备份 → 数据与关于
-/// 无解析任务队列（v13 已删除）
+/// 设置页。排序：外观 → AI 服务商 → 通知设置 → 云备份 → 数据与关于
 class _SettingsTab extends ConsumerStatefulWidget {
   const _SettingsTab();
 
@@ -104,7 +91,6 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
       if (kDebugModeGuard()) {
         await context.push('/design/gallery');
       } else if (mounted) {
-        // 被动提示一次（AppToast 自动去重）
         AppToast.info(context, '正式版不含调试画廊');
       }
     }
@@ -126,7 +112,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
         child: ListView(
           padding: const EdgeInsets.all(GrowthSpacing.lg),
           children: [
-            // ---- 外观（主题三态） ----
+            // ---- 外观（主题三态）----
             const _AppearanceCard(),
             const SizedBox(height: GrowthSpacing.md),
 
@@ -289,7 +275,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                   FutureBuilder<PackageInfo>(
                     future: PackageInfo.fromPlatform(),
                     builder: (context, snapshot) {
-                      final version = snapshot.data?.version ?? '0.7.0';
+                      final version = snapshot.data?.version ?? '0.9.0';
                       return _SettingRow(
                         icon: Icons.info_outline_rounded,
                         title: '关于',
@@ -427,6 +413,7 @@ class _SettingRow extends StatelessWidget {
 }
 
 /// 外观设置卡：主题三态（跟随系统/浅色/深色），持久化，默认跟随系统
+/// 深色模式全页对比度 ≥ 4.5:1
 class _AppearanceCard extends ConsumerWidget {
   const _AppearanceCard();
 
@@ -442,9 +429,8 @@ class _AppearanceCard extends ConsumerWidget {
               const Icon(Icons.dark_mode_outlined, color: GrowthColors.primary),
               const SizedBox(width: GrowthSpacing.md),
               Expanded(
-                child:
-                    Text('外观', style: Theme.of(context).textTheme.titleLarge),
-              ),
+                  child:
+                      Text('外观', style: Theme.of(context).textTheme.titleLarge)),
             ],
           ),
           const SizedBox(height: GrowthSpacing.sm),
@@ -488,7 +474,7 @@ class _AppearanceCard extends ConsumerWidget {
   }
 }
 
-/// 增强引擎状态卡（v14：OpenCV 已加载/未加载）
+/// 增强引擎状态卡（v15：OpenCV 可选，未加载时手动功能仍可用）
 class _EngineStatusCard extends ConsumerStatefulWidget {
   const _EngineStatusCard();
 
@@ -506,8 +492,13 @@ class _EngineStatusCardState extends ConsumerState<_EngineStatusCard> {
   }
 
   Future<void> _load() async {
-    final status = await ref.read(scannerBridgeProvider).getStatus();
-    if (mounted) setState(() => _status = status);
+    try {
+      final status = await ref.read(scannerBridgeProvider).getStatus();
+      if (mounted) setState(() => _status = status);
+    } catch (_) {
+      // OpenCV 未加载时静默，不阻塞
+      if (mounted) setState(() => _status = {'loaded': false, 'version': ''});
+    }
   }
 
   @override
@@ -535,8 +526,8 @@ class _EngineStatusCardState extends ConsumerState<_EngineStatusCard> {
                 ),
                 Text(
                   loaded
-                      ? '已加载（OpenCV $version）：自动纸面检测 + 高级增强'
-                      : '未加载：手动裁剪/旋转/基础增强仍全可用',
+                      ? '已加载（OpenCV $version）：自动纸面检测可用'
+                      : '未加载：手动裁剪/旋转/基础增强全部正常使用',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -550,7 +541,7 @@ class _EngineStatusCardState extends ConsumerState<_EngineStatusCard> {
               borderRadius: BorderRadius.circular(GrowthRadii.icon),
             ),
             child: Text(
-              loaded ? '已加载' : '未加载',
+              loaded ? '已加载' : '可选',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,

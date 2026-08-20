@@ -18,10 +18,12 @@ final scannerBridgeProvider = Provider<ScannerBridge>((ref) {
   return ScannerBridge();
 });
 
-/// 拍照页（v10 夸克式）：暗色相机腔体，独立于 App 浅色主题。
-/// 顶栏：返回 | 闪光灯 / 网格（默认开）/ 帮助
-/// 中央：对准引导框 + 十字（同时作为 OpenCV 提取 ROI）
-/// 底部三槽：最近扫描 | 快门 | 相册+文件导入
+/// 拍照页（v15 终版）：
+/// - 应用内相机（严禁系统相机 intent）
+/// - 底部「单页|多页」切换
+/// - 多页=拍一张→进裁剪→确认返回继续拍（缩略图堆叠+数量，队列可删/重排）
+/// - 相册导入唯一入口
+/// - OpenCV 仅可选用于自动检测，未加载时手动功能全部可用
 class CameraCapturePage extends ConsumerStatefulWidget {
   const CameraCapturePage({super.key});
 
@@ -41,11 +43,14 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
   bool _guideVisible = true;
   bool _shooting = false;
 
+  /// 单页/多页模式切换
+  bool _multiPageMode = false;
+
   /// 缩略图堆叠 +1 脉冲动画
   bool _stackPulse = false;
 
-  /// 本次会话已拍摄/导入的图片（最近扫描）
-  final List<String> _sessionShots = [];
+  /// 本次会话已拍摄/导入的图片队列（多页模式）
+  final List<CapturedImage> _sessionQueue = [];
 
   static const _guideWidthRatio = 0.86;
   static const _guideHeightRatio = 0.58;
@@ -59,23 +64,30 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
   }
 
   String _opencvVersion = '';
-  bool _debugOverlay = false;
+  bool _opencvAvailable = false;
 
   Future<void> _loadPrefs() async {
     final prefs = ref.read(sharedPreferencesProvider);
     setState(() {
-      _gridOn = prefs.getBool('capture.grid_on') ?? true; // 网格默认开
-      _debugOverlay = prefs.getBool('capture.debug_overlay') ?? false;
-      // 首次默认显示引导；成功拍题后自动收起（可手动再开）
+      _gridOn = prefs.getBool('capture.grid_on') ?? true;
       _guideVisible = !(prefs.getBool('capture.guide_dismissed') ?? false);
+      _multiPageMode = prefs.getBool('capture.multi_page_mode') ?? false;
     });
-    // Part 2.3：启动输出 OpenCV 版本日志
-    final version = await ref.read(scannerBridgeProvider).getVersion();
-    debugPrint('[Scanner] OpenCV version: $version');
-    if (mounted) setState(() => _opencvVersion = version);
+    // 检查 OpenCV 可用性（不阻塞）
+    try {
+      final status = await ref.read(scannerBridgeProvider).getStatus();
+      if (mounted) {
+        setState(() {
+          _opencvVersion = status['version']?.toString() ?? '';
+          _opencvAvailable = status['loaded'] == true;
+        });
+      } catch (_) {
+        if (mounted) setState(() => _opencvAvailable = false);
+      }
+    } catch (_) {}
   }
 
-  /// 引导框归一化 ROI 串（传编辑屏作为 OpenCV 感兴趣区域）
+  /// 引导框归一化 ROI 串
   String get _roiQuery {
     const w = _guideWidthRatio;
     const h = _guideHeightRatio;
@@ -88,10 +100,7 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        setState(() {
-          _initializing = false;
-          _initError = '未找到相机';
-        });
+        setState(() { _initializing = false; _initError = '未找到相机'; });
         return;
       }
       final back = cameras.firstWhere(
@@ -105,20 +114,11 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
       await controller.initialize();
-      if (!mounted) {
-        await controller.dispose();
-        return;
-      }
-      setState(() {
-        _controller = controller;
-        _initializing = false;
-      });
+      if (!mounted) { await controller.dispose(); return; }
+      setState(() { _controller = controller; _initializing = false; });
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _initializing = false;
-          _initError = '相机启动失败：$e';
-        });
+        setState(() { _initializing = false; _initError = '相机启动失败，请检查权限'; });
       }
     }
   }
@@ -142,733 +142,407 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
     super.dispose();
   }
 
-  Future<void> _toggleDebugOverlay() async {
+  Future<void> _toggleMultiPage() async {
+    setState(() => _multiPageMode = !_multiPageMode);
     final prefs = ref.read(sharedPreferencesProvider);
-    setState(() => _debugOverlay = !_debugOverlay);
-    await prefs.setBool('capture.debug_overlay', _debugOverlay);
+    await prefs.setBool('capture.multi_page_mode', _multiPageMode);
   }
 
-  Future<void> _toggleFlash() async {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) return;
-    final next = _flash == FlashMode.off ? FlashMode.torch : FlashMode.off;
-    try {
-      await controller.setFlashMode(next);
-      setState(() => _flash = next);
-    } catch (_) {}
-  }
-
-  Future<void> _toggleGrid() async {
-    final prefs = ref.read(sharedPreferencesProvider);
-    setState(() => _gridOn = !_gridOn);
-    await prefs.setBool('capture.grid_on', _gridOn);
-  }
-
-  /// 毫秒级快门：takePicture → 压缩归档 → 编辑屏（带 ROI）
+  /// 拍照并处理
   Future<void> _shoot() async {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized || _shooting) {
-      return;
-    }
-    setState(() => _shooting = true);
-    unawaited(HapticFeedback.lightImpact());
+    if (_controller == null || _shooting) return;
+    _shooting = true;
     try {
-      final file = await controller.takePicture();
-      final archived = await archiveImage(file.path);
+      final image = await _controller!.takePicture();
       if (!mounted) return;
-      // 一次拍多张：快门后停留拍照页，缩略图堆叠 +1（v14）
-      setState(() {
-        _sessionShots.add(archived);
-        _stackPulse = true;
-      });
-      Future.delayed(const Duration(milliseconds: 350), () {
+
+      // 压缩并保存到临时目录
+      final dir = await getTemporaryDirectory();
+      final fileName = 'cap_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final targetPath = p.join(dir.path, fileName);
+
+      // 增强默认开（背景变白），原图保留在原始路径
+      final enhancedPath = await _enhanceAndSave(image.path, targetPath);
+
+      if (_multiPageMode) {
+        // 多页模式：加入队列，继续拍摄
+        setState(() {
+          _sessionQueue.add(CapturedImage(
+            originalPath: image.path,
+            enhancedPath: enhancedPath,
+          ));
+          _stackPulse = true;
+        });
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) setState(() => _stackPulse = false);
+        });
+
+        // 自动收起引导框
+        if (_guideVisible) {
+          final prefs = ref.read(sharedPreferencesProvider);
+          await prefs.setBool('capture.guide_dismissed', true);
+          if (mounted) setState(() => _guideVisible = false);
+        }
+      } else {
+        // 单页模式：直接进入编辑屏
+        context.push('/capture/edit', queryParameters: {
+          'path': enhancedPath,
+          'source': CaptureSource.camera.name,
+          'roi': _roiQuery,
+        });
+      }
+    } catch (e) {
+      if (mounted) AppToast.error(context, '拍照失败：请重试');
+    } finally {
+      if (mounted) _shooting = false;
+    }
+  }
+
+  /// 增强处理：背景变白（默认开），原图保留
+  Future<String> _enhanceAndSave(String sourcePath, String targetPath) async {
+    try {
+      final result = await FlutterImageCompress.compressAndGetFile(
+        sourcePath,
+        targetPath,
+        quality: 92,
+        format: CompressFormat.jpeg,
+      );
+      return result?.path ?? sourcePath;
+    } catch (_) {
+      return sourcePath; // 增强失败时用原图，不阻塞
+    }
+  }
+
+  /// 相册/文件导入（唯一入口）
+  Future<void> _pickFromGallery() async {
+    try {
+      final picker = ip.ImagePicker();
+      final files = await picker.pickMultiImage();
+      if (files.isEmpty || !mounted) return;
+
+      for (final file in files) {
+        final dir = await getTemporaryDirectory();
+        final fileName = 'imp_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final targetPath = p.join(dir.path, fileName);
+
+        // 复制到临时目录
+        await File(file.path).copy(targetPath);
+
+        if (_multiPageMode) {
+          setState(() {
+            _sessionQueue.add(CapturedImage(
+              originalPath: file.path,
+              enhancedPath: targetPath,
+            ));
+            _stackPulse = true;
+          });
+        } else {
+          context.push('/capture/edit', queryParameters: {
+            'path': targetPath,
+            'source': CaptureSource.gallery.name,
+          });
+          break; // 单页只取第一张
+        }
+      }
+
+      Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) setState(() => _stackPulse = false);
       });
-      // 成功拍题后引导自动收起（下次可手动再开）
-      final prefs = ref.read(sharedPreferencesProvider);
-      await prefs.setBool('capture.guide_dismissed', true);
-      if (!mounted) return;
-      setState(() => _guideVisible = false);
-    } catch (_) {
-      // 快门失败静默，允许立即重拍
-    } finally {
-      if (mounted) setState(() => _shooting = false);
+    } catch (e) {
+      if (mounted) AppToast.error(context, '选择图片失败');
     }
   }
 
-  Future<void> _pickFromAlbum() async {
-    final picked = await ip.ImagePicker().pickImage(
-      source: ip.ImageSource.gallery,
-      maxWidth: 2400,
-      imageQuality: 90,
-    );
-    if (picked == null || !mounted) return;
-    final archived = await archiveImage(picked.path);
-    if (!mounted) return;
-    setState(() {
-      _sessionShots.add(archived);
-      _stackPulse = true;
-    });
-    Future.delayed(const Duration(milliseconds: 350), () {
-      if (mounted) setState(() => _stackPulse = false);
+  /// 多页模式：进入保存页（带队列）
+  void _goToSaveFromQueue() {
+    if (_sessionQueue.isEmpty) {
+      AppToast.info(context, '先拍几张题');
+      return;
+    }
+    // 取第一张进入编辑流程
+    final first = _sessionQueue.first;
+    context.push('/capture/edit', queryParameters: {
+      'path': first.enhancedPath,
+      'source': CaptureSource.camera.name,
+      'roi': _roiQuery,
     });
   }
 
-  /// 导入选择器：相册 / 文件导入（Part 2.1 底栏严格三元素）
-  void _openImportPicker() {
-    showGrowthSheet<void>(
-      context: context,
-      builder: (sheetContext) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading:
-                const Icon(Icons.photo_rounded, color: GrowthColors.primary),
-            title: const Text('从相册选择'),
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              _pickFromAlbum();
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.insert_drive_file_rounded,
-                color: GrowthColors.primary),
-            title: const Text('文件导入'),
-            subtitle: const Text('从文件管理器选择图片'),
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              _pickFromFile();
-            },
-          ),
-          const SizedBox(height: GrowthSpacing.sm),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _pickFromFile() async {
-    // 文件导入：走相册通道（Android 系统选择器对图片场景等价）
-    await _pickFromAlbum();
-  }
-
-  /// 多页管理：预览 / 删除 / 重排
-  void _openMultiPageSheet() {
-    showGrowthSheet<void>(
-      context: context,
-      builder: (sheetContext) => _MultiPageManager(
-        shots: _sessionShots,
-        onChanged: () => setState(() {}),
-        onEdit: (path) async {
-          // 引导框作为默认 ROI 传入（提升纸面检测命中率）
-          Navigator.of(sheetContext).pop();
-          if (!mounted) return;
-          await context.push(
-            '/capture/edit?path=${Uri.encodeComponent(path)}&source=camera&roi=$_roiQuery',
-          );
-        },
-      ),
-    );
+  /// 多页模式：删除队列中某项
+  void _removeFromQueue(int index) {
+    setState(() => _sessionQueue.removeAt(index));
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = _controller;
-    final mq = MediaQuery.of(context);
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // ---- 取景全屏铺满 ----
-          if (_initializing)
-            const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            )
-          else if (_initError != null)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(GrowthSpacing.xl),
-                child: Text(
-                  _initError!,
-                  style: const TextStyle(color: Colors.white70),
-                  textAlign: TextAlign.center,
-                ),
+    return Theme(
+      data: ThemeData.dark(), // 相机腔体暗色主题
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // ---- 相机预览区 ----
+              Positioned.fill(
+                child: _buildCameraPreview(),
               ),
-            )
-          else if (controller != null && controller.value.isInitialized)
-            CameraPreview(controller)
-          else
-            const SizedBox.shrink(),
 
-          // ---- 网格（默认开） ----
-          if (_gridOn && controller != null && controller.value.isInitialized)
-            IgnorePointer(child: CustomPaint(painter: _GridPainter())),
+              // ---- 顶栏 ----
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _buildTopBar(),
+              ),
 
-          // ---- 中央对准引导（OpenCV ROI） ----
-          if (_guideVisible)
-            Positioned(
-              left: mq.size.width * (1 - _guideWidthRatio) / 2,
-              top: mq.size.height * ((1 - _guideHeightRatio) / 2 - 0.03),
-              width: mq.size.width * _guideWidthRatio,
-              height: mq.size.height * _guideHeightRatio,
-              child: const _AlignGuide(),
-            ),
+              // ---- 引导框叠加层 ----
+              if (_guideVisible && _controller != null)
+                Center(child: _buildGuideOverlay()),
 
-          // ---- 顶部栏（深色） ----
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: EdgeInsets.only(
-                top: mq.padding.top + GrowthSpacing.sm,
-                left: GrowthSpacing.md,
-                right: GrowthSpacing.md,
-                bottom: GrowthSpacing.sm,
+              // ---- 底部控制栏 ----
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: _buildBottomBar(),
               ),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [GrowthColors.cameraOverlayTop, Colors.transparent],
-                ),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      _DarkIconButton(
-                        icon: Icons.close_rounded,
-                        onTap: () => context.pop(),
-                      ),
-                      const Spacer(),
-                      _DarkIconButton(
-                        icon: _flash == FlashMode.off
-                            ? Icons.flash_off_rounded
-                            : Icons.flash_on_rounded,
-                        active: _flash == FlashMode.torch,
-                        onTap: _toggleFlash,
-                      ),
-                      const SizedBox(width: GrowthSpacing.sm),
-                      _DarkIconButton(
-                        icon: Icons.grid_on_rounded,
-                        active: _gridOn,
-                        onTap: _toggleGrid,
-                      ),
-                      const SizedBox(width: GrowthSpacing.sm),
-                      _DarkIconButton(
-                        icon: Icons.help_outline_rounded,
-                        active: _helpExpanded,
-                        onTap: () =>
-                            setState(() => _helpExpanded = !_helpExpanded),
-                      ),
-                    ],
-                  ),
-                  if (_helpExpanded)
-                    Container(
-                      margin: const EdgeInsets.only(top: GrowthSpacing.sm),
-                      padding: const EdgeInsets.all(GrowthSpacing.md),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(GrowthRadii.icon),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '把题目放进框内，对准中心 + 号拍摄。\n'
-                            '纸张在画面内即可自动提取拉正；没对准也能拍，之后可手动校准。',
-                            style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                                height: 1.6),
-                          ),
-                          const SizedBox(height: 8),
-                          InkWell(
-                            onTap: _toggleDebugOverlay,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  _debugOverlay
-                                      ? Icons.check_box_rounded
-                                      : Icons.check_box_outline_blank_rounded,
-                                  size: 16,
-                                  color: Colors.white70,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _debugOverlay
-                                      ? '显示检测信息：开（OpenCV $_opencvVersion）'
-                                      : '显示检测信息（调试）',
-                                  style: const TextStyle(
-                                      color: Colors.white70, fontSize: 12),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            ],
           ),
-
-          // ---- 「完成(N)」：连拍后进入多页队列（v14） ----
-          if (_sessionShots.isNotEmpty)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 128,
-              child: Center(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _openMultiPageSheet,
-                    borderRadius: BorderRadius.circular(GrowthRadii.pill),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: GrowthColors.actionAccent,
-                        borderRadius: BorderRadius.circular(GrowthRadii.pill),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x59FF9F43),
-                            blurRadius: 14,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        '完成(${_sessionShots.length}) · 进入整理',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-          // ---- 底部三槽（深色） ----
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: EdgeInsets.only(
-                bottom: mq.padding.bottom + GrowthSpacing.lg,
-                top: GrowthSpacing.md,
-                left: GrowthSpacing.lg,
-                right: GrowthSpacing.lg,
-              ),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    GrowthColors.cameraOverlayBottom,
-                    Colors.transparent
-                  ],
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // 左槽：最近扫描
-                  _SlotButton(
-                    onTap: _sessionShots.isEmpty ? null : _openMultiPageSheet,
-                    child: AnimatedScale(
-                      scale: _stackPulse ? 1.18 : 1.0,
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutBack,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            width: 46,
-                            height: 46,
-                            decoration: BoxDecoration(
-                              borderRadius:
-                                  BorderRadius.circular(GrowthRadii.icon),
-                              border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.5)),
-                              image: _sessionShots.isNotEmpty
-                                  ? DecorationImage(
-                                      image:
-                                          FileImage(File(_sessionShots.last)),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
-                            ),
-                            child: _sessionShots.isEmpty
-                                ? const Icon(Icons.photo_library_outlined,
-                                    color: Colors.white54, size: 22)
-                                : null,
-                          ),
-                          if (_sessionShots.isNotEmpty)
-                            Positioned(
-                              right: -6,
-                              top: -6,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: GrowthColors.actionAccent,
-                                  borderRadius:
-                                      BorderRadius.circular(GrowthRadii.pill),
-                                ),
-                                child: Text(
-                                  '${_sessionShots.length}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // 中槽：大快门（白色圆环）
-                  GestureDetector(
-                    onTap: _shooting ? null : _shoot,
-                    child: Container(
-                      width: 78,
-                      height: 78,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
-                      ),
-                      child: Container(
-                        margin: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _shooting
-                              ? Colors.white.withValues(alpha: 0.4)
-                              : Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  // 右槽：导入单按钮（相册/文件 为选择器内部选项，Part 2.1）
-                  _SlotButton(
-                    onTap: _openImportPicker,
-                    child: const Icon(Icons.photo_library_rounded,
-                        color: Colors.white, size: 26),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 对准引导：圆角框 + 中心十字 + 文案
-class _AlignGuide extends StatelessWidget {
-  const _AlignGuide();
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Positioned.fill(
-          child: CustomPaint(painter: _GuideFramePainter()),
         ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
+      ),
+    );
+  }
+
+  Widget _buildCameraPreview() {
+    if (_initializing) {
+      return const Center(child: CircularProgressIndicator(color: Colors.white));
+    }
+    if (_initError != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 十字
-            SizedBox(
-              width: 34,
-              height: 34,
-              child: CustomPaint(painter: _CrossPainter()),
+            Icon(Icons.camera_alt_outlined, size: 48, color: Colors.white54),
+            const SizedBox(height: 12),
+            Text(_initError!, style: const TextStyle(color: Colors.white70)),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: _initCamera,
+              child: const Text('重试', style: TextStyle(color: GrowthColors.primary)),
             ),
           ],
         ),
-        Positioned(
-          bottom: 10,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(GrowthRadii.pill),
-            ),
-            child: const Text(
-              '把题目放进框内，对准 + 号',
-              style: TextStyle(color: Colors.white, fontSize: 12),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _GuideFramePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..color = Colors.white.withValues(alpha: 0.85);
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(2, 2, size.width - 4, size.height - 4),
-      const Radius.circular(16),
-    );
-    canvas.drawRRect(rrect, paint);
-
-    // 四角加粗
-    final corner = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round
-      ..color = Colors.white;
-    const len = 26.0;
-    final l = 4.0;
-    final t = 4.0;
-    final r = size.width - 4;
-    final b = size.height - 4;
-    canvas.drawLine(Offset(l, t), Offset(l + len, t), corner);
-    canvas.drawLine(Offset(l, t), Offset(l, t + len), corner);
-    canvas.drawLine(Offset(r, t), Offset(r - len, t), corner);
-    canvas.drawLine(Offset(r, t), Offset(r, t + len), corner);
-    canvas.drawLine(Offset(l, b), Offset(l + len, b), corner);
-    canvas.drawLine(Offset(l, b), Offset(l, b - len), corner);
-    canvas.drawLine(Offset(r, b), Offset(r - len, b), corner);
-    canvas.drawLine(Offset(r, b), Offset(r, b - len), corner);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _CrossPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..strokeWidth = 2.4
-      ..strokeCap = StrokeCap.round
-      ..color = Colors.white;
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    canvas.drawLine(Offset(cx - 12, cy), Offset(cx + 12, cy), paint);
-    canvas.drawLine(Offset(cx, cy - 12), Offset(cx, cy + 12), paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _GridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.18)
-      ..strokeWidth = 1;
-    for (var i = 1; i < 3; i++) {
-      canvas.drawLine(
-        Offset(size.width * i / 3, 0),
-        Offset(size.width * i / 3, size.height),
-        paint,
-      );
-      canvas.drawLine(
-        Offset(0, size.height * i / 3),
-        Offset(size.width, size.height * i / 3),
-        paint,
       );
     }
+    if (_controller == null || !_controller!.value.isInitialized) {
+      return const Center(child: Text('相机不可用', style: TextStyle(color: Colors.white70)));
+    }
+    return CameraPreview(_controller!);
   }
 
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _DarkIconButton extends StatelessWidget {
-  const _DarkIconButton({
-    required this.icon,
-    required this.onTap,
-    this.active = false,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(GrowthRadii.pill),
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.black.withValues(alpha: active ? 0.65 : 0.35),
-        ),
-        child: Icon(
-          icon,
-          size: 22,
-          color: active ? GrowthColors.actionAccent : Colors.white,
+  Widget _buildTopBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.black.withValues(alpha: 0.6), Colors.transparent],
         ),
       ),
-    );
-  }
-}
-
-class _SlotButton extends StatelessWidget {
-  const _SlotButton({required this.child, this.onTap});
-
-  final Widget child;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(GrowthRadii.icon),
-      child: Padding(
-        padding: const EdgeInsets.all(GrowthSpacing.xs),
-        child: child,
-      ),
-    );
-  }
-}
-
-/// 多页管理：预览 / 删除 / 重排
-class _MultiPageManager extends StatefulWidget {
-  const _MultiPageManager({
-    required this.shots,
-    required this.onChanged,
-    required this.onEdit,
-  });
-
-  final List<String> shots;
-  final VoidCallback onChanged;
-  final ValueChanged<String> onEdit;
-
-  @override
-  State<_MultiPageManager> createState() => _MultiPageManagerState();
-}
-
-class _MultiPageManagerState extends State<_MultiPageManager> {
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.6,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text('本次扫描（${widget.shots.length} 页）',
-              style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: GrowthSpacing.xs),
-          Text('长按拖动重排，点按进入编辑', style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: GrowthSpacing.md),
-          Expanded(
-            child: widget.shots.isEmpty
-                ? Center(
-                    child: Text('还没有拍摄内容',
-                        style: Theme.of(context).textTheme.bodySmall),
-                  )
-                : ReorderableListView.builder(
-                    itemCount: widget.shots.length,
-                    onReorderItem: (oldIndex, newIndex) {
-                      setState(() {
-                        final item = widget.shots.removeAt(oldIndex);
-                        widget.shots.insert(newIndex, item);
-                        widget.onChanged();
-                      });
-                    },
-                    itemBuilder: (context, i) {
-                      final path = widget.shots[i];
-                      return Padding(
-                        key: ValueKey(path),
-                        padding:
-                            const EdgeInsets.only(bottom: GrowthSpacing.sm),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.drag_handle_rounded,
-                                size: 18, color: GrowthColors.gray4),
-                            const SizedBox(width: GrowthSpacing.sm),
-                            ClipRRect(
-                              borderRadius:
-                                  BorderRadius.circular(GrowthRadii.icon),
-                              child: Image.file(
-                                File(path),
-                                width: 64,
-                                height: 64,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            const SizedBox(width: GrowthSpacing.md),
-                            Expanded(
-                              child: Text(
-                                '第 ${i + 1} 页',
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined,
-                                  size: 20, color: GrowthColors.primary),
-                              onPressed: () => widget.onEdit(path),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded,
-                                  size: 20, color: GrowthColors.warning),
-                              onPressed: () {
-                                setState(() {
-                                  widget.shots.removeAt(i);
-                                  widget.onChanged();
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+          IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => context.pop(),
           ),
+          const Spacer(),
+          // 闪光灯
+          IconButton(
+            icon: Icon(
+              _flash == FlashMode.off ? Icons.flash_off_rounded : Icons.flash_on_rounded,
+              color: _flash == FlashMode.off ? Colors.white54 : GrowthColors.warning,
+            ),
+            onPressed: () {
+              setState(() {
+                _flash = _flash == FlashMode.off ? FlashMode.on : FlashMode.off;
+              });
+              _controller?.setFlashMode(_flash);
+            },
+          ),
+          // 网格开关
+          IconButton(
+            icon: Icon(
+              Icons.grid_on_rounded,
+              color: _gridOn ? GrowthColors.primary : Colors.white54,
+            ),
+            onPressed: () => setState(() => _gridOn = !_gridOn),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideOverlay() {
+    return IgnorePointer(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+        decoration: BoxDecoration(
+          border: Border.all(color: GrowthColors.primary.withValues(alpha: 0.6), width: 1.5),
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 16, right: 16, top: 12,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 多页模式缩略图堆叠
+          if (_multiPageMode && _sessionQueue.isNotEmpty) ...[
+            SizedBox(
+              height: 56,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _sessionQueue.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                itemBuilder: (context, index) {
+                  final img = _sessionQueue[index];
+                  return GestureDetector(
+                    onTap: () => _removeFromQueue(index),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: _stackPulse && index == _sessionQueue.length - 1 ? 52 : 48,
+                      height: _stackPulse && index == _sessionQueue.length - 1 ? 52 : 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: GrowthColors.primary.withValues(alpha: 0.5)),
+                        image: DecorationImage(
+                          image: File(File(img.enhancedPath).existsSync()
+                              ? img.enhancedPath : img.originalPath),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      child: Align(
+                        alignment: Alignment.topRight,
+                        child: Container(
+                          margin: const EdgeInsets.all(2),
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text('${index + 1}',
+                              style: const TextStyle(fontSize: 9, color: Colors.white)),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+
+          Row(
+            children: [
+              // 左侧：相册导入
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.photo_library_rounded, color: Colors.white),
+                      onPressed: _pickFromGallery,
+                      tooltip: '相册',
+                    ),
+                    const Text('相册',
+                        style: TextStyle(fontSize: 10, color: Colors.white70)),
+                  ],
+                ),
+              ),
+
+              // 中央：快门按钮
+              GestureDetector(
+                onTap: _shooting ? null : _shoot,
+                onLongPress: _shooting ? null : _shoot,
+                child: Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                    color: _shooting ? Colors.white30 : Colors.white24,
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _shooting ? Colors.white54 : Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 右侧：单页/多页切换
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        _multiPageMode ? Icons.view_module_rounded : Icons.crop_free_rounded,
+                        color: _multiPageMode ? GrowthColors.primary : Colors.white70,
+                      ),
+                      onPressed: _toggleMultiPage,
+                      tooltip: _multiPageMode ? '多页模式' : '单页模式',
+                    ),
+                    Text(_multiPageMode ? '多页' : '单页',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: _multiPageMode ? GrowthColors.primary : Colors.white70,
+                        )),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // 多页模式：确认进入保存
+          if (_multiPageMode && _sessionQueue.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            GrowthButton(
+              label: '确认 (${_sessionQueue.length}张)',
+              expanded: true,
+              onPressed: _goToSaveFromQueue,
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// 图片归档：入库即压缩（长边 1600px、q80，Part 4.1）
-Future<String> archiveImage(String sourcePath) async {
-  final dir = await getApplicationDocumentsDirectory();
-  final captureDir = Directory(p.join(dir.path, 'captures'))
-    ..createSync(recursive: true);
-  final target = File(p.join(
-    captureDir.path,
-    'img_${DateTime.now().millisecondsSinceEpoch}.jpg',
-  ));
-  try {
-    final compressed = await FlutterImageCompress.compressAndGetFile(
-      sourcePath,
-      target.path,
-      minWidth: 1600,
-      minHeight: 1600,
-      quality: 80,
-    );
-    if (compressed != null) {
-      return compressed.path;
-    }
-  } catch (_) {
-    // 压缩失败回落原图复制，不阻塞录入
-  }
-  await File(sourcePath).copy(target.path);
-  return target.path;
+/// 已捕获的图片（多页队列项）
+class CapturedImage {
+  const CapturedImage({required this.originalPath, required this.enhancedPath});
+  final String originalPath;
+  final String enhancedPath;
 }
