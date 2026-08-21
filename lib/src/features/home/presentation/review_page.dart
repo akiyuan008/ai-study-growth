@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:drift/drift.dart' hide Column, Table;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import 'package:intl/intl.dart';
 
@@ -13,6 +12,7 @@ import '../../../core/di/providers.dart';
 import '../../../data/local/app_database.dart';
 import '../../../data/services/review_scheduler.dart';
 import '../../../design_system/design_system.dart';
+import 'main_shell_page.dart' show shellTabProvider;
 import '../../learning/learning_providers.dart';
 
 /// SM-2 推荐复习项（带理由标签）
@@ -164,7 +164,8 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
                 title: '太棒了！',
                 subtitle: '没有需要复习的题目',
                 actionLabel: '去拍题',
-                onAction: () => context.push('/capture'),
+                onAction: () =>
+                    ref.read(shellTabProvider.notifier).state = 0,
               );
             }
             return ListView(

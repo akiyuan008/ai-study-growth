@@ -239,8 +239,12 @@ abstract final class GrowthBackgrounds {
     colors: [Color(0xFFEEF1FB), Color(0xFFF6F7F9)],
   );
 
-  /// 深色冻结期内仅作占位（与 light 相同）
-  static const LinearGradient dark = light;
+  /// 深色背景：深空蓝黑渐变（#12141C → #1A1D29），玻璃卡片衬底
+  static const LinearGradient dark = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF12141C), Color(0xFF1A1D29)],
+  );
 }
 
 /// 主按钮渐变（靛蓝系胶囊）

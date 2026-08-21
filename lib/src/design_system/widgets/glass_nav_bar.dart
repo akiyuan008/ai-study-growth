@@ -24,14 +24,14 @@ class GlassNavBar extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.onDestinationSelected,
-    required this.onCameraTap,
+    this.onCameraTap,
   });
 
-  /// 常规项（相机键在中间固定，左右自动分配）
+  /// 常规项；onCameraTap 为 null 时不显示中央相机键
   final List<GlassNavItem> items;
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
-  final VoidCallback onCameraTap;
+  final VoidCallback? onCameraTap;
 
   static const double barHeight = 64;
 
@@ -42,8 +42,8 @@ class GlassNavBar extends StatelessWidget {
     final navColor = isLight ? GrowthColors.glassLight : GrowthColors.glassDark;
 
     // 相机键居中：左侧 items.length ~/ 2 项，其余在右
-    // 3 项 → 错题本 | [相机] | 复习 | 设置
-    final leftCount = items.length ~/ 2;
+    final hasCamera = onCameraTap != null;
+    final leftCount = hasCamera ? items.length ~/ 2 : 0;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -77,8 +77,7 @@ class GlassNavBar extends StatelessWidget {
                           onTap: () => onDestinationSelected(i),
                         ),
                       ),
-                    // 中央相机键（嵌入 dock）
-                    _CameraButton(onTap: onCameraTap),
+                    if (hasCamera) _CameraButton(onTap: onCameraTap!),
                     for (var i = leftCount; i < items.length; i++)
                       Expanded(
                         child: _NavButton(

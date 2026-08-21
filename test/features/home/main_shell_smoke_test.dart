@@ -38,21 +38,21 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('主壳渲染：dock 三项 + 相机键都在', (tester) async {
+  testWidgets('主壳渲染：dock 四项（拍照|错题本|复习|设置）', (tester) async {
     await pumpShell(tester);
 
     expect(find.byType(MainShellPage), findsOneWidget);
-    // 错题本：页栏标题 + dock 标签各一
-    expect(find.text('错题本'), findsNWidgets(2));
+    // dock 四个标签都在（默认 Tab=拍照，错题本页栏标题此时不渲染）
+    expect(find.text('拍照'), findsOneWidget);
+    expect(find.text('错题本'), findsOneWidget);
     expect(find.text('复习'), findsOneWidget);
     expect(find.text('设置'), findsOneWidget);
-    expect(find.byIcon(Icons.camera_alt_rounded), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('切到复习 Tab 不崩', (tester) async {
+  testWidgets('切到错题本 Tab 不崩', (tester) async {
     await pumpShell(tester);
-    await tester.tap(find.text('复习'));
+    await tester.tap(find.text('错题本'));
     await tester.pump();
     expect(tester.takeException(), isNull);
   });

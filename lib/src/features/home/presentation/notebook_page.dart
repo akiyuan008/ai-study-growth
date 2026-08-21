@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'export_preview_page.dart';
+import 'main_shell_page.dart' show shellTabProvider;
 import '../../../data/local/app_database.dart';
 import '../../../design_system/design_system.dart';
 import '../../learning/learning_providers.dart';
@@ -175,7 +176,8 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
                   child: GrowthButton(
                     label: '拍题',
                     icon: Icons.camera_alt_rounded,
-                    onPressed: () => context.push('/capture'),
+                    onPressed: () =>
+                        ref.read(shellTabProvider.notifier).state = 0,
                   ),
                 ),
               ],
@@ -195,7 +197,8 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
                 title: '错题本还是空的',
                 subtitle: '拍下第一道错题，把它变成成长资产',
                 actionLabel: '拍第一道题',
-                onAction: () => context.push('/capture'),
+                onAction: () =>
+                    ref.read(shellTabProvider.notifier).state = 0,
               );
             }
             final counts = _subjectCounts(all);

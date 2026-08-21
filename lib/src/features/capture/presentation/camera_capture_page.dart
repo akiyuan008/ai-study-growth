@@ -24,7 +24,10 @@ final scannerBridgeProvider = Provider<ScannerBridge>((ref) {
 /// - 相册导入唯一入口
 /// - OpenCV 仅可选用于自动检测，未加载时手动功能全部可用
 class CameraCapturePage extends ConsumerStatefulWidget {
-  const CameraCapturePage({super.key});
+  const CameraCapturePage({super.key, this.embedded = false});
+
+  /// 主壳 Tab 内嵌模式：隐藏返回按钮，随 Tab 生命周期
+  final bool embedded;
 
   @override
   ConsumerState<CameraCapturePage> createState() => _CameraCapturePageState();
@@ -457,10 +460,11 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
       ),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-            onPressed: () => context.pop(),
-          ),
+          if (!widget.embedded)
+            IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+              onPressed: () => context.pop(),
+            ),
           const Spacer(),
           // 闪光灯
           IconButton(

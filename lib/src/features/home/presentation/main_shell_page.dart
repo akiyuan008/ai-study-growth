@@ -22,16 +22,16 @@ class MainShellPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tab = ref.watch(_shellTabProvider);
+    final tab = ref.watch(shellTabProvider);
     return _ShellLifecycle(
       child: Scaffold(
         body: const _ShellBody(),
         bottomNavigationBar: GlassNavBar(
           selectedIndex: tab,
           onDestinationSelected: (i) =>
-              ref.read(_shellTabProvider.notifier).state = i,
-          onCameraTap: () => context.push('/capture'),
+              ref.read(shellTabProvider.notifier).state = i,
           items: const [
+            GlassNavItem(icon: GrowthIconType.camera, label: '拍照'),
             GlassNavItem(icon: GrowthIconType.book, label: '错题本'),
             GlassNavItem(icon: GrowthIconType.replay, label: '复习'),
             GlassNavItem(icon: GrowthIconType.gear, label: '设置'),
@@ -86,16 +86,27 @@ class _ShellBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tab = ref.watch(_shellTabProvider);
+    final tab = ref.watch(shellTabProvider);
     return switch (tab) {
-      0 => const _NotebookTab(),
-      1 => const _ReviewTab(),
+      0 => const _CameraTab(),
+      1 => const _NotebookTab(),
+      2 => const _ReviewTab(),
       _ => const _SettingsTab(),
     };
   }
 }
 
-final _shellTabProvider = StateProvider<int>((ref) => 0);
+/// 主壳 Tab：0 拍照 / 1 错题本 / 2 复习 / 3 设置
+final shellTabProvider = StateProvider<int>((ref) => 0);
+
+class _CameraTab extends ConsumerWidget {
+  const _CameraTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return const CameraCapturePage(embedded: true);
+  }
+}
 
 class _NotebookTab extends ConsumerWidget {
   const _NotebookTab();
