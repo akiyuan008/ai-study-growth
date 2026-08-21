@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart' as ip;
@@ -39,7 +38,6 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
 
   FlashMode _flash = FlashMode.off;
   bool _gridOn = true;
-  bool _helpExpanded = false;
   bool _guideVisible = true;
   bool _shooting = false;
 
@@ -63,9 +61,6 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
     _initCamera();
   }
 
-  String _opencvVersion = '';
-  bool _opencvAvailable = false;
-
   Future<void> _loadPrefs() async {
     final prefs = ref.read(sharedPreferencesProvider);
     setState(() {
@@ -73,18 +68,6 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
       _guideVisible = !(prefs.getBool('capture.guide_dismissed') ?? false);
       _multiPageMode = prefs.getBool('capture.multi_page_mode') ?? false;
     });
-    // 检查 OpenCV 可用性（不阻塞）
-    try {
-      final status = await ref.read(scannerBridgeProvider).getStatus();
-      if (mounted) {
-        setState(() {
-          _opencvVersion = status['version']?.toString() ?? '';
-          _opencvAvailable = status['loaded'] == true;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _opencvAvailable = false);
-    }
   }
 
   /// 引导框归一化 ROI 串
@@ -184,6 +167,7 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
           if (mounted) setState(() => _guideVisible = false);
         }
       } else {
+        if (!mounted) return;
         // 单页模式：直接进入编辑屏
         final editUri = Uri(
           path: '/capture/edit',
@@ -193,7 +177,7 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
             'roi': _roiQuery,
           },
         );
-        context.push(editUri.toString());
+        unawaited(context.push(editUri.toString()));
       }
     } catch (e) {
       if (mounted) AppToast.error(context, '拍照失败：请重试');
@@ -241,6 +225,7 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
             _stackPulse = true;
           });
         } else {
+          if (!mounted) return;
           final editUri = Uri(
             path: '/capture/edit',
             queryParameters: {
@@ -248,7 +233,7 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
               'source': CaptureSource.album.name,
             },
           );
-          context.push(editUri.toString());
+          unawaited(context.push(editUri.toString()));
           break; // 单页只取第一张
         }
       }
@@ -376,10 +361,9 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
               color: _flash == FlashMode.off ? Colors.white54 : GrowthColors.warning,
             ),
             onPressed: () {
-              setState(() {
-                _flash = _flash == FlashMode.off ? FlashMode.on : FlashMode.off;
-              });
-              _controller?.setFlashMode(_flash);
+              final next = _flash == FlashMode.off ? FlashMode.torch : FlashMode.off;
+              setState(() => _flash = next);
+              unawaited(_controller?.setFlashMode(next).catchError((_) {}));
             },
           ),
           // 网格开关

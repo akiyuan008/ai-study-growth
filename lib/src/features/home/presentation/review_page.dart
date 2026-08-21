@@ -1,24 +1,22 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/drift.dart' hide Column, Table;
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:intl/intl.dart';
+
 import '../../../core/di/providers.dart';
 import '../../../data/local/app_database.dart';
-import '../../../data/repositories/question_repository.dart';
 import '../../../data/services/review_scheduler.dart';
 import '../../../design_system/design_system.dart';
 import '../../learning/learning_providers.dart';
-import 'export_preview_page.dart';
 
 /// SM-2 推荐复习项（带理由标签）
 class Sm2RecommendedItem {
   const Sm2RecommendedItem({
+    required this.cardDbId,
     required this.question,
     required this.card,
     required this.reasons,
@@ -27,6 +25,8 @@ class Sm2RecommendedItem {
     required this.intervalHistory,
   });
 
+  /// review_cards 表主键（仓储评分用）
+  final String cardDbId;
   final QuestionRecord question;
   final Sm2Card card;
   final List<String> reasons;
@@ -119,6 +119,7 @@ final reviewRecommendProvider = FutureProvider.autoDispose<ReviewRecommendData>(
     }
 
     items.add(Sm2RecommendedItem(
+      cardDbId: card.id,
       question: q,
       card: sm2Card,
       reasons: reasons,
@@ -322,37 +323,31 @@ class _ReviewCard extends ConsumerWidget {
     );
   }
 
-  void _rate(BuildContext context, WidgetRef ref, Sm2RecommendedItem item, int quality) async {
-    final db = ref.read(databaseProvider);
-    final scheduler = Sm2Scheduler();
-    final result = scheduler.rate(item.card, quality);
-    await (db.transaction(() async {
-      await (db.update(db.reviewCards)
-            ..where((t) => t.questionId.equals(item.question.id)))
-        .write(ReviewCardsCompanion(
-        reps: Value(result.card.reps),
-        easinessFactor: Value(result.card.easinessFactor),
-        intervalDays: Value(result.card.intervalDays),
-        due: Value(result.card.due),
-        lastReviewAt: Value(result.card.lastReview),
-      ));
-      await db.into(db.reviewLogs).insert(ReviewLogsCompanion.insert(
-        questionId: item.question.id,
-        reviewedAt: result.reviewLog.reviewedAt,
-        rating: result.reviewLog.quality,
-      ));
-    }));
+  /// 评分统一走仓储：SM-2 推进 + 日志 + 掌握度联动 + 学习事件，一处不落
+  Future<void> _rate(
+      BuildContext context, WidgetRef ref, Sm2RecommendedItem item, int quality) async {
+    final before = item.card.due;
+    await ref
+        .read(reviewRepositoryProvider)
+        .rate(cardId: item.cardDbId, quality: quality);
+    await ref.read(backupStateProvider).markDirty();
     ref.invalidate(reviewRecommendProvider);
-    AppToast.success(context, '已标记为"${result.reviewLog.qualityLabel}"');
+    if (!context.mounted) return;
+    // 下次日期变化证据：仍错变早 / 已会变晚
+    final db = ref.read(databaseProvider);
+    final rows = await (db.select(db.reviewCards)
+          ..where((t) => t.id.equals(item.cardDbId)))
+        .get();
+    final label = switch (quality) { 1 => '仍错', 3 => '模糊', _ => '已会' };
+    if (!context.mounted) return;
+    if (rows.isNotEmpty) {
+      final fmt = DateFormat('MM-dd');
+      AppToast.success(context,
+          '已标记「$label」 · 下次复习 ${fmt.format(before)} → ${fmt.format(rows.first.due)}');
+    } else {
+      AppToast.success(context, '已标记「$label」');
+    }
   }
-}
-
-int _mapMastery(Sm2Card card) {
-  if (card.reps >= 3 && card.intervalDays >= 21) return 5;
-  if (card.intervalDays >= 60) return 5;
-  if (card.intervalDays >= 21) return 4;
-  if (card.reps > 0) return 3;
-  return 0;
 }
 
 class _NextDate extends StatelessWidget {

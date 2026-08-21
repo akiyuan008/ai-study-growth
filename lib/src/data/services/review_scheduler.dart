@@ -9,7 +9,11 @@
 class Sm2Scheduler {
   static const double _initialEf = 2.5;
   static const double _minEf = 1.3;
+  static const double _maxEf = 3.0;
   static const int _initialIntervalDays = 1;
+
+  /// 间隔封顶 365 天：防指数增长溢出 DateTime 范围，也符合错题本复习场景
+  static const int _maxIntervalDays = 365;
 
   /// 从持久化字段还原一张 SM-2 卡片
   Sm2Card cardFromStorage({
@@ -56,6 +60,7 @@ class Sm2Scheduler {
     // SM-2 EF 更新公式
     var newEf = previousEf + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
     if (newEf < _minEf) newEf = _minEf;
+    if (newEf > _maxEf) newEf = _maxEf;
 
     // 计算新间隔
     int newInterval;
@@ -74,6 +79,8 @@ class Sm2Scheduler {
       if (newInterval < 1) newInterval = 1;
       newReps = card.reps + 1;
     }
+    // 间隔封顶：防止长期连续答对后指数膨胀
+    if (newInterval > _maxIntervalDays) newInterval = _maxIntervalDays;
 
     final newDue = at.add(Duration(days: newInterval));
 
@@ -98,13 +105,13 @@ class Sm2Scheduler {
     return (card: newCard, reviewLog: log);
   }
 
-  /// 预览三档评分的下次复习间隔（复习页按钮展示用）
+  /// 预览三档评分的下次复习间隔（复习页按钮展示用）。
+  /// 与真实 rate() 逻辑完全一致，展示即结果。
   Map<int, Duration> previewIntervals(Sm2Card card, {DateTime? now}) {
     final at = now ?? DateTime.now();
     return {
-      1: Duration(days: _initialIntervalDays), // 仍错 → 1天
-      3: Duration(days: (card.intervalDays * card.easinessFactor).round().clamp(1, 365)), // 模糊
-      5: Duration(days: ((card.intervalDays * card.easinessFactor) * 1.5).round().clamp(1, 730)), // 已会 → 更长
+      for (final q in [1, 3, 5])
+        q: rate(card, q, now: at).card.due.difference(at),
     };
   }
 

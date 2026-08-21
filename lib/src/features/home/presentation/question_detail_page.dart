@@ -9,7 +9,6 @@ import 'package:intl/intl.dart';
 import '../../../core/di/providers.dart';
 import '../../../data/local/app_database.dart';
 import '../../../data/repositories/question_repository.dart';
-import '../../../data/services/review_scheduler.dart';
 import '../../../design_system/design_system.dart';
 import '../../../domain/models/generated_exercise.dart';
 import '../../../domain/models/subject.dart';
@@ -466,20 +465,11 @@ class _MemoryStateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final card = data.card;
-    final scheduler = Sm2Scheduler();
     final now = DateTime.now();
 
     String strengthText = '—';
     String nextText = '—';
     if (card != null) {
-      final sm2Card = scheduler.cardFromStorage(
-        cardId: card.createdAt.millisecondsSinceEpoch,
-        reps: card.reps,
-        easinessFactor: card.easinessFactor,
-        intervalDays: card.intervalDays,
-        due: card.due,
-        lastReview: card.lastReviewAt,
-      );
       // SM-2 没有 retrievability，用简易保留率
       final r = card.lastReviewAt == null
           ? 0.0

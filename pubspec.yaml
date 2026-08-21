@@ -42,6 +42,7 @@ dependencies:
   pointycastle: ^3.9.1
   flutter_image_compress: ^2.3.0
   connectivity_plus: ^6.0.5
+  http: ^1.2.0
   share_plus: ^10.0.2
 
   # PDF 导出（Part 6.2：离线生成，打印/分享）

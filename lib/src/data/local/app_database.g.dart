@@ -2656,8 +2656,8 @@ class $ReviewCardsTable extends ReviewCards
           .read(DriftSqlType.double, data['${effectivePrefix}stability'])!,
       difficulty: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}difficulty'])!,
-      easinessFactor: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}easiness_factor'])!,
+      easinessFactor: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}easiness_factor'])!,
       intervalDays: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}interval_days'])!,
       reps: attachedDatabase.typeMapping
@@ -2683,18 +2683,18 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
   /// 关联题目
   final String questionId;
 
-  /// 到期时间（FSRS due）
+  /// 到期时间
   final DateTime due;
 
-  /// FSRS 状态：0 new / 1 learning / 2 review / 3 relearning
+  /// SM-2 评分档：0 new / 1 learning / 2 review / 3 relearning（兼容旧数据）
   final int state;
 
-  /// FSRS 学习/再学习阶段步序（review 状态为 null）
+  /// 旧 FSRS 字段（保留兼容旧数据，不再使用）
   final int? step;
-
-  /// FSRS 状态参数
   final double stability;
   final double difficulty;
+
+  /// SM-2 算法字段
   final double easinessFactor;
   final int intervalDays;
   final int reps;
@@ -2747,6 +2747,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       step: step == null && nullToAbsent ? const Value.absent() : Value(step),
       stability: Value(stability),
       difficulty: Value(difficulty),
+      easinessFactor: Value(easinessFactor),
+      intervalDays: Value(intervalDays),
       reps: Value(reps),
       lapses: Value(lapses),
       lastReviewAt: lastReviewAt == null && nullToAbsent
@@ -2767,6 +2769,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       step: serializer.fromJson<int?>(json['step']),
       stability: serializer.fromJson<double>(json['stability']),
       difficulty: serializer.fromJson<double>(json['difficulty']),
+      easinessFactor: serializer.fromJson<double>(json['easinessFactor']),
+      intervalDays: serializer.fromJson<int>(json['intervalDays']),
       reps: serializer.fromJson<int>(json['reps']),
       lapses: serializer.fromJson<int>(json['lapses']),
       lastReviewAt: serializer.fromJson<DateTime?>(json['lastReviewAt']),
@@ -2784,6 +2788,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       'step': serializer.toJson<int?>(step),
       'stability': serializer.toJson<double>(stability),
       'difficulty': serializer.toJson<double>(difficulty),
+      'easinessFactor': serializer.toJson<double>(easinessFactor),
+      'intervalDays': serializer.toJson<int>(intervalDays),
       'reps': serializer.toJson<int>(reps),
       'lapses': serializer.toJson<int>(lapses),
       'lastReviewAt': serializer.toJson<DateTime?>(lastReviewAt),
@@ -2799,6 +2805,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
           Value<int?> step = const Value.absent(),
           double? stability,
           double? difficulty,
+          double? easinessFactor,
+          int? intervalDays,
           int? reps,
           int? lapses,
           Value<DateTime?> lastReviewAt = const Value.absent(),
@@ -2811,6 +2819,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
         step: step.present ? step.value : this.step,
         stability: stability ?? this.stability,
         difficulty: difficulty ?? this.difficulty,
+        easinessFactor: easinessFactor ?? this.easinessFactor,
+        intervalDays: intervalDays ?? this.intervalDays,
         reps: reps ?? this.reps,
         lapses: lapses ?? this.lapses,
         lastReviewAt:
@@ -2828,6 +2838,12 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       stability: data.stability.present ? data.stability.value : this.stability,
       difficulty:
           data.difficulty.present ? data.difficulty.value : this.difficulty,
+      easinessFactor: data.easinessFactor.present
+          ? data.easinessFactor.value
+          : this.easinessFactor,
+      intervalDays: data.intervalDays.present
+          ? data.intervalDays.value
+          : this.intervalDays,
       reps: data.reps.present ? data.reps.value : this.reps,
       lapses: data.lapses.present ? data.lapses.value : this.lapses,
       lastReviewAt: data.lastReviewAt.present
@@ -2858,8 +2874,20 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
   }
 
   @override
-  int get hashCode => Object.hash(id, questionId, due, state, step, stability,
-      difficulty, reps, lapses, lastReviewAt, createdAt);
+  int get hashCode => Object.hash(
+      id,
+      questionId,
+      due,
+      state,
+      step,
+      stability,
+      difficulty,
+      easinessFactor,
+      intervalDays,
+      reps,
+      lapses,
+      lastReviewAt,
+      createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2871,6 +2899,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
           other.step == this.step &&
           other.stability == this.stability &&
           other.difficulty == this.difficulty &&
+          other.easinessFactor == this.easinessFactor &&
+          other.intervalDays == this.intervalDays &&
           other.reps == this.reps &&
           other.lapses == this.lapses &&
           other.lastReviewAt == this.lastReviewAt &&
@@ -3178,7 +3208,7 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
   final int id;
   final String questionId;
 
-  /// FSRS 评分：1 again / 2 hard / 3 good / 4 easy
+  /// SM-2 评分：1=仍错, 3=模糊, 5=已会
   final int rating;
   final DateTime reviewedAt;
   final int? durationMs;
@@ -4145,13 +4175,9 @@ class $LearningEventsTable extends LearningEvents
 
 class LearningEvent extends DataClass implements Insertable<LearningEvent> {
   final int id;
-
-  /// capture / analysis_done / review_done / exercise_done / followup_asked ...
   final String eventType;
   final String? questionId;
   final DateTime at;
-
-  /// 附加事实，JSON（如掌握度变化、复习评分）
   final String payload;
   const LearningEvent(
       {required this.id,
@@ -4511,17 +4537,13 @@ class GrowthMetric extends DataClass implements Insertable<GrowthMetric> {
   /// yyyy-MM-dd，一天一行
   final String date;
 
-  /// 学习 / 坚持 / 恢复，0-100（专注域已删除，三能力模型）
+  /// 学习 / 坚持 / 恢复，0-100（三能力模型）
   final double learningScore;
   final double persistenceScore;
   final double recoveryScore;
-
-  /// 当日事实汇总（供快照解释与审计）
   final int reviewDone;
   final int reviewDue;
   final int streak;
-
-  /// 完整计算明细，JSON
   final String snapshotJson;
   const GrowthMetric(
       {required this.date,
@@ -4925,12 +4947,8 @@ class $AiProvidersTable extends AiProviders
 class AiProvider extends DataClass implements Insertable<AiProvider> {
   final String id;
   final String name;
-
-  /// OpenAI 兼容 Base URL，如 https://api.openai.com/v1
   final String baseUrl;
   final String model;
-
-  /// flutter_secure_storage 中存放 apiKey 的键名
   final String keyRef;
   final bool isDefault;
   final DateTime createdAt;
@@ -5356,26 +5374,12 @@ class $AiCallLogsTable extends AiCallLogs
 
 class AiCallLog extends DataClass implements Insertable<AiCallLog> {
   final int id;
-
-  /// 用途：classify（知识点分类）/ split（拆题）/ analyze（解析）/ exercise（举一反三）/ review_plan（复习规划）/ path_advice（路径建议）
   final String purpose;
-
-  /// 请求体 JSON
   final String requestBody;
-
-  /// 响应体 JSON 或文本摘要
   final String responseBody;
-
-  /// HTTP 状态码
   final int httpStatus;
-
-  /// 是否成功
   final bool success;
-
-  /// 错误档位（AiErrorTier 名），可空
   final String? errorTier;
-
-  /// 耗时（毫秒）
   final int durationMs;
   final DateTime at;
   const AiCallLog(
@@ -6889,6 +6893,8 @@ typedef $$ReviewCardsTableCreateCompanionBuilder = ReviewCardsCompanion
   Value<int?> step,
   Value<double> stability,
   Value<double> difficulty,
+  Value<double> easinessFactor,
+  Value<int> intervalDays,
   Value<int> reps,
   Value<int> lapses,
   Value<DateTime?> lastReviewAt,
@@ -6904,6 +6910,8 @@ typedef $$ReviewCardsTableUpdateCompanionBuilder = ReviewCardsCompanion
   Value<int?> step,
   Value<double> stability,
   Value<double> difficulty,
+  Value<double> easinessFactor,
+  Value<int> intervalDays,
   Value<int> reps,
   Value<int> lapses,
   Value<DateTime?> lastReviewAt,
@@ -6940,6 +6948,13 @@ class $$ReviewCardsTableFilterComposer
 
   ColumnFilters<double> get difficulty => $composableBuilder(
       column: $table.difficulty, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get easinessFactor => $composableBuilder(
+      column: $table.easinessFactor,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get intervalDays => $composableBuilder(
+      column: $table.intervalDays, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get reps => $composableBuilder(
       column: $table.reps, builder: (column) => ColumnFilters(column));
@@ -6983,6 +6998,14 @@ class $$ReviewCardsTableOrderingComposer
 
   ColumnOrderings<double> get difficulty => $composableBuilder(
       column: $table.difficulty, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get easinessFactor => $composableBuilder(
+      column: $table.easinessFactor,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get intervalDays => $composableBuilder(
+      column: $table.intervalDays,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<int> get reps => $composableBuilder(
       column: $table.reps, builder: (column) => ColumnOrderings(column));
@@ -7028,6 +7051,12 @@ class $$ReviewCardsTableAnnotationComposer
   GeneratedColumn<double> get difficulty => $composableBuilder(
       column: $table.difficulty, builder: (column) => column);
 
+  GeneratedColumn<double> get easinessFactor => $composableBuilder(
+      column: $table.easinessFactor, builder: (column) => column);
+
+  GeneratedColumn<int> get intervalDays => $composableBuilder(
+      column: $table.intervalDays, builder: (column) => column);
+
   GeneratedColumn<int> get reps =>
       $composableBuilder(column: $table.reps, builder: (column) => column);
 
@@ -7071,6 +7100,8 @@ class $$ReviewCardsTableTableManager extends RootTableManager<
             Value<int?> step = const Value.absent(),
             Value<double> stability = const Value.absent(),
             Value<double> difficulty = const Value.absent(),
+            Value<double> easinessFactor = const Value.absent(),
+            Value<int> intervalDays = const Value.absent(),
             Value<int> reps = const Value.absent(),
             Value<int> lapses = const Value.absent(),
             Value<DateTime?> lastReviewAt = const Value.absent(),
@@ -7085,6 +7116,8 @@ class $$ReviewCardsTableTableManager extends RootTableManager<
             step: step,
             stability: stability,
             difficulty: difficulty,
+            easinessFactor: easinessFactor,
+            intervalDays: intervalDays,
             reps: reps,
             lapses: lapses,
             lastReviewAt: lastReviewAt,
@@ -7099,6 +7132,8 @@ class $$ReviewCardsTableTableManager extends RootTableManager<
             Value<int?> step = const Value.absent(),
             Value<double> stability = const Value.absent(),
             Value<double> difficulty = const Value.absent(),
+            Value<double> easinessFactor = const Value.absent(),
+            Value<int> intervalDays = const Value.absent(),
             Value<int> reps = const Value.absent(),
             Value<int> lapses = const Value.absent(),
             Value<DateTime?> lastReviewAt = const Value.absent(),
@@ -7113,6 +7148,8 @@ class $$ReviewCardsTableTableManager extends RootTableManager<
             step: step,
             stability: stability,
             difficulty: difficulty,
+            easinessFactor: easinessFactor,
+            intervalDays: intervalDays,
             reps: reps,
             lapses: lapses,
             lastReviewAt: lastReviewAt,

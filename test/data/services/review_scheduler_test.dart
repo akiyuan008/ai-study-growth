@@ -1,132 +1,126 @@
 import 'package:ai_study_growth/src/data/services/review_scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fsrs/fsrs.dart';
 
 void main() {
-  final scheduler = ReviewScheduler();
-  final now = DateTime.utc(2026, 8, 18, 10);
+  final scheduler = Sm2Scheduler();
+  final now = DateTime(2026, 8, 21, 10);
 
-  Card newCard() => scheduler.cardFromStorage(
-        cardId: 1,
-        state: 0,
-        stability: 0,
-        difficulty: 0,
-        due: now,
-      );
+  Sm2Card newCard() => scheduler.newCard(cardId: 1);
 
-  test('新卡还原：learning 状态、无 stability/difficulty', () {
-    final card = newCard();
-    expect(card.state, State.learning);
-    expect(card.step, 0);
-    expect(card.stability, isNull);
-    expect(card.difficulty, isNull);
+  group('新卡', () {
+    test('初始状态：reps=0 / EF=2.5 / interval=0', () {
+      final card = newCard();
+      expect(card.reps, 0);
+      expect(card.easinessFactor, 2.5);
+      expect(card.intervalDays, 0);
+      expect(card.statusText, '新题');
+    });
+
+    test('评 已会(5)：首次间隔 1 天，EF 上升', () {
+      final rated = scheduler.rate(newCard(), 5, now: now);
+      expect(rated.card.intervalDays, 1);
+      expect(rated.card.reps, 1);
+      expect(rated.card.due, now.add(const Duration(days: 1)));
+      expect(rated.card.easinessFactor, greaterThan(2.5));
+    });
+
+    test('评 仍错(1)：间隔重置 1 天，reps 归零，EF 下降', () {
+      final rated = scheduler.rate(newCard(), 1, now: now);
+      expect(rated.card.intervalDays, 1);
+      expect(rated.card.reps, 0);
+      expect(rated.card.easinessFactor, lessThan(2.5));
+    });
   });
 
-  test('新卡评 again：停留学习态，约 1 分钟后再现', () {
-    final rated = scheduler.rate(newCard(), Rating.again, now: now);
-    final updated = rated.card;
-    final reviewLog = rated.reviewLog;
-    expect(updated.state, State.learning);
-    expect(updated.due.difference(now), const Duration(minutes: 1));
-    expect(reviewLog.rating, Rating.again);
-  });
+  group('连续复习', () {
+    test('连续 已会：间隔逐次拉长（仍错变早/已会变晚的方向性）', () {
+      var card = newCard();
+      final intervals = <int>[];
+      for (var i = 0; i < 4; i++) {
+        card = scheduler.rate(card, 5, now: now).card;
+        intervals.add(card.intervalDays);
+      }
+      // 严格递增
+      for (var i = 1; i < intervals.length; i++) {
+        expect(intervals[i], greaterThan(intervals[i - 1]));
+      }
+    });
 
-  test('新卡评 easy：直接进入复习态，间隔至少 1 天', () {
-    final updated = scheduler.rate(newCard(), Rating.easy, now: now).card;
-    expect(updated.state, State.review);
-    expect(updated.stability, isNotNull);
-    expect(updated.due.difference(now).inDays, greaterThanOrEqualTo(1));
-  });
-
-  test('学习态两步走完（good→good）进入复习态并产生 stability', () {
-    var card = newCard();
-    card = scheduler.rate(card, Rating.good, now: now).card;
-    expect(card.state, State.learning);
-    expect(card.step, 1);
-
-    card = scheduler
-        .rate(
-          card,
-          Rating.good,
-          now: now.add(const Duration(minutes: 11)),
-        )
-        .card;
-    expect(card.state, State.review);
-    expect(card.stability, greaterThan(0));
-    expect(card.due.isAfter(now.add(const Duration(days: 1))), isTrue);
-  });
-
-  test('复习态评 again：掉入再学习态', () {
-    var card = newCard();
-    card = scheduler.rate(card, Rating.easy, now: now).card;
-    expect(card.state, State.review);
-
-    card = scheduler
-        .rate(
-          card,
-          Rating.again,
-          now: now.add(const Duration(days: 1)),
-        )
-        .card;
-    expect(card.state, State.relearning);
-  });
-
-  test('未复习卡的可提取率为 0', () {
-    expect(scheduler.retrievability(newCard(), now: now), 0);
-  });
-
-  group('排期器确定性（Part 3.2：禁 LLM 算间隔）', () {
-    test('同输入同评分 → 完全相同的下次到期时间（无随机性）', () {
-      final results = <DateTime>[];
+    test('长间隔后评 仍错：打回 1 天重来', () {
+      var card = newCard();
       for (var i = 0; i < 5; i++) {
-        final s = ReviewScheduler();
-        final card = s.cardFromStorage(
-          cardId: 1,
-          state: 0,
-          stability: 0,
-          difficulty: 0,
-          due: now,
-        );
-        results.add(s.rate(card, Rating.good, now: now).card.due);
+        card = scheduler.rate(card, 5, now: now).card;
       }
-      for (final d in results) {
-        expect(d, results.first);
+      expect(card.intervalDays, greaterThan(5));
+      final lapsed = scheduler.rate(card, 1, now: now).card;
+      expect(lapsed.intervalDays, 1);
+      expect(lapsed.reps, 0);
+    });
+
+    test('EF 下限 1.3：连续 仍错 不再下降', () {
+      var card = newCard();
+      for (var i = 0; i < 10; i++) {
+        card = scheduler.rate(card, 1, now: now).card;
+      }
+      expect(card.easinessFactor, greaterThanOrEqualTo(1.3));
+    });
+
+    test('EF 上限 3.0：连续 已会 不再上升', () {
+      var card = newCard();
+      for (var i = 0; i < 30; i++) {
+        card = scheduler.rate(card, 5, now: now).card;
+      }
+      expect(card.easinessFactor, lessThanOrEqualTo(3.0));
+    });
+  });
+
+  group('预览与实际一致', () {
+    test('previewIntervals 三档 == 真实 rate 结果', () {
+      final card = scheduler.rate(newCard(), 5, now: now).card;
+      final preview = scheduler.previewIntervals(card, now: now);
+      for (final q in [1, 3, 5]) {
+        expect(preview[q], scheduler.rate(card, q, now: now).card.due.difference(now));
       }
     });
 
-    test('评分单调性：easy 的间隔 ≥ good ≥ hard', () {
-      Card freshCard() => scheduler.cardFromStorage(
-            cardId: 1,
-            state: 0,
-            stability: 0,
-            difficulty: 0,
-            due: now,
-          );
-      final easyDue =
-          scheduler.rate(freshCard(), Rating.easy, now: now).card.due;
-      final goodDue =
-          scheduler.rate(freshCard(), Rating.good, now: now).card.due;
-      final hardDue =
-          scheduler.rate(freshCard(), Rating.hard, now: now).card.due;
-      expect(easyDue.isAfter(goodDue) || easyDue.isAtSameMomentAs(goodDue),
-          isTrue);
-      expect(goodDue.isAfter(hardDue), isTrue);
+    test('仍错预览 == 1 天', () {
+      final preview = scheduler.previewIntervals(newCard(), now: now);
+      expect(preview[1], const Duration(days: 1));
     });
+  });
 
-    test('预览间隔与真实评分一致（复习页所见即所得）', () {
-      final card = scheduler.cardFromStorage(
+  group('到期判断', () {
+    test('isDue / overdueDays', () {
+      final due = now.subtract(const Duration(days: 3));
+      final card = Sm2Card(
         cardId: 1,
-        state: 0,
-        stability: 0,
-        difficulty: 0,
-        due: now,
+        reps: 1,
+        easinessFactor: 2.5,
+        intervalDays: 1,
+        due: due,
       );
-      final previews = scheduler.previewIntervals(card, now: now);
-      final actual = scheduler.rate(card, Rating.good, now: now).card.due;
-      expect(
-        (previews[Rating.good] ?? Duration.zero).inMinutes,
-        actual.difference(now).inMinutes,
+      expect(scheduler.isDue(card, now: now), isTrue);
+      expect(scheduler.overdueDays(card, now: now), 3);
+      final future = Sm2Card(
+        cardId: 2,
+        reps: 1,
+        easinessFactor: 2.5,
+        intervalDays: 1,
+        due: now.add(const Duration(days: 1)),
       );
+      expect(scheduler.isDue(future, now: now), isFalse);
+      expect(scheduler.overdueDays(future, now: now), 0);
+    });
+  });
+
+  group('日志', () {
+    test('reviewLog 记录前后 EF/间隔', () {
+      final card = scheduler.rate(newCard(), 5, now: now).card;
+      final rated = scheduler.rate(card, 1, now: now.add(const Duration(days: 1)));
+      expect(rated.reviewLog.quality, 1);
+      expect(rated.reviewLog.qualityLabel, '仍错');
+      expect(rated.reviewLog.previousInterval, card.intervalDays);
+      expect(rated.reviewLog.newInterval, 1);
     });
   });
 }

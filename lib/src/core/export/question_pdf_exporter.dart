@@ -231,12 +231,12 @@ abstract final class QuestionPdfExporter {
                   pw.SizedBox(height: 12),
                   for (final ex in exercises.take(3)) ...[
                     pw.Text(
-                      ex.question,
+                      (ex['question'] ?? '').toString(),
                       style: pw.TextStyle(fontSize: fs, lineSpacing: 3),
                     ),
                     pw.SizedBox(height: 6),
                     pw.Text(
-                      '答案：${ex.answer}',
+                      '答案：${ex['answer'] ?? ''}',
                       style: pw.TextStyle(
                         fontSize: fs - 1,
                         color: PdfColors.grey700,
@@ -339,7 +339,7 @@ abstract final class QuestionPdfExporter {
       try {
         final enhanced = await scanner.enhance(path);
         if (enhanced != null && File(enhanced).existsSync()) {
-          return File(enhanced).readAsBytes();
+          return await File(enhanced).readAsBytes();
         }
       } catch (_) {}
     }

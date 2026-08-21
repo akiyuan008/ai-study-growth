@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -135,7 +136,7 @@ class BackupService {
     final tmpDb = AppDatabase.openFile(dbCopy.path);
     // 不删除整表！只清除 keyRef 指针
     await (tmpDb.update(tmpDb.aiProviders))
-        .write(AiProvidersCompanion(keyRef: const Value(null)));
+        .write(const AiProvidersCompanion(keyRef: Value('')));
     await tmpDb.close();
 
     // 3) manifest（含 AI 配置摘要，不含任何密钥）
@@ -208,7 +209,7 @@ class BackupService {
     }
     final now = DateTime.now();
     try {
-      var bytes = await buildPackage(now: now);
+      final bytes = await buildPackage(now: now);
       final fileName =
           '$_backupPrefix${_stamp(now)}${config.encryptEnabled ? '.zip.enc' : '.zip'}';
 
