@@ -65,9 +65,8 @@ ThemeData buildGrowthTheme(Brightness brightness) {
           titleLarge: GrowthType.cardTitle.copyWith(color: onSurface),
           bodyMedium: GrowthType.body.copyWith(color: onSurface),
           bodySmall: GrowthType.caption.copyWith(
-            color: isLight
-                ? GrowthColors.gray5
-                : onSurface.withValues(alpha: 0.62),
+            // 深色下次要文字用 onSurfaceDarkDim（对比度≥4.5:1）
+            color: isLight ? GrowthColors.gray5 : GrowthColors.onSurfaceDarkDim,
           ),
         ),
     cardTheme: CardThemeData(

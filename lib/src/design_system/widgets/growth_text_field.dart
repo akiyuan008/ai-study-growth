@@ -118,7 +118,8 @@ class _GrowthTextFieldState extends State<GrowthTextField> {
             style: TextStyle(
               fontSize: 12,
               height: 1.4,
-              color: GrowthColors.gray5,
+              color: GrowthColors.muted(
+                  Theme.of(context).brightness == Brightness.light),
             ),
           ),
         ],

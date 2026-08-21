@@ -374,8 +374,10 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
                   _testMessage!,
                   style: TextStyle(
                     fontSize: 13,
-                    color:
-                        _testPassed ? GrowthColors.success : GrowthColors.gray5,
+                    color: _testPassed
+                        ? GrowthColors.success
+                        : GrowthColors.muted(Theme.of(context).brightness ==
+                            Brightness.light),
                   ),
                 ),
               ),

@@ -267,7 +267,8 @@ class _AiProviderSetupPageState extends ConsumerState<AiProviderSetupPage> {
                       _helper!,
                       style: TextStyle(
                         fontSize: 13,
-                        color: GrowthColors.gray5,
+                        color: GrowthColors.muted(
+                            Theme.of(context).brightness == Brightness.light),
                       ),
                     ),
                   ],

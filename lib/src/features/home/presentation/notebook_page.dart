@@ -321,9 +321,15 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
                       MediaQuery.of(context).padding.bottom + GrowthSpacing.sm,
                     ),
                     decoration: BoxDecoration(
-                      color: GrowthColors.glassLight,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? GrowthColors.glassLight
+                          : GrowthColors.glassDark,
                       border: Border(
-                        top: BorderSide(color: GrowthColors.gray2),
+                        top: BorderSide(
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? GrowthColors.gray2
+                                    : GrowthColors.glassBorderDark),
                       ),
                     ),
                     child: Row(
@@ -503,11 +509,16 @@ class _QuestionCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: GrowthMotion.fast,
         decoration: BoxDecoration(
-          color: GrowthColors.glassLight,
+          color: Theme.of(context).brightness == Brightness.light
+              ? GrowthColors.glassLight
+              : GrowthColors.glassDark,
           borderRadius: BorderRadius.circular(GrowthRadii.card),
           border: Border.all(
-            color:
-                selected ? GrowthColors.primary : GrowthColors.glassBorderLight,
+            color: selected
+                ? GrowthColors.primary
+                : (Theme.of(context).brightness == Brightness.light
+                    ? GrowthColors.glassBorderLight
+                    : GrowthColors.glassBorderDark),
             width: selected ? 1.6 : 1,
           ),
         ),

@@ -378,7 +378,8 @@ class _PaperPage extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: settings.fontSize - 2,
-                      color: GrowthColors.gray5,
+                      color: GrowthColors.muted(
+                          Theme.of(context).brightness == Brightness.light),
                     ),
                   ),
                 ),

@@ -533,7 +533,8 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
         if (allowCustom)
           GrowthChip(
             label: '＋ 自定义',
-            color: GrowthColors.gray5,
+            color: GrowthColors.muted(
+                Theme.of(context).brightness == Brightness.light),
             onTap: () => _openCustomInput(onCustom ?? onPick),
           ),
       ],

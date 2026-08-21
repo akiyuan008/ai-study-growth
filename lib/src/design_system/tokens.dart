@@ -57,6 +57,9 @@ abstract final class GrowthColors {
   /// 近黑（浅色模式文字 / 深色模式底色）
   static const Color gray6 = Color(0xFF23272F);
 
+  /// 次要文字色（自适应）：深色模式用 onSurfaceDarkDim，保证对比度≥4.5:1
+  static Color muted(bool isLight) => isLight ? gray5 : onSurfaceDarkDim;
+
   /// 深空底色（深色模式，深灰靛渐变两端）
   static const Color surfaceDarkTop = Color(0xFF12141C);
   static const Color surfaceDarkBottom = Color(0xFF1A1D29);
