@@ -1,7 +1,7 @@
 name: ai_study_growth
 description: "智析录：AI 学习成长系统——AI 错题本 × 成长引擎"
 publish_to: 'none'
-version: 0.11.0+5
+version: 0.11.0+6
 
 environment:
   sdk: ^3.5.0
