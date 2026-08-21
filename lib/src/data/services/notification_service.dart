@@ -22,8 +22,7 @@ abstract final class NotificationService {
     if (_initialized) return;
     try {
       tzdata.initializeTimeZones();
-      const androidInit =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
       await _plugin.initialize(
         const InitializationSettings(android: androidInit),
         // 点击通知：打开 App（默认启动行为）
@@ -46,9 +45,8 @@ abstract final class NotificationService {
   /// 请求通知权限（Android 13+）。返回是否已授权。
   static Future<bool> requestPermission() async {
     try {
-      final android = _plugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+      final android = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
       final granted = await android?.requestNotificationsPermission();
       return granted ?? true;
     } catch (_) {

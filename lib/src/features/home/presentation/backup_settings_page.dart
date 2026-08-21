@@ -376,8 +376,8 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
                     fontSize: 13,
                     color: _testPassed
                         ? GrowthColors.success
-                        : GrowthColors.muted(Theme.of(context).brightness ==
-                            Brightness.light),
+                        : GrowthColors.muted(
+                            Theme.of(context).brightness == Brightness.light),
                   ),
                 ),
               ),

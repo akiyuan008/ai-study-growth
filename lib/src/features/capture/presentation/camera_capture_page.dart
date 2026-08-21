@@ -340,8 +340,7 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
                       ListTile(
                         key: ValueKey(_sessionQueue[i].enhancedPath),
                         leading: ClipRRect(
-                          borderRadius:
-                              BorderRadius.circular(GrowthRadii.icon),
+                          borderRadius: BorderRadius.circular(GrowthRadii.icon),
                           child: Image.file(
                             File(_sessionQueue[i].enhancedPath),
                             width: 48,

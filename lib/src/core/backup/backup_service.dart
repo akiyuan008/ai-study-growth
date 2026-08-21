@@ -408,7 +408,9 @@ class BackupService {
       final keysRestored = await applyPackage(bytes);
 
       // 密钥未随包恢复 → 引导重输
-      final hasAiConfig = (await _dbFactory().select(_dbFactory().aiProviders).get()).isNotEmpty;
+      final hasAiConfig =
+          (await _dbFactory().select(_dbFactory().aiProviders).get())
+              .isNotEmpty;
       final needsReinputApiKey = hasAiConfig && !keysRestored;
 
       return (
@@ -466,8 +468,7 @@ class BackupService {
             aOptions: AndroidOptions(encryptedSharedPreferences: true),
           );
           for (final entry in keys.entries) {
-            await vault.write(
-                key: entry.key, value: entry.value.toString());
+            await vault.write(key: entry.key, value: entry.value.toString());
           }
           keysRestored = keys.isNotEmpty;
         } catch (_) {}

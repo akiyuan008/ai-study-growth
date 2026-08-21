@@ -86,7 +86,6 @@ void main() {
           ..where((t) => t.id.equals(seeded.questionId)))
         .getSingle();
     expect(q.masteryLevel, greaterThanOrEqualTo(1));
-
   });
 
   test('评分 仍错(1)：间隔打回 1 天、lapses+1、reps 归零', () async {

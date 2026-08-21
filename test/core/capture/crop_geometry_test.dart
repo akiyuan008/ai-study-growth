@@ -129,8 +129,8 @@ void main() {
       corners = CropGeometry.dragCorner(
           corners, 1, const Offset(-160, 320), viewport);
       // 左下角拖到 (0.3,0.3)：delta=(+80, -480)
-      corners = CropGeometry.dragCorner(
-          corners, 3, const Offset(80, -480), viewport);
+      corners =
+          CropGeometry.dragCorner(corners, 3, const Offset(80, -480), viewport);
       // 四角共线（对角线）→ 面积 0 → 非法
       expect(CropGeometry.isValidQuad(corners), isFalse);
     });

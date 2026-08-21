@@ -69,8 +69,8 @@ class Taxonomy {
 
   static Future<Taxonomy> load() async {
     if (_cache != null) return _cache!;
-    final raw =
-        await rootBundle.loadString('assets/taxonomy/high_school_taxonomy.json');
+    final raw = await rootBundle
+        .loadString('assets/taxonomy/high_school_taxonomy.json');
     final json = jsonDecode(raw) as Map<String, dynamic>;
     final subjects = <TaxonomySubject>[];
     for (final sEntry in (json['subjects'] as List)) {
@@ -242,12 +242,11 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
       _chapterObj?.lessons.where((l) => l.name == _lesson).firstOrNull;
 
   /// 当前知识点候选：有节级取节下，否则取章直挂
-  List<String> get _pointOptions =>
-      _chapterObj == null
-          ? const []
-          : (_chapterObj!.lessons.isNotEmpty
-              ? (_lessonObj?.points ?? const [])
-              : _chapterObj!.points);
+  List<String> get _pointOptions => _chapterObj == null
+      ? const []
+      : (_chapterObj!.lessons.isNotEmpty
+          ? (_lessonObj?.points ?? const [])
+          : _chapterObj!.points);
 
   /// 搜索结果：学科内跨册/章/节匹配知识点
   List<({String book, String chapter, String lesson, String point})>
@@ -312,8 +311,7 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('知识点层级',
-                    style: Theme.of(context).textTheme.titleLarge),
+                Text('知识点层级', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: GrowthSpacing.xs),
                 Text(
                   taxonomy.note,
@@ -342,8 +340,8 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
                         selected: {_subject},
                         onPick: (v) => setState(() {
                           _subject = v;
-                          _version = _subjectObj?.versions.firstOrNull?.name ??
-                              '';
+                          _version =
+                              _subjectObj?.versions.firstOrNull?.name ?? '';
                           _book = '';
                           _chapter = '';
                           _lesson = '';
@@ -390,9 +388,8 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
                           _chapterObj!.lessons.isNotEmpty) ...[
                         _levelTitle('节'),
                         _chips(
-                          options: _chapterObj!.lessons
-                              .map((l) => l.name)
-                              .toList(),
+                          options:
+                              _chapterObj!.lessons.map((l) => l.name).toList(),
                           history: _history['lesson'] ?? const [],
                           selected: {_lesson},
                           allowCustom: true,
@@ -429,8 +426,7 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
                         GrowthTextField(
                           controller: _searchController,
                           hint: '输入知识点 / 章节名检索',
-                          onChanged: (v) =>
-                              setState(() => _searchText = v),
+                          onChanged: (v) => setState(() => _searchText = v),
                         ),
                         const SizedBox(height: GrowthSpacing.xs),
                         for (final r in _searchResults)
@@ -458,15 +454,13 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
                                       '${r.book} · ${r.chapter}'
                                       '${r.lesson.isNotEmpty ? ' · ${r.lesson}' : ''}'
                                       ' · ${r.point}',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall,
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
                                     ),
                                   ),
                                   if (_points.contains(r.point))
                                     const Icon(Icons.check_circle_rounded,
-                                        size: 16,
-                                        color: GrowthColors.primary),
+                                        size: 16, color: GrowthColors.primary),
                                 ],
                               ),
                             ),
