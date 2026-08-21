@@ -99,9 +99,6 @@ final reviewRecommendProvider = FutureProvider.autoDispose<ReviewRecommendData>(
       continue;
     }
 
-    // 只推荐已到期
-    if (!scheduler.isDue(card, now: now)) continue;
-
     final sm2Card = scheduler.cardFromStorage(
       cardId: card.createdAt.millisecondsSinceEpoch,
       reps: card.reps,
@@ -110,6 +107,9 @@ final reviewRecommendProvider = FutureProvider.autoDispose<ReviewRecommendData>(
       due: card.due,
       lastReview: card.lastReviewAt,
     );
+
+    // 只推荐已到期
+    if (!scheduler.isDue(sm2Card, now: now)) continue;
 
     // 理由标签（v15 终版）
     final reasons = <String>['第 ${card.reps + 1} 次'];
@@ -285,24 +285,24 @@ class _ReviewCard extends ConsumerWidget {
               Expanded(
                 child: GrowthButton(
                   label: '仍错',
-                  color: GrowthColors.error,
-                  onPressed: () => _rate(ref, item, 1),
+                  variant: GrowthButtonVariant.danger,
+                  onPressed: () => _rate(context, ref, item, 1),
                 ),
               ),
               const SizedBox(width: GrowthSpacing.sm),
               Expanded(
                 child: GrowthButton(
                   label: '模糊',
-                  color: GrowthColors.warning,
-                  onPressed: () => _rate(ref, item, 3),
+                  variant: GrowthButtonVariant.secondary,
+                  onPressed: () => _rate(context, ref, item, 3),
                 ),
               ),
               const SizedBox(width: GrowthSpacing.sm),
               Expanded(
                 child: GrowthButton(
                   label: '已会',
-                  color: GrowthColors.success,
-                  onPressed: () => _rate(ref, item, 5),
+                  variant: GrowthButtonVariant.primary,
+                  onPressed: () => _rate(context, ref, item, 5),
                 ),
               ),
             ],
@@ -322,7 +322,7 @@ class _ReviewCard extends ConsumerWidget {
     );
   }
 
-  void _rate(WidgetRef ref, Sm2RecommendedItem item, int quality) async {
+  void _rate(BuildContext context, WidgetRef ref, Sm2RecommendedItem item, int quality) async {
     final db = ref.read(databaseProvider);
     final scheduler = Sm2Scheduler();
     final result = scheduler.rate(item.card, quality);

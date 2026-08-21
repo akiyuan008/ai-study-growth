@@ -185,11 +185,15 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
         }
       } else {
         // 单页模式：直接进入编辑屏
-        context.push('/capture/edit', queryParameters: {
-          'path': enhancedPath,
-          'source': CaptureSource.camera.name,
-          'roi': _roiQuery,
-        });
+        final editUri = Uri(
+          path: '/capture/edit',
+          queryParameters: {
+            'path': enhancedPath,
+            'source': CaptureSource.camera.name,
+            'roi': _roiQuery,
+          },
+        );
+        context.push(editUri.toString());
       }
     } catch (e) {
       if (mounted) AppToast.error(context, '拍照失败：请重试');
@@ -237,10 +241,14 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
             _stackPulse = true;
           });
         } else {
-          context.push('/capture/edit', queryParameters: {
-            'path': targetPath,
-            'source': CaptureSource.gallery.name,
-          });
+          final editUri = Uri(
+            path: '/capture/edit',
+            queryParameters: {
+              'path': targetPath,
+              'source': CaptureSource.album.name,
+            },
+          );
+          context.push(editUri.toString());
           break; // 单页只取第一张
         }
       }
@@ -261,11 +269,15 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
     }
     // 取第一张进入编辑流程
     final first = _sessionQueue.first;
-    context.push('/capture/edit', queryParameters: {
-      'path': first.enhancedPath,
-      'source': CaptureSource.camera.name,
-      'roi': _roiQuery,
-    });
+    final editUri = Uri(
+      path: '/capture/edit',
+      queryParameters: {
+        'path': first.enhancedPath,
+        'source': CaptureSource.camera.name,
+        'roi': _roiQuery,
+      },
+    );
+    context.push(editUri.toString());
   }
 
   /// 多页模式：删除队列中某项
@@ -432,8 +444,8 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: GrowthColors.primary.withValues(alpha: 0.5)),
                         image: DecorationImage(
-                          image: File(File(img.enhancedPath).existsSync()
-                              ? img.enhancedPath : img.originalPath),
+                          image: FileImage(File(File(img.enhancedPath).existsSync()
+                              ? img.enhancedPath : img.originalPath)),
                           fit: BoxFit.cover,
                         ),
                       ),

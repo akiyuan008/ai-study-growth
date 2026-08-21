@@ -135,7 +135,7 @@ class BackupService {
     final tmpDb = AppDatabase.openFile(dbCopy.path);
     // 不删除整表！只清除 keyRef 指针
     await (tmpDb.update(tmpDb.aiProviders))
-        .write(const AiProvidersCompanion(keyRef: Value(null)));
+        .write(AiProvidersCompanion(keyRef: const Value(null)));
     await tmpDb.close();
 
     // 3) manifest（含 AI 配置摘要，不含任何密钥）

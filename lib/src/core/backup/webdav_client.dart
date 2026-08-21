@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -17,8 +18,8 @@ class WebDavClient {
 
   /// 基础认证头
   Map<String, String> get _auth => {
-        'Authorization': 'Basic ${String.fromCharCodes(
-          Uint8List.fromList('$username:$password'.codeUnits),
+        'Authorization': 'Basic ${base64Encode(
+          utf8.encode('$username:$password'),
         )}',
       };
 
@@ -35,10 +36,8 @@ class WebDavClient {
       } catch (_) {}
       // 目录不存在，尝试创建
       try {
-        final mkcolResp = await http.request(
-          Uri.parse(url),
-          method: 'MKCOL',
-          headers: _auth,
+        final mkcolResp = await http.Client().send(
+          http.Request('MKCOL', Uri.parse(url))..headers.addAll(_auth),
         );
         if (mkcolResp.statusCode != 201 && mkcolResp.statusCode != 405) {
           throw Exception('MKCOL 失败: ${mkcolResp.statusCode}');
@@ -94,19 +93,20 @@ class WebDavClient {
   /// 列出目录内容（PROPFIND depth=1）
   Future<List<String>> listFiles(String dirPath) async {
     final url = '$baseUrl${Uri.encodeComponent(dirPath)}/';
-    final resp = await http.request(
-      Uri.parse(url),
-      method: 'PROPFIND',
-      headers: {
-        ..._auth,
-        'Depth': '1',
-        'Content-Type': 'application/xml',
-      },
-      body: '''<?xml version="1.0" encoding="utf-8"?>
+    final client = http.Client();
+    final req = http.Request('PROPFIND', Uri.parse(url));
+    req.headers.addAll({
+      ..._auth,
+      'Depth': '1',
+      'Content-Type': 'application/xml',
+    });
+    req.body = '''<?xml version="1.0" encoding="utf-8"?>
 <d:propfind xmlns:d="DAV:">
   <d:prop><d:displayname/></d:prop>
-</d:propfind>''',
-    );
+</d:propfind>''';
+    final streamedResp = await client.send(req);
+    final resp = await http.Response.fromStream(streamedResp);
+    client.close();
     if (resp.statusCode != 207) {
       throw Exception('列出目录失败 ($dirPath): ${resp.statusCode}');
     }
@@ -126,15 +126,15 @@ class WebDavClient {
   }
 
   /// 测试连接（PUT 一个临时文件再删除）
-  Future<bool> testConnection() async {
+  Future<({bool ok, String message})> testConnection() async {
     try {
-      const testFile = '.connection_test_${DateTime.now().millisecondsSinceEpoch}';
+      final testFile = '.connection_test_${DateTime.now().millisecondsSinceEpoch}';
       await ensureDir(_remoteDir);
       await upload('$_remoteDir/$testFile', [0x00]);
       await delete('$_remoteDir/$testFile');
-      return true;
-    } catch (_) {
-      return false;
+      return (ok: true, message: '连接成功');
+    } catch (e) {
+      return (ok: false, message: '连接失败：$e');
     }
   }
 

@@ -47,6 +47,28 @@ class PdfSettings {
 /// - 答案开关 + 答案位置（题后/统一最后）
 /// - 保存/分享/系统打印
 abstract final class QuestionPdfExporter {
+  /// 导出 PDF 到文件（保存/分享用）
+  static Future<String?> exportToFile(
+    AppDatabase db,
+    List<QuestionRecord> questions,
+    PdfSettings settings, {
+    ScannerBridge? scanner,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    if (questions.isEmpty) return null;
+    final bytes = await buildPdf(
+      db,
+      questions,
+      settings,
+      scanner: scanner,
+      onProgress: onProgress,
+    );
+    final dir = await getTemporaryDirectory();
+    final path = p.join(dir.path, '错题导出_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    await File(path).writeAsBytes(bytes);
+    return path;
+  }
+
   static pw.Font? _fontCache;
 
   static Future<pw.Font> _loadFont() async {
@@ -174,7 +196,7 @@ abstract final class QuestionPdfExporter {
             ),
             pw.SizedBox(height: 6),
             if ((q.answer ?? '').isNotEmpty)
-              pw.Text(q.answer, style: pw.TextStyle(fontSize: fs)),
+              pw.Text(q.answer!, style: pw.TextStyle(fontSize: fs)),
             if ((q.errorCause ?? '').isNotEmpty)
               pw.Padding(
                 padding: const pw.EdgeInsets.only(top: 6),
@@ -274,7 +296,7 @@ abstract final class QuestionPdfExporter {
         ),
         pw.SizedBox(height: 4),
         if ((q.answer ?? '').isNotEmpty)
-          pw.Text(q.answer, style: pw.TextStyle(fontSize: fs)),
+          pw.Text(q.answer!, style: pw.TextStyle(fontSize: fs)),
         if ((q.errorCause ?? '').isNotEmpty)
           pw.Padding(
             padding: const pw.EdgeInsets.only(top: 4),
@@ -315,7 +337,7 @@ abstract final class QuestionPdfExporter {
     // 如果要求增强图且增强引擎可用，返回增强后的路径
     if (settings.useEnhanced && scanner != null) {
       try {
-        final enhanced = await scanner.enhanceImage(path);
+        final enhanced = await scanner.enhance(path);
         if (enhanced != null && File(enhanced).existsSync()) {
           return File(enhanced).readAsBytes();
         }
@@ -326,13 +348,22 @@ abstract final class QuestionPdfExporter {
 
   static Future<List<Map<String, dynamic>>> _exercisesOf(
       AppDatabase db, String qid) async {
-    final rows = await (db.select(db.exerciseItems)
+    final rows = await (db.select(db.generatedExercises)
           ..where((t) => t.questionId.equals(qid)))
         .get();
-    return rows.map((r) => {
-      'question': r.question,
-      'answer': r.answer ?? '',
-      'explanation': r.explanation ?? '',
-    }).toList();
+    final result = <Map<String, dynamic>>[];
+    for (final r in rows) {
+      try {
+        final content = jsonDecode(r.content) as Map<String, dynamic>;
+        result.add({
+          'question': content['question'] as String? ?? '',
+          'answer': content['answer'] as String? ?? '',
+          'explanation': content['explanation'] as String? ?? '',
+        });
+      } catch (_) {
+        // content 不是预期格式的 JSON，跳过
+      }
+    }
+    return result;
   }
 }

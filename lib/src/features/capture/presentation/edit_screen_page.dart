@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/bridge/scanner_bridge.dart';
 import '../../../design_system/design_system.dart';
@@ -178,6 +180,17 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
         const Offset(0.06, 0.92),
       ];
     });
+  }
+
+  /// 将处理后的图片归档到 captures 目录，返回新路径
+  Future<String> archiveImage(String sourcePath) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final capturesDir = Directory(p.join(dir.path, 'captures'))
+      ..createSync(recursive: true);
+    final fileName = 'q_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final targetPath = p.join(capturesDir.path, fileName);
+    await File(sourcePath).copy(targetPath);
+    return targetPath;
   }
 
   /// Part 2.2 手动框选最终裁定：
