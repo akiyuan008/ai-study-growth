@@ -12,6 +12,7 @@ import org.json.JSONObject
 import org.opencv.core.Core
 import org.opencv.core.CvType
 import org.opencv.core.Mat
+import org.opencv.core.MatOfInt
 import org.opencv.core.MatOfPoint
 import org.opencv.core.MatOfPoint2f
 import org.opencv.core.Point
@@ -393,7 +394,7 @@ object DocumentScanner {
             val file = File(outDir, "enh_${System.currentTimeMillis()}.jpg")
             val ok = Imgcodecs.imwrite(
                 file.absolutePath, out,
-                intArrayOf(Imgcodecs.IMWRITE_JPEG_QUALITY, 92)
+                MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 92)
             )
             src.release(); flatBgr.release(); out.release()
             for (c in channels) c.release()
