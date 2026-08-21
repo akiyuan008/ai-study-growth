@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/app/app.dart';
 import 'src/core/cloud/supabase_config.dart';
+import 'src/data/services/notification_service.dart';
 import 'src/design_system/growth_theme.dart';
 
 Future<void> main() async {
@@ -22,6 +23,8 @@ Future<void> main() async {
   } catch (_) {}
   // 单用户模式：后台自动登录共享账号（不阻塞启动，失败联网时重试）
   unawaited(_autoSignIn());
+  // 通知服务初始化（复习提醒）
+  unawaited(NotificationService.init());
   // 数据库走 holder（云备份恢复时可重建实例）
   runApp(
     ProviderScope(

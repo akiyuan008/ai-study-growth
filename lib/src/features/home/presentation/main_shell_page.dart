@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/di/providers.dart';
+import '../../../data/services/notification_service.dart';
 import '../../../data/services/settings_service.dart';
 import '../../../design_system/design_system.dart';
 import '../../capture/presentation/camera_capture_page.dart';
@@ -219,12 +220,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                     subtitle: const Text('到期复习时推送通知'),
                     value: notifyEnabled,
                     activeThumbColor: GrowthColors.primary,
-                    onChanged: (v) {
-                      unawaited(ref
-                          .read(settingsServiceProvider)
-                          .setNotifyReviewEnabled(v));
-                      setState(() {});
-                    },
+                    onChanged: (v) => _toggleNotify(v),
                   ),
                   if (notifyEnabled)
                     ListTile(
@@ -247,12 +243,13 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                         if (picked != null) {
                           final newTime =
                               '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-                          unawaited(ref
-                              .read(settingsServiceProvider)
-                              .setReviewNotifyTime(newTime)
-                              .then((_) {
+                          final settings = ref.read(settingsServiceProvider);
+                          unawaited(
+                              settings.setReviewNotifyTime(newTime).then((_) {
                             if (context.mounted) setState(() {});
                           }));
+                          // 重新按新时间调度
+                          unawaited(_scheduleReminder(settings));
                         }
                       },
                     ),
@@ -354,6 +351,45 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
           ],
         ),
       ),
+    );
+  }
+
+  /// 开启/关闭每日提醒：前置说明 → 系统权限 → 调度
+  Future<void> _toggleNotify(bool v) async {
+    final settings = ref.read(settingsServiceProvider);
+    if (v) {
+      // 权限前置说明：先讲清楚再请求，避免系统弹窗突兀
+      final ok = await showGrowthDialog(
+        context: context,
+        title: '开启每日复习提醒？',
+        message: '系统会请求通知权限，用于在每天你设定的时间提醒到期复习。'
+            '只会发复习提醒，不发其他打扰内容。',
+        confirmLabel: '继续开启',
+      );
+      if (ok != true || !mounted) return;
+      final granted = await NotificationService.requestPermission();
+      if (!mounted) return;
+      if (!granted) {
+        AppToast.error(context, '通知权限被拒绝，可在系统设置中手动开启');
+        return;
+      }
+      await settings.setNotifyReviewEnabled(true);
+      await _scheduleReminder(settings);
+    } else {
+      await settings.setNotifyReviewEnabled(false);
+      await NotificationService.cancel();
+    }
+    if (mounted) setState(() {});
+  }
+
+  /// 按当前设置时间调度每日提醒
+  Future<void> _scheduleReminder(SettingsService settings) async {
+    final t = _parseTime(settings.reviewNotifyTime);
+    final dueCount = await ref.read(reviewRepositoryProvider).dueCount();
+    await NotificationService.scheduleDaily(
+      hour: t.hour,
+      minute: t.minute,
+      dueCount: dueCount,
     );
   }
 

@@ -8,10 +8,28 @@ import '../../../core/di/providers.dart';
 import '../../../design_system/design_system.dart';
 
 /// 层级知识点树模型（内置数据集 high_school_taxonomy.json，带版本号可更新）
-class TaxonomyChapter {
-  const TaxonomyChapter({required this.name, this.points = const []});
+///
+/// 级联：学科 → 册 → 章 → 节（数据集未收录时自动省略）→ 知识点
+class TaxonomyLesson {
+  const TaxonomyLesson({required this.name, this.points = const []});
 
   final String name;
+  final List<String> points;
+}
+
+class TaxonomyChapter {
+  const TaxonomyChapter({
+    required this.name,
+    this.lessons = const [],
+    this.points = const [],
+  });
+
+  final String name;
+
+  /// 节级（数据集收录时展示，未收录自动省略）
+  final List<TaxonomyLesson> lessons;
+
+  /// 章直挂知识点（无节级时使用）
   final List<String> points;
 }
 
@@ -51,12 +69,12 @@ class Taxonomy {
 
   static Future<Taxonomy> load() async {
     if (_cache != null) return _cache!;
-    final raw = await rootBundle
-        .loadString('assets/taxonomy/high_school_taxonomy.json');
+    final raw =
+        await rootBundle.loadString('assets/taxonomy/high_school_taxonomy.json');
     final json = jsonDecode(raw) as Map<String, dynamic>;
     final subjects = <TaxonomySubject>[];
-    for (final s in (json['subjects'] as List)) {
-      final sMap = s as Map<String, dynamic>;
+    for (final sEntry in (json['subjects'] as List)) {
+      final sMap = sEntry as Map<String, dynamic>;
       final versions = <TaxonomyVersion>[];
       for (final v in (sMap['versions'] as List)) {
         final vMap = v as Map<String, dynamic>;
@@ -64,11 +82,22 @@ class Taxonomy {
         for (final b in (vMap['books'] as List)) {
           final bMap = b as Map<String, dynamic>;
           final chapters = <TaxonomyChapter>[];
-          for (final c in (bMap['chapters'] as List)) {
+          for (final c in (bMap['chapters'] as List? ?? const [])) {
             final cMap = c as Map<String, dynamic>;
+            final lessons = <TaxonomyLesson>[];
+            for (final l in (cMap['lessons'] as List? ?? const [])) {
+              final lMap = l as Map<String, dynamic>;
+              lessons.add(TaxonomyLesson(
+                name: (lMap['name'] ?? '').toString(),
+                points: (lMap['points'] as List? ?? const [])
+                    .map((e) => e.toString())
+                    .toList(),
+              ));
+            }
             chapters.add(TaxonomyChapter(
               name: (cMap['name'] ?? '').toString(),
-              points: ((cMap['points'] as List?) ?? const [])
+              lessons: lessons,
+              points: (cMap['points'] as List? ?? const [])
                   .map((e) => e.toString())
                   .toList(),
             ));
@@ -79,25 +108,28 @@ class Taxonomy {
           ));
         }
         versions.add(TaxonomyVersion(
-            name: (vMap['name'] ?? '').toString(), books: books));
+          name: (vMap['name'] ?? '').toString(),
+          books: books,
+        ));
       }
       subjects.add(TaxonomySubject(
-          name: (sMap['name'] ?? '').toString(), versions: versions));
+        name: (sMap['name'] ?? '').toString(),
+        versions: versions,
+      ));
     }
-    final taxonomy = Taxonomy(
+    _cache = Taxonomy(
       version: (json['version'] ?? '').toString(),
       note: (json['note'] ?? '').toString(),
       subjects: subjects,
     );
-    _cache = taxonomy;
-    return taxonomy;
+    return _cache!;
   }
 }
 
 /// 级联选择结果
 class TaxonomySelection {
   const TaxonomySelection({
-    this.subject = '',
+    required this.subject,
     this.version = '',
     this.book = '',
     this.chapter = '',
@@ -110,22 +142,16 @@ class TaxonomySelection {
   final String book;
   final String chapter;
   final String lesson;
-
-  /// 知识点（支持多选 + 自定义）
   final List<String> points;
 
-  String get breadcrumb => [
-        subject,
-        version,
-        book,
-        chapter,
-        lesson,
-        points.join('、'),
-      ].where((s) => s.isNotEmpty).join(' · ');
+  String get breadcrumb => [subject, book, chapter, lesson, ...points]
+      .where((s) => s.isNotEmpty)
+      .join(' · ');
 }
 
-/// 级联选择器（v14：学科→版本→册→章→节→知识点）。
-/// 每级历史值置顶、每级含「自定义」兜底、知识点支持多选。
+/// 知识点级联选择器（终版）：
+/// 学科 → 册 → 章 → 节 → 知识点，人教 2023 目录；
+/// 搜索框全局检索知识点；每级历史值置顶 + 自定义兜底。
 class TaxonomySelectorSheet extends ConsumerStatefulWidget {
   const TaxonomySelectorSheet({
     super.key,
@@ -148,7 +174,12 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
   String _version = '';
   String _book = '';
   String _chapter = '';
+  String _lesson = '';
   final Set<String> _points = {};
+
+  /// 知识点搜索
+  final _searchController = TextEditingController();
+  String _searchText = '';
 
   /// 历史值缓存（每级）
   final Map<String, List<String>> _history = {};
@@ -160,17 +191,26 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     final taxonomy = await Taxonomy.load();
     await _loadHistory();
-    if (mounted) setState(() => _taxonomy = taxonomy);
+    if (!mounted) return;
+    setState(() {
+      _taxonomy = taxonomy;
+      // 版本级不进 UI：固定取该学科第一个版本（人教版）
+      _version = _subjectObj?.versions.firstOrNull?.name ?? '';
+    });
   }
 
   Future<void> _loadHistory() async {
     final db = ref.read(databaseProvider);
     final rows = await (db.select(db.knowledgePoints)..limit(300)).get();
-    _history['version'] =
-        _distinct(rows.map((r) => r.version).where((s) => s.isNotEmpty));
     _history['book'] =
         _distinct(rows.map((r) => r.book).where((s) => s.isNotEmpty));
     _history['chapter'] =
@@ -198,12 +238,65 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
   TaxonomyChapter? get _chapterObj =>
       _bookObj?.chapters.where((c) => c.name == _chapter).firstOrNull;
 
+  TaxonomyLesson? get _lessonObj =>
+      _chapterObj?.lessons.where((l) => l.name == _lesson).firstOrNull;
+
+  /// 当前知识点候选：有节级取节下，否则取章直挂
+  List<String> get _pointOptions =>
+      _chapterObj == null
+          ? const []
+          : (_chapterObj!.lessons.isNotEmpty
+              ? (_lessonObj?.points ?? const [])
+              : _chapterObj!.points);
+
+  /// 搜索结果：学科内跨册/章/节匹配知识点
+  List<({String book, String chapter, String lesson, String point})>
+      get _searchResults {
+    final q = _searchText.trim();
+    if (q.isEmpty || _versionObj == null) return const [];
+    final results =
+        <({String book, String chapter, String lesson, String point})>[];
+    for (final book in _versionObj!.books) {
+      for (final chapter in book.chapters) {
+        if (chapter.lessons.isNotEmpty) {
+          for (final lesson in chapter.lessons) {
+            for (final point in lesson.points) {
+              if (point.contains(q) ||
+                  lesson.name.contains(q) ||
+                  chapter.name.contains(q)) {
+                results.add((
+                  book: book.name,
+                  chapter: chapter.name,
+                  lesson: lesson.name,
+                  point: point,
+                ));
+              }
+            }
+          }
+        } else {
+          for (final point in chapter.points) {
+            if (point.contains(q) || chapter.name.contains(q)) {
+              results.add((
+                book: book.name,
+                chapter: chapter.name,
+                lesson: '',
+                point: point,
+              ));
+            }
+          }
+        }
+      }
+    }
+    return results.take(20).toList();
+  }
+
   void _confirm() {
     widget.onConfirm(TaxonomySelection(
       subject: _subject,
       version: _version,
       book: _book,
       chapter: _chapter,
+      lesson: _lesson,
       points: _points.toList(),
     ));
     Navigator.of(context).pop();
@@ -213,13 +306,14 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
   Widget build(BuildContext context) {
     final taxonomy = _taxonomy;
     return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.75,
+      height: MediaQuery.of(context).size.height * 0.78,
       child: taxonomy == null
           ? const Center(child: CircularProgressIndicator())
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('知识点层级', style: Theme.of(context).textTheme.titleLarge),
+                Text('知识点层级',
+                    style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: GrowthSpacing.xs),
                 Text(
                   taxonomy.note,
@@ -248,29 +342,16 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
                         selected: {_subject},
                         onPick: (v) => setState(() {
                           _subject = v;
-                          _version = '';
+                          _version = _subjectObj?.versions.firstOrNull?.name ??
+                              '';
                           _book = '';
                           _chapter = '';
+                          _lesson = '';
                           _points.clear();
                         }),
                       ),
-                      if (_subjectObj != null) ...[
-                        _levelTitle('教材版本'),
-                        _chips(
-                          options:
-                              _subjectObj!.versions.map((v) => v.name).toList(),
-                          history: _history['version'] ?? const [],
-                          selected: {_version},
-                          onPick: (v) => setState(() {
-                            _version = v;
-                            _book = '';
-                            _chapter = '';
-                            _points.clear();
-                          }),
-                        ),
-                      ],
                       if (_versionObj != null) ...[
-                        _levelTitle('册别'),
+                        _levelTitle('册'),
                         _chips(
                           options:
                               _versionObj!.books.map((b) => b.name).toList(),
@@ -279,12 +360,13 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
                           onPick: (v) => setState(() {
                             _book = v;
                             _chapter = '';
+                            _lesson = '';
                             _points.clear();
                           }),
                         ),
                       ],
                       if (_bookObj != null) ...[
-                        _levelTitle('章（宁浅勿造：无目录的册可跳过）'),
+                        _levelTitle('章'),
                         _chips(
                           options:
                               _bookObj!.chapters.map((c) => c.name).toList(),
@@ -293,10 +375,33 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
                           allowCustom: true,
                           onPick: (v) => setState(() {
                             _chapter = v;
+                            _lesson = '';
                             _points.clear();
                           }),
                           onCustom: (v) => setState(() {
                             _chapter = v;
+                            _lesson = '';
+                            _points.clear();
+                          }),
+                        ),
+                      ],
+                      // 节级：数据集收录时展示
+                      if (_chapterObj != null &&
+                          _chapterObj!.lessons.isNotEmpty) ...[
+                        _levelTitle('节'),
+                        _chips(
+                          options: _chapterObj!.lessons
+                              .map((l) => l.name)
+                              .toList(),
+                          history: _history['lesson'] ?? const [],
+                          selected: {_lesson},
+                          allowCustom: true,
+                          onPick: (v) => setState(() {
+                            _lesson = v;
+                            _points.clear();
+                          }),
+                          onCustom: (v) => setState(() {
+                            _lesson = v;
                             _points.clear();
                           }),
                         ),
@@ -304,7 +409,7 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
                       // 知识点：建议列表 + 多选 + 自定义
                       _levelTitle('知识点（可多选）'),
                       _chips(
-                        options: _chapterObj?.points ?? const [],
+                        options: _pointOptions,
                         history: _history['point'] ?? const [],
                         selected: _points,
                         multi: true,
@@ -318,6 +423,55 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
                         }),
                         onCustom: (v) => setState(() => _points.add(v)),
                       ),
+                      // 搜索框：学科内全局检索知识点
+                      if (_subject.isNotEmpty) ...[
+                        _levelTitle('搜索知识点'),
+                        GrowthTextField(
+                          controller: _searchController,
+                          hint: '输入知识点 / 章节名检索',
+                          onChanged: (v) =>
+                              setState(() => _searchText = v),
+                        ),
+                        const SizedBox(height: GrowthSpacing.xs),
+                        for (final r in _searchResults)
+                          InkWell(
+                            onTap: () => setState(() {
+                              _book = r.book;
+                              _chapter = r.chapter;
+                              _lesson = r.lesson;
+                              _points.add(r.point);
+                              _searchController.clear();
+                              _searchText = '';
+                            }),
+                            borderRadius:
+                                BorderRadius.circular(GrowthRadii.icon),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: GrowthSpacing.xs),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.search_rounded,
+                                      size: 16, color: GrowthColors.gray4),
+                                  const SizedBox(width: GrowthSpacing.sm),
+                                  Expanded(
+                                    child: Text(
+                                      '${r.book} · ${r.chapter}'
+                                      '${r.lesson.isNotEmpty ? ' · ${r.lesson}' : ''}'
+                                      ' · ${r.point}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                  ),
+                                  if (_points.contains(r.point))
+                                    const Icon(Icons.check_circle_rounded,
+                                        size: 16,
+                                        color: GrowthColors.primary),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ],
                   ),
                 ),
@@ -337,6 +491,7 @@ class _TaxonomySelectorSheetState extends ConsumerState<TaxonomySelectorSheet> {
         version: _version,
         book: _book,
         chapter: _chapter,
+        lesson: _lesson,
         points: _points.toList(),
       ).breadcrumb;
 
