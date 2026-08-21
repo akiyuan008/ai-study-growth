@@ -83,7 +83,8 @@ class WebDavClient {
   Future<void> delete(String remotePath) async {
     final url = '$baseUrl${Uri.encodeComponent(remotePath)}';
     final resp = await http.delete(Uri.parse(url), headers: _auth);
-    if (resp.statusCode != 204 && resp.statusCode != 200 &&
+    if (resp.statusCode != 204 &&
+        resp.statusCode != 200 &&
         resp.statusCode != 404) {
       throw Exception('删除失败 ($remotePath): ${resp.statusCode}');
     }
@@ -117,7 +118,8 @@ class WebDavClient {
       if (m == null) continue;
       final raw = m.group(1)!;
       final decoded = Uri.decodeComponent(raw);
-      final name = decoded.split('/').lastWhere((s) => s.isNotEmpty, orElse: () => '');
+      final name =
+          decoded.split('/').lastWhere((s) => s.isNotEmpty, orElse: () => '');
       if (name.isEmpty || name.startsWith('.')) continue;
       names.add(name);
     }
@@ -127,7 +129,8 @@ class WebDavClient {
   /// 测试连接（PUT 一个临时文件再删除）
   Future<({bool ok, String message})> testConnection() async {
     try {
-      final testFile = '.connection_test_${DateTime.now().millisecondsSinceEpoch}';
+      final testFile =
+          '.connection_test_${DateTime.now().millisecondsSinceEpoch}';
       await ensureDir(_remoteDir);
       await upload('$_remoteDir/$testFile', [0x00]);
       await delete('$_remoteDir/$testFile');

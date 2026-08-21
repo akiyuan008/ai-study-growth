@@ -22,21 +22,58 @@ class MainShellPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tab = ref.watch(_shellTabProvider);
-    return Scaffold(
-      body: const _ShellBody(),
-      bottomNavigationBar: GlassNavBar(
-        selectedIndex: tab,
-        onDestinationSelected: (i) =>
-            ref.read(_shellTabProvider.notifier).state = i,
-        onCameraTap: () => context.push('/capture'),
-        items: const [
-          GlassNavItem(icon: GrowthIconType.book, label: '错题本'),
-          GlassNavItem(icon: GrowthIconType.replay, label: '复习'),
-          GlassNavItem(icon: GrowthIconType.gear, label: '设置'),
-        ],
+    return _ShellLifecycle(
+      child: Scaffold(
+        body: const _ShellBody(),
+        bottomNavigationBar: GlassNavBar(
+          selectedIndex: tab,
+          onDestinationSelected: (i) =>
+              ref.read(_shellTabProvider.notifier).state = i,
+          onCameraTap: () => context.push('/capture'),
+          items: const [
+            GlassNavItem(icon: GrowthIconType.book, label: '错题本'),
+            GlassNavItem(icon: GrowthIconType.replay, label: '复习'),
+            GlassNavItem(icon: GrowthIconType.gear, label: '设置'),
+          ],
+        ),
       ),
     );
   }
+}
+
+/// 前台恢复时自动补同步（静默，失败不打扰）
+class _ShellLifecycle extends ConsumerStatefulWidget {
+  const _ShellLifecycle({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_ShellLifecycle> createState() => _ShellLifecycleState();
+}
+
+class _ShellLifecycleState extends ConsumerState<_ShellLifecycle>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(ref.read(cloudSyncProvider).autoSync());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _ShellBody extends ConsumerWidget {
@@ -224,8 +261,39 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
             ),
             const SizedBox(height: GrowthSpacing.lg),
 
-            // ---- 云备份 ----
-            _GroupLabel(label: '备份'),
+            // ---- 备份与同步 ----
+            _GroupLabel(label: '备份与同步'),
+            GlassCard(
+              onTap: () => context.push('/settings/cloud-sync'),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_sync_rounded,
+                      color: GrowthColors.primary),
+                  const SizedBox(width: GrowthSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('云同步',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: GrowthSpacing.xs),
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final on = ref.watch(cloudSyncProvider).isSignedIn;
+                            return Text(
+                              on ? 'Supabase 已开启 · 换机可恢复' : '未开启 · 一键同步错题与进度',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+            ),
+            const SizedBox(height: GrowthSpacing.md),
             GlassCard(
               onTap: () => context.push('/settings/backup'),
               child: Row(
@@ -429,8 +497,8 @@ class _AppearanceCard extends ConsumerWidget {
               const Icon(Icons.dark_mode_outlined, color: GrowthColors.primary),
               const SizedBox(width: GrowthSpacing.md),
               Expanded(
-                  child:
-                      Text('外观', style: Theme.of(context).textTheme.titleLarge)),
+                  child: Text('外观',
+                      style: Theme.of(context).textTheme.titleLarge)),
             ],
           ),
           const SizedBox(height: GrowthSpacing.sm),

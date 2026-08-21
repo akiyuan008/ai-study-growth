@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'dart:io';
 
 import 'package:drift/drift.dart' hide Column, Table;
@@ -36,18 +38,26 @@ class Sm2RecommendedItem {
 }
 
 /// SM-2 推荐引擎（v15 终版）：到期队列 + 理由标签 + 毕业区
-final reviewRecommendProvider = FutureProvider.autoDispose<ReviewRecommendData>((ref) async {
+final reviewRecommendProvider =
+    FutureProvider.autoDispose<ReviewRecommendData>((ref) async {
   final db = ref.watch(databaseProvider);
   final scheduler = Sm2Scheduler();
   final now = DateTime.now();
 
-  final cards = await (db.select(db.reviewCards)..orderBy([(t) => OrderingTerm.asc(t.due)])).get();
+  final cards = await (db.select(db.reviewCards)
+        ..orderBy([(t) => OrderingTerm.asc(t.due)]))
+      .get();
   if (cards.isEmpty) {
-    return const ReviewRecommendData(items: <Sm2RecommendedItem>[], graduated: [], forecast: [0, 0, 0, 0, 0, 0, 0]);
+    return const ReviewRecommendData(
+        items: <Sm2RecommendedItem>[],
+        graduated: [],
+        forecast: [0, 0, 0, 0, 0, 0, 0]);
   }
 
   final qIds = cards.map((c) => c.questionId).toSet().toList();
-  final questions = await (db.select(db.questionRecords)..where((t) => t.id.isIn(qIds))).get();
+  final questions = await (db.select(db.questionRecords)
+        ..where((t) => t.id.isIn(qIds)))
+      .get();
   final qById = {for (final q in questions) q.id: q};
 
   // 面包屑批量查询
@@ -55,12 +65,15 @@ final reviewRecommendProvider = FutureProvider.autoDispose<ReviewRecommendData>(
   final linkByQ = <String, String>{};
   final kpIds = links.map((l) => l.knowledgePointId).toSet().toList();
   if (kpIds.isNotEmpty) {
-    final kps = await (db.select(db.knowledgePoints)..where((t) => t.id.isIn(kpIds))).get();
+    final kps = await (db.select(db.knowledgePoints)
+          ..where((t) => t.id.isIn(kpIds)))
+        .get();
     final kpById = {for (final k in kps) k.id: k};
     for (final l in links) {
       final kp = kpById[l.knowledgePointId];
       if (kp == null) continue;
-      final parts = [kp.subject, kp.chapter, kp.name].where((s) => s.isNotEmpty).toList();
+      final parts =
+          [kp.subject, kp.chapter, kp.name].where((s) => s.isNotEmpty).toList();
       linkByQ[l.questionId] = parts.join(' · ');
     }
   }
@@ -195,7 +208,8 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
                   Text('已毕业 (${data.graduated.length})',
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: GrowthSpacing.md),
-                  for (final q in data.graduated.take(5)) _GraduatedCard(question: q),
+                  for (final q in data.graduated.take(5))
+                    _GraduatedCard(question: q),
                 ],
               ],
             );
@@ -236,7 +250,9 @@ class _ReviewCard extends ConsumerWidget {
                 const SizedBox(width: GrowthSpacing.xs),
                 GrowthChip(
                   label: r,
-                  color: r.contains('逾期') ? GrowthColors.warning : GrowthColors.gray4,
+                  color: r.contains('逾期')
+                      ? GrowthColors.warning
+                      : GrowthColors.gray4,
                 ),
               ],
             ],
@@ -314,8 +330,12 @@ class _ReviewCard extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _NextDate(label: '1 天后', days: intervals[1]?.inDays ?? 1),
-              _NextDate(label: '${(intervals[3]?.inDays ?? 3)}天后', days: intervals[3]?.inDays ?? 3),
-              _NextDate(label: '${(intervals[5]?.inDays ?? 7)}天后', days: intervals[5]?.inDays ?? 7),
+              _NextDate(
+                  label: '${(intervals[3]?.inDays ?? 3)}天后',
+                  days: intervals[3]?.inDays ?? 3),
+              _NextDate(
+                  label: '${(intervals[5]?.inDays ?? 7)}天后',
+                  days: intervals[5]?.inDays ?? 7),
             ],
           ),
         ],
@@ -324,13 +344,16 @@ class _ReviewCard extends ConsumerWidget {
   }
 
   /// 评分统一走仓储：SM-2 推进 + 日志 + 掌握度联动 + 学习事件，一处不落
-  Future<void> _rate(
-      BuildContext context, WidgetRef ref, Sm2RecommendedItem item, int quality) async {
+  Future<void> _rate(BuildContext context, WidgetRef ref,
+      Sm2RecommendedItem item, int quality) async {
     final before = item.card.due;
     await ref
         .read(reviewRepositoryProvider)
         .rate(cardId: item.cardDbId, quality: quality);
     await ref.read(backupStateProvider).markDirty();
+    // 云同步：标脏 + 联网时后台补同步（静默）
+    await ref.read(cloudSyncProvider).markDirty();
+    unawaited(ref.read(cloudSyncProvider).autoSync());
     ref.invalidate(reviewRecommendProvider);
     if (!context.mounted) return;
     // 下次日期变化证据：仍错变早 / 已会变晚
@@ -370,10 +393,14 @@ class _GraduatedCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: GrowthSpacing.sm),
       child: Row(
         children: [
-          const Icon(Icons.school_rounded, color: GrowthColors.success, size: 18),
+          const Icon(Icons.school_rounded,
+              color: GrowthColors.success, size: 18),
           const SizedBox(width: GrowthSpacing.sm),
           Expanded(
-            child: Text(question.stem.length > 40 ? '${question.stem.substring(0, 40)}...' : question.stem,
+            child: Text(
+                question.stem.length > 40
+                    ? '${question.stem.substring(0, 40)}...'
+                    : question.stem,
                 style: Theme.of(context).textTheme.bodySmall),
           ),
         ],

@@ -52,7 +52,8 @@ class BackupStateRepository {
     }
   }
 
-  Future<void> saveConfig(BackupChannelConfig config, {required String password}) async {
+  Future<void> saveConfig(BackupChannelConfig config,
+      {required String password}) async {
     await _prefs.setString(
       _configKey,
       jsonEncode({
@@ -181,11 +182,13 @@ class BackupService {
   /// 收集 AI 配置摘要（不含 keyRef）
   Future<List<Map<String, dynamic>>> _collectAiConfigs(AppDatabase db) async {
     final rows = await db.select(db.aiProviders).get();
-    return rows.map((r) => {
-      'name': r.name,
-      'baseUrl': r.baseUrl,
-      'model': r.model,
-    }).toList();
+    return rows
+        .map((r) => {
+              'name': r.name,
+              'baseUrl': r.baseUrl,
+              'model': r.model,
+            })
+        .toList();
   }
 
   List<File> _collectImages(String docPath) {
@@ -310,7 +313,8 @@ class BackupService {
 
   /// 恢复：取最新备份 → （解密）→ 解包 → 覆盖 DB 与图片
   /// 恢复后引导用户重新输入 API Key（因为 Key 不在备份包中）
-  Future<({bool ok, String message, bool needsReinputApiKey})> restoreLatest() async {
+  Future<({bool ok, String message, bool needsReinputApiKey})>
+      restoreLatest() async {
     final config = _state.loadConfig();
     if (config == null) {
       return (ok: false, message: '请先配置备份通道', needsReinputApiKey: false);

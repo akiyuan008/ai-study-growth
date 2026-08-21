@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ai/ai_client.dart';
 import '../../core/backup/backup_service.dart';
+import '../../core/cloud/cloud_sync_service.dart';
 import '../../core/ai/ai_provider_config.dart';
 import '../../core/ai/analysis_gateway.dart';
 import '../../core/di/providers.dart';
@@ -28,6 +29,14 @@ final aiConfigRepositoryProvider = Provider<AiConfigRepository>((ref) {
 /// 备份状态仓储（Part 4）
 final backupStateProvider = Provider<BackupStateRepository>((ref) {
   return BackupStateRepository(ref.watch(sharedPreferencesProvider));
+});
+
+/// Supabase 云同步服务
+final cloudSyncProvider = Provider<CloudSyncService>((ref) {
+  return CloudSyncService(
+    ref.watch(databaseProvider),
+    ref.watch(sharedPreferencesProvider),
+  );
 });
 
 /// 备份服务

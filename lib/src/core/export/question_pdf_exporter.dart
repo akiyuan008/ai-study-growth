@@ -64,7 +64,8 @@ abstract final class QuestionPdfExporter {
       onProgress: onProgress,
     );
     final dir = await getTemporaryDirectory();
-    final path = p.join(dir.path, '错题导出_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    final path =
+        p.join(dir.path, '错题导出_${DateTime.now().millisecondsSinceEpoch}.pdf');
     await File(path).writeAsBytes(bytes);
     return path;
   }
@@ -202,7 +203,8 @@ abstract final class QuestionPdfExporter {
                 padding: const pw.EdgeInsets.only(top: 6),
                 child: pw.Text(
                   '错因：${q.errorCause}',
-                  style: pw.TextStyle(fontSize: fs - 1, color: PdfColors.grey600),
+                  style:
+                      pw.TextStyle(fontSize: fs - 1, color: PdfColors.grey600),
                 ),
               ),
           ],
@@ -253,7 +255,9 @@ abstract final class QuestionPdfExporter {
     }
 
     // 统一最后：追加答案汇总页
-    if (settings.includeAnswers && settings.answersAtEnd && answerPages.isNotEmpty) {
+    if (settings.includeAnswers &&
+        settings.answersAtEnd &&
+        answerPages.isNotEmpty) {
       doc.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a4,
@@ -319,9 +323,8 @@ abstract final class QuestionPdfExporter {
           ..where((t) => t.id.isIn(kpIds)))
         .get();
     final segs = kps.map((k) {
-      final parts = [k.subject, k.chapter, k.name]
-          .where((s) => s.isNotEmpty)
-          .toList();
+      final parts =
+          [k.subject, k.chapter, k.name].where((s) => s.isNotEmpty).toList();
       return parts.join(' · ');
     }).toList();
     return segs.join('；');

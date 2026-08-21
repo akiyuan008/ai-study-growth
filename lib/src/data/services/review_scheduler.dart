@@ -58,7 +58,8 @@ class Sm2Scheduler {
     final previousInterval = card.intervalDays;
 
     // SM-2 EF 更新公式
-    var newEf = previousEf + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+    var newEf =
+        previousEf + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
     if (newEf < _minEf) newEf = _minEf;
     if (newEf > _maxEf) newEf = _maxEf;
 
@@ -71,11 +72,15 @@ class Sm2Scheduler {
       newReps = 0;
     } else if (quality == 3) {
       // 模糊：保持或略微增加间隔
-      newInterval = previousInterval <= 0 ? _initialIntervalDays : (previousInterval * newEf).round();
+      newInterval = previousInterval <= 0
+          ? _initialIntervalDays
+          : (previousInterval * newEf).round();
       newReps = card.reps + 1;
     } else {
       // 已会：正常推进
-      newInterval = previousInterval <= 0 ? _initialIntervalDays : (previousInterval * newEf).round();
+      newInterval = previousInterval <= 0
+          ? _initialIntervalDays
+          : (previousInterval * newEf).round();
       if (newInterval < 1) newInterval = 1;
       newReps = card.reps + 1;
     }
@@ -173,9 +178,9 @@ class Sm2ReviewLog {
   final int newInterval;
 
   String get qualityLabel => switch (quality) {
-    1 => '仍错',
-    3 => '模糊',
-    5 => '已会',
-    _ => '未知',
-  };
+        1 => '仍错',
+        3 => '模糊',
+        5 => '已会',
+        _ => '未知',
+      };
 }

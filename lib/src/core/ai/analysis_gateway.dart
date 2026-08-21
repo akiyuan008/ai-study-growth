@@ -116,6 +116,7 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
   }
 
   @override
+
   /// v15 终版：AI 举一反三 —— 必出≥1 题
   /// 第一轮：正常解析（宽松）
   /// 第二轮：格式强化重试一次

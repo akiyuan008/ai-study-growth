@@ -474,8 +474,10 @@ class _MemoryStateCard extends StatelessWidget {
       final r = card.lastReviewAt == null
           ? 0.0
           : (1.0 -
-              now.difference(card.lastReviewAt!).inDays /
-                  (card.intervalDays > 0 ? card.intervalDays * 2 : 1).clamp(1, 365)).clamp(0.0, 1.0);
+                  now.difference(card.lastReviewAt!).inDays /
+                      (card.intervalDays > 0 ? card.intervalDays * 2 : 1)
+                          .clamp(1, 365))
+              .clamp(0.0, 1.0);
       strengthText =
           card.lastReviewAt == null ? '未开始' : '${(r * 100).round()}%';
       nextText = card.due.isBefore(now)

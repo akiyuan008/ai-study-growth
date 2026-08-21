@@ -79,7 +79,8 @@ void main() {
       final card = scheduler.rate(newCard(), 5, now: now).card;
       final preview = scheduler.previewIntervals(card, now: now);
       for (final q in [1, 3, 5]) {
-        expect(preview[q], scheduler.rate(card, q, now: now).card.due.difference(now));
+        expect(preview[q],
+            scheduler.rate(card, q, now: now).card.due.difference(now));
       }
     });
 
@@ -116,7 +117,8 @@ void main() {
   group('日志', () {
     test('reviewLog 记录前后 EF/间隔', () {
       final card = scheduler.rate(newCard(), 5, now: now).card;
-      final rated = scheduler.rate(card, 1, now: now.add(const Duration(days: 1)));
+      final rated =
+          scheduler.rate(card, 1, now: now.add(const Duration(days: 1)));
       expect(rated.reviewLog.quality, 1);
       expect(rated.reviewLog.qualityLabel, '仍错');
       expect(rated.reviewLog.previousInterval, card.intervalDays);

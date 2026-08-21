@@ -83,7 +83,10 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        setState(() { _initializing = false; _initError = '未找到相机'; });
+        setState(() {
+          _initializing = false;
+          _initError = '未找到相机';
+        });
         return;
       }
       final back = cameras.firstWhere(
@@ -97,11 +100,20 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
       await controller.initialize();
-      if (!mounted) { await controller.dispose(); return; }
-      setState(() { _controller = controller; _initializing = false; });
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+      setState(() {
+        _controller = controller;
+        _initializing = false;
+      });
     } catch (e) {
       if (mounted) {
-        setState(() { _initializing = false; _initError = '相机启动失败，请检查权限'; });
+        setState(() {
+          _initializing = false;
+          _initError = '相机启动失败，请检查权限';
+        });
       }
     }
   }
@@ -312,7 +324,8 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
 
   Widget _buildCameraPreview() {
     if (_initializing) {
-      return const Center(child: CircularProgressIndicator(color: Colors.white));
+      return const Center(
+          child: CircularProgressIndicator(color: Colors.white));
     }
     if (_initError != null) {
       return Center(
@@ -325,14 +338,16 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
             const SizedBox(height: 12),
             TextButton(
               onPressed: _initCamera,
-              child: const Text('重试', style: TextStyle(color: GrowthColors.primary)),
+              child: const Text('重试',
+                  style: TextStyle(color: GrowthColors.primary)),
             ),
           ],
         ),
       );
     }
     if (_controller == null || !_controller!.value.isInitialized) {
-      return const Center(child: Text('相机不可用', style: TextStyle(color: Colors.white70)));
+      return const Center(
+          child: Text('相机不可用', style: TextStyle(color: Colors.white70)));
     }
     return CameraPreview(_controller!);
   }
@@ -357,11 +372,16 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
           // 闪光灯
           IconButton(
             icon: Icon(
-              _flash == FlashMode.off ? Icons.flash_off_rounded : Icons.flash_on_rounded,
-              color: _flash == FlashMode.off ? Colors.white54 : GrowthColors.warning,
+              _flash == FlashMode.off
+                  ? Icons.flash_off_rounded
+                  : Icons.flash_on_rounded,
+              color: _flash == FlashMode.off
+                  ? Colors.white54
+                  : GrowthColors.warning,
             ),
             onPressed: () {
-              final next = _flash == FlashMode.off ? FlashMode.torch : FlashMode.off;
+              final next =
+                  _flash == FlashMode.off ? FlashMode.torch : FlashMode.off;
               setState(() => _flash = next);
               unawaited(_controller?.setFlashMode(next).catchError((_) {}));
             },
@@ -385,7 +405,8 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
         decoration: BoxDecoration(
-          border: Border.all(color: GrowthColors.primary.withValues(alpha: 0.6), width: 1.5),
+          border: Border.all(
+              color: GrowthColors.primary.withValues(alpha: 0.6), width: 1.5),
           borderRadius: BorderRadius.circular(8),
         ),
       ),
@@ -395,7 +416,9 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
   Widget _buildBottomBar() {
     return Container(
       padding: EdgeInsets.only(
-        left: 16, right: 16, top: 12,
+        left: 16,
+        right: 16,
+        top: 12,
         bottom: MediaQuery.of(context).padding.bottom + 12,
       ),
       decoration: BoxDecoration(
@@ -422,14 +445,21 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
                     onTap: () => _removeFromQueue(index),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      width: _stackPulse && index == _sessionQueue.length - 1 ? 52 : 48,
-                      height: _stackPulse && index == _sessionQueue.length - 1 ? 52 : 48,
+                      width: _stackPulse && index == _sessionQueue.length - 1
+                          ? 52
+                          : 48,
+                      height: _stackPulse && index == _sessionQueue.length - 1
+                          ? 52
+                          : 48,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: GrowthColors.primary.withValues(alpha: 0.5)),
+                        border: Border.all(
+                            color: GrowthColors.primary.withValues(alpha: 0.5)),
                         image: DecorationImage(
-                          image: FileImage(File(File(img.enhancedPath).existsSync()
-                              ? img.enhancedPath : img.originalPath)),
+                          image: FileImage(File(
+                              File(img.enhancedPath).existsSync()
+                                  ? img.enhancedPath
+                                  : img.originalPath)),
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -443,7 +473,8 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
                             shape: BoxShape.circle,
                           ),
                           child: Text('${index + 1}',
-                              style: const TextStyle(fontSize: 9, color: Colors.white)),
+                              style: const TextStyle(
+                                  fontSize: 9, color: Colors.white)),
                         ),
                       ),
                     ),
@@ -462,7 +493,8 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.photo_library_rounded, color: Colors.white),
+                      icon: const Icon(Icons.photo_library_rounded,
+                          color: Colors.white),
                       onPressed: _pickFromGallery,
                       tooltip: '相册',
                     ),
@@ -504,8 +536,12 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
                   children: [
                     IconButton(
                       icon: Icon(
-                        _multiPageMode ? Icons.view_module_rounded : Icons.crop_free_rounded,
-                        color: _multiPageMode ? GrowthColors.primary : Colors.white70,
+                        _multiPageMode
+                            ? Icons.view_module_rounded
+                            : Icons.crop_free_rounded,
+                        color: _multiPageMode
+                            ? GrowthColors.primary
+                            : Colors.white70,
                       ),
                       onPressed: _toggleMultiPage,
                       tooltip: _multiPageMode ? '多页模式' : '单页模式',
@@ -513,7 +549,9 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
                     Text(_multiPageMode ? '多页' : '单页',
                         style: TextStyle(
                           fontSize: 10,
-                          color: _multiPageMode ? GrowthColors.primary : Colors.white70,
+                          color: _multiPageMode
+                              ? GrowthColors.primary
+                              : Colors.white70,
                         )),
                   ],
                 ),

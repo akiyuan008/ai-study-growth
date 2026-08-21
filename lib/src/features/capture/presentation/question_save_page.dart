@@ -134,9 +134,21 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
       if (client == null) return;
       final models = await client.fetchModels();
       const visionKeywords = [
-        'vision', 'vl', '4o', 'multimodal', 'image', 'eye',
-        'gpt-4o', 'claude-3', 'gemini', 'qwen-vl', 'qwen2-vl',
-        'glm-4v', 'step-1v', 'yi-vl', 'llava',
+        'vision',
+        'vl',
+        '4o',
+        'multimodal',
+        'image',
+        'eye',
+        'gpt-4o',
+        'claude-3',
+        'gemini',
+        'qwen-vl',
+        'qwen2-vl',
+        'glm-4v',
+        'step-1v',
+        'yi-vl',
+        'llava',
       ];
       final visionModels = models.where((m) {
         final lower = m.toLowerCase();
@@ -204,7 +216,10 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
       setState(() => _subjectError = '请先选择科目，科目驱动列表、统计与导出');
       return;
     }
-    setState(() { _subjectError = null; _saving = true; });
+    setState(() {
+      _subjectError = null;
+      _saving = true;
+    });
     try {
       final db = ref.read(databaseProvider);
       final now = DateTime.now();
@@ -223,9 +238,11 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
               imagePath: Value(widget.path),
               stem: Value(stemText.isEmpty ? '' : stemText),
               answer: Value(_answerController.text.trim().isEmpty
-                  ? null : _answerController.text.trim()),
+                  ? null
+                  : _answerController.text.trim()),
               errorCause: Value(_mistakeController.text.trim().isEmpty
-                  ? null : _mistakeController.text.trim()),
+                  ? null
+                  : _mistakeController.text.trim()),
               tags: Value(_buildTagsJson()),
               analysisDetail: Value('{"cropSource":"${widget.cropSource}"}'),
               contentStatus: const Value('saved'),
@@ -272,6 +289,9 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
           );
 
       await ref.read(backupStateProvider).markDirty();
+      // 云同步：标脏 + 联网时后台补同步（静默）
+      await ref.read(cloudSyncProvider).markDirty();
+      unawaited(ref.read(cloudSyncProvider).autoSync());
       if (mounted) {
         unawaited(HapticFeedback.mediumImpact());
         AppToast.success(context, '已保存到错题本');
@@ -286,7 +306,8 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
 
   String _buildTagsJson() {
     final tags = <String>[
-      if ((_subject ?? '').isNotEmpty && _subject != Subject.other.label) _subject!,
+      if ((_subject ?? '').isNotEmpty && _subject != Subject.other.label)
+        _subject!,
       if (_path.point.isNotEmpty) _path.point,
       if (_path.chapter.isNotEmpty) _path.chapter,
     ];
@@ -294,7 +315,8 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
   }
 
   /// 多知识点写入：级联选中的每个知识点各建一条（含完整层级路径）
-  Future<void> _saveKnowledgePoints(AppDatabase db, String qid, DateTime now) async {
+  Future<void> _saveKnowledgePoints(
+      AppDatabase db, String qid, DateTime now) async {
     final subject = _subject ?? '';
     final names = _selectedPoints.isNotEmpty
         ? _selectedPoints
@@ -503,7 +525,8 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_pathError!, style: Theme.of(context).textTheme.bodySmall),
+                        Text(_pathError!,
+                            style: Theme.of(context).textTheme.bodySmall),
                         const SizedBox(height: GrowthSpacing.sm),
                         Row(
                           children: [
@@ -556,7 +579,8 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
                               _path.point,
                             ])
                               if (seg.isNotEmpty)
-                                GrowthChip(label: seg, color: GrowthColors.primary),
+                                GrowthChip(
+                                    label: seg, color: GrowthColors.primary),
                           ],
                         ),
                         const SizedBox(height: GrowthSpacing.sm),

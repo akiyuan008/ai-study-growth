@@ -8,6 +8,7 @@ import '../design_system/design_system.dart';
 import '../features/design_gallery/presentation/design_gallery_page.dart';
 import '../features/home/presentation/ai_provider_setup_page.dart';
 import '../features/home/presentation/backup_settings_page.dart';
+import '../features/home/presentation/cloud_sync_page.dart';
 import '../features/capture/presentation/camera_capture_page.dart';
 import '../features/capture/presentation/edit_screen_page.dart';
 import '../features/capture/presentation/question_save_page.dart';
@@ -91,6 +92,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => BackupSettingsPage(
           focusRestore: state.uri.queryParameters['restore'] == '1',
         ),
+      ),
+      GoRoute(
+        path: '/settings/cloud-sync',
+        builder: (context, state) => const CloudSyncPage(),
       ),
       GoRoute(
         path: '/settings/ai-call-log',

@@ -25,11 +25,11 @@ jobs:
       - name: Generate drift code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Check formatting (non-blocking)
-        run: dart format .
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed .
 
-      - name: Analyze (non-blocking)
-        run: flutter analyze --no-fatal-infos || true
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
 
-      - name: Run tests (non-blocking)
-        run: flutter test || true
+      - name: Run tests
+        run: flutter test

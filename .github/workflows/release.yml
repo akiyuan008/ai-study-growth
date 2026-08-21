@@ -33,8 +33,11 @@ jobs:
       - name: Generate drift code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Build Release APK (non-blocking)
-        run: flutter build apk --release || true
+      - name: Build Release APK
+        run: >
+          flutter build apk --release
+          --target-platform android-arm,android-arm64
+          --split-debug-info=build/debug-info
 
       - name: Upload APK artifact
         if: success()
