@@ -43,7 +43,7 @@ final reviewRecommendProvider = FutureProvider.autoDispose<ReviewRecommendData>(
 
   final cards = await (db.select(db.reviewCards)..orderBy([(t) => OrderingTerm.asc(t.due)])).get();
   if (cards.isEmpty) {
-    return const ReviewRecommendData(items: [], graduated: [], forecast: [0, 0, 0, 0, 0, 0, 0]);
+    return const ReviewRecommendData(items: <Sm2RecommendedItem>[], graduated: [], forecast: [0, 0, 0, 0, 0, 0, 0]);
   }
 
   final qIds = cards.map((c) => c.questionId).toSet().toList();
@@ -143,7 +143,7 @@ final reviewRecommendProvider = FutureProvider.autoDispose<ReviewRecommendData>(
   }
 
   return ReviewRecommendData(
-    items: items.cast(),
+    items: items,
     graduated: graduated,
     forecast: forecast,
   );
@@ -329,13 +329,12 @@ class _ReviewCard extends ConsumerWidget {
     await (db.transaction(() async {
       await (db.update(db.reviewCards)
             ..where((t) => t.questionId.equals(item.question.id)))
-        .write(ReviewCardsCompanion.insert(
-        questionId: item.question.id,
-        reps: result.card.reps,
-        easinessFactor: result.card.easinessFactor,
-        intervalDays: result.card.intervalDays,
-        due: result.card.due,
-        lastReviewAt: result.card.lastReview,
+        .write(ReviewCardsCompanion(
+        reps: Value(result.card.reps),
+        easinessFactor: Value(result.card.easinessFactor),
+        intervalDays: Value(result.card.intervalDays),
+        due: Value(result.card.due),
+        lastReviewAt: Value(result.card.lastReview),
       ));
       await db.into(db.reviewLogs).insert(ReviewLogsCompanion.insert(
         questionId: item.question.id,
@@ -346,6 +345,14 @@ class _ReviewCard extends ConsumerWidget {
     ref.invalidate(reviewRecommendProvider);
     AppToast.success(context, '已标记为"${result.reviewLog.qualityLabel}"');
   }
+}
+
+int _mapMastery(Sm2Card card) {
+  if (card.reps >= 3 && card.intervalDays >= 21) return 5;
+  if (card.intervalDays >= 60) return 5;
+  if (card.intervalDays >= 21) return 4;
+  if (card.reps > 0) return 3;
+  return 0;
 }
 
 class _NextDate extends StatelessWidget {
@@ -386,7 +393,7 @@ class ReviewRecommendData {
     required this.graduated,
     required this.forecast,
   });
-  final List<dynamic> items;
+  final List<Sm2RecommendedItem> items;
   final List<QuestionRecord> graduated;
   final List<int> forecast;
 }

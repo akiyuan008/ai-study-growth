@@ -466,22 +466,26 @@ class _MemoryStateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final card = data.card;
-    final scheduler = ReviewScheduler();
+    final scheduler = Sm2Scheduler();
     final now = DateTime.now();
 
     String strengthText = '—';
     String nextText = '—';
     if (card != null) {
-      final fsrsCard = scheduler.cardFromStorage(
+      final sm2Card = scheduler.cardFromStorage(
         cardId: card.createdAt.millisecondsSinceEpoch,
-        state: card.state,
-        step: card.step,
-        stability: card.stability,
-        difficulty: card.difficulty,
+        reps: card.reps,
+        easinessFactor: card.easinessFactor,
+        intervalDays: card.intervalDays,
         due: card.due,
         lastReview: card.lastReviewAt,
       );
-      final r = scheduler.retrievability(fsrsCard, now: now);
+      // SM-2 没有 retrievability，用简易保留率
+      final r = card.lastReviewAt == null
+          ? 0.0
+          : (1.0 -
+              now.difference(card.lastReviewAt!).inDays /
+                  (card.intervalDays > 0 ? card.intervalDays * 2 : 1).clamp(1, 365)).clamp(0.0, 1.0);
       strengthText =
           card.lastReviewAt == null ? '未开始' : '${(r * 100).round()}%';
       nextText = card.due.isBefore(now)
@@ -509,7 +513,7 @@ class _MemoryStateCard extends StatelessWidget {
             if (card.lastReviewAt != null) ...[
               const SizedBox(height: GrowthSpacing.sm),
               ForgettingCurveMini(
-                stability: card.stability,
+                stability: (card.easinessFactor * card.intervalDays).toDouble(),
                 elapsedDays: now.difference(card.lastReviewAt!).inHours / 24,
                 nextDueDays: card.due.difference(now).inDays.toDouble(),
               ),
@@ -555,10 +559,10 @@ class _MemoryStateCard extends StatelessWidget {
   }
 
   String _ratingLabel(int rating) => switch (rating) {
-        1 => '忘记',
-        2 => '困难',
-        3 => '记得',
-        _ => '简单',
+        1 => '仍错',
+        3 => '模糊',
+        5 => '已会',
+        _ => '未知',
       };
 }
 

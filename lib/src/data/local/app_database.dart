@@ -39,7 +39,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -63,6 +63,13 @@ class AppDatabase extends _$AppDatabase {
             await customStatement('DROP TABLE IF EXISTS missions');
             await customStatement(
                 'CREATE TABLE IF NOT EXISTS ai_call_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, purpose TEXT NOT NULL, request_body TEXT NOT NULL, response_body TEXT NOT NULL, http_status INTEGER NOT NULL, success INTEGER NOT NULL, error_tier TEXT, duration_ms INTEGER NOT NULL, at INTEGER NOT NULL)');
+          }
+          // v4：SM-2 算法迁移 - 新增 easinessFactor, intervalDays 列
+          if (from < 4) {
+            await customStatement(
+                'ALTER TABLE review_cards ADD COLUMN easiness_factor REAL NOT NULL DEFAULT 2.5');
+            await customStatement(
+                'ALTER TABLE review_cards ADD COLUMN interval_days INTEGER NOT NULL DEFAULT 0');
           }
         },
         beforeOpen: (details) async {

@@ -2496,6 +2496,22 @@ class $ReviewCardsTable extends ReviewCards
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _easinessFactorMeta =
+      const VerificationMeta('easinessFactor');
+  @override
+  late final GeneratedColumn<double> easinessFactor = GeneratedColumn<double>(
+      'easiness_factor', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(2.5));
+  static const VerificationMeta _intervalDaysMeta =
+      const VerificationMeta('intervalDays');
+  @override
+  late final GeneratedColumn<int> intervalDays = GeneratedColumn<int>(
+      'interval_days', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _repsMeta = const VerificationMeta('reps');
   @override
   late final GeneratedColumn<int> reps = GeneratedColumn<int>(
@@ -2531,6 +2547,8 @@ class $ReviewCardsTable extends ReviewCards
         step,
         stability,
         difficulty,
+        easinessFactor,
+        intervalDays,
         reps,
         lapses,
         lastReviewAt,
@@ -2583,6 +2601,18 @@ class $ReviewCardsTable extends ReviewCards
           difficulty.isAcceptableOrUnknown(
               data['difficulty']!, _difficultyMeta));
     }
+    if (data.containsKey('easiness_factor')) {
+      context.handle(
+          _easinessFactorMeta,
+          easinessFactor.isAcceptableOrUnknown(
+              data['easiness_factor']!, _easinessFactorMeta));
+    }
+    if (data.containsKey('interval_days')) {
+      context.handle(
+          _intervalDaysMeta,
+          intervalDays.isAcceptableOrUnknown(
+              data['interval_days']!, _intervalDaysMeta));
+    }
     if (data.containsKey('reps')) {
       context.handle(
           _repsMeta, reps.isAcceptableOrUnknown(data['reps']!, _repsMeta));
@@ -2626,6 +2656,10 @@ class $ReviewCardsTable extends ReviewCards
           .read(DriftSqlType.double, data['${effectivePrefix}stability'])!,
       difficulty: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}difficulty'])!,
+      easinessFactor: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}easiness_factor'])!,
+      intervalDays: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}interval_days'])!,
       reps: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}reps'])!,
       lapses: attachedDatabase.typeMapping
@@ -2661,6 +2695,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
   /// FSRS 状态参数
   final double stability;
   final double difficulty;
+  final double easinessFactor;
+  final int intervalDays;
   final int reps;
   final int lapses;
   final DateTime? lastReviewAt;
@@ -2673,6 +2709,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       this.step,
       required this.stability,
       required this.difficulty,
+      required this.easinessFactor,
+      required this.intervalDays,
       required this.reps,
       required this.lapses,
       this.lastReviewAt,
@@ -2689,6 +2727,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
     }
     map['stability'] = Variable<double>(stability);
     map['difficulty'] = Variable<double>(difficulty);
+    map['easiness_factor'] = Variable<double>(easinessFactor);
+    map['interval_days'] = Variable<int>(intervalDays);
     map['reps'] = Variable<int>(reps);
     map['lapses'] = Variable<int>(lapses);
     if (!nullToAbsent || lastReviewAt != null) {
@@ -2807,6 +2847,8 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
           ..write('step: $step, ')
           ..write('stability: $stability, ')
           ..write('difficulty: $difficulty, ')
+          ..write('easinessFactor: $easinessFactor, ')
+          ..write('intervalDays: $intervalDays, ')
           ..write('reps: $reps, ')
           ..write('lapses: $lapses, ')
           ..write('lastReviewAt: $lastReviewAt, ')
@@ -2843,6 +2885,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
   final Value<int?> step;
   final Value<double> stability;
   final Value<double> difficulty;
+  final Value<double> easinessFactor;
+  final Value<int> intervalDays;
   final Value<int> reps;
   final Value<int> lapses;
   final Value<DateTime?> lastReviewAt;
@@ -2856,6 +2900,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     this.step = const Value.absent(),
     this.stability = const Value.absent(),
     this.difficulty = const Value.absent(),
+    this.easinessFactor = const Value.absent(),
+    this.intervalDays = const Value.absent(),
     this.reps = const Value.absent(),
     this.lapses = const Value.absent(),
     this.lastReviewAt = const Value.absent(),
@@ -2870,6 +2916,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     this.step = const Value.absent(),
     this.stability = const Value.absent(),
     this.difficulty = const Value.absent(),
+    this.easinessFactor = const Value.absent(),
+    this.intervalDays = const Value.absent(),
     this.reps = const Value.absent(),
     this.lapses = const Value.absent(),
     this.lastReviewAt = const Value.absent(),
@@ -2887,6 +2935,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     Expression<int>? step,
     Expression<double>? stability,
     Expression<double>? difficulty,
+    Expression<double>? easinessFactor,
+    Expression<int>? intervalDays,
     Expression<int>? reps,
     Expression<int>? lapses,
     Expression<DateTime>? lastReviewAt,
@@ -2901,6 +2951,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
       if (step != null) 'step': step,
       if (stability != null) 'stability': stability,
       if (difficulty != null) 'difficulty': difficulty,
+      if (easinessFactor != null) 'easiness_factor': easinessFactor,
+      if (intervalDays != null) 'interval_days': intervalDays,
       if (reps != null) 'reps': reps,
       if (lapses != null) 'lapses': lapses,
       if (lastReviewAt != null) 'last_review_at': lastReviewAt,
@@ -2917,6 +2969,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
       Value<int?>? step,
       Value<double>? stability,
       Value<double>? difficulty,
+      Value<double>? easinessFactor,
+      Value<int>? intervalDays,
       Value<int>? reps,
       Value<int>? lapses,
       Value<DateTime?>? lastReviewAt,
@@ -2930,6 +2984,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
       step: step ?? this.step,
       stability: stability ?? this.stability,
       difficulty: difficulty ?? this.difficulty,
+      easinessFactor: easinessFactor ?? this.easinessFactor,
+      intervalDays: intervalDays ?? this.intervalDays,
       reps: reps ?? this.reps,
       lapses: lapses ?? this.lapses,
       lastReviewAt: lastReviewAt ?? this.lastReviewAt,
@@ -2962,6 +3018,12 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     if (difficulty.present) {
       map['difficulty'] = Variable<double>(difficulty.value);
     }
+    if (easinessFactor.present) {
+      map['easiness_factor'] = Variable<double>(easinessFactor.value);
+    }
+    if (intervalDays.present) {
+      map['interval_days'] = Variable<int>(intervalDays.value);
+    }
     if (reps.present) {
       map['reps'] = Variable<int>(reps.value);
     }
@@ -2990,6 +3052,8 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
           ..write('step: $step, ')
           ..write('stability: $stability, ')
           ..write('difficulty: $difficulty, ')
+          ..write('easinessFactor: $easinessFactor, ')
+          ..write('intervalDays: $intervalDays, ')
           ..write('reps: $reps, ')
           ..write('lapses: $lapses, ')
           ..write('lastReviewAt: $lastReviewAt, ')

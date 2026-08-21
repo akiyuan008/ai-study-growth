@@ -57,46 +57,5 @@ class AiCallLogs extends Table {
   DateTimeColumn get at => dateTime()();
 }
 
-/// SM-2 复习卡（v15 终版：替换 FSRS 字段）
-///
-/// SM-2 核心字段：
-/// - reps: 已复习次数
-/// - easinessFactor: 难度因子 EF [1.3, 3.0]
-/// - intervalDays: 当前间隔（天）
-/// - due: 下次到期时间
-/// - lastReviewAt: 上次复习时间
-class ReviewCards extends Table {
-  TextColumn get id => text()();
-  TextColumn get questionId => text()();
-
-  /// SM-2: 已复习次数
-  IntColumn get reps => integer().withDefault(const Constant(0))();
-
-  /// SM-2: 难度因子 EF，初始 2.5
-  RealColumn get easinessFactor => real().withDefault(const Constant(2.5))();
-
-  /// SM-2: 当前间隔（天）
-  IntColumn get intervalDays => integer().withDefault(const Constant(0))();
-
-  DateTimeColumn get due => dateTime()();
-  DateTimeColumn get lastReviewAt => dateTime().nullable()();
-  DateTimeColumn get createdAt => dateTime()();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-/// 复习日志（v15 终版：SM-2 三档评分）
-class ReviewLogs extends Table {
-  TextColumn get id => text()();
-  TextColumn get questionId => text()();
-  DateTimeColumn get reviewedAt => dateTime()();
-
-  /// SM-2 评分：1=仍错, 3=模糊, 5=已会
-  IntColumn get rating => integer()();
-
-  DateTimeColumn get createdAt => dateTime()();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
+/// SM-2 复习卡和复习日志已移至 learning_tables.dart
+/// （统一管理所有学习域实体表，避免重复定义冲突）

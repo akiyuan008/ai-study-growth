@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'ai_call.dart';
 import 'json_extract.dart';
@@ -192,6 +193,7 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
       return [
         ExerciseItem(
           question: fallbackRaw.trim(),
+          options: const [],
           answer: '',
           explanation: 'AI 拟题（原文输出）',
           difficulty: 'AI 拟题',
@@ -204,6 +206,7 @@ class AiAnalysisGatewayImpl implements AiAnalysisGateway {
       return [
         ExerciseItem(
           question: 'AI 生成暂时不可用，请稍后重试或手动添加同类题。',
+          options: const [],
           answer: '',
           explanation: e.toString(),
           difficulty: '暂无',

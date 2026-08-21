@@ -85,25 +85,28 @@ class QuestionKnowledgeLinks extends Table {
   TextColumn get knowledgePointId => text()();
 }
 
-/// 间隔复习卡片（P2 接 FSRS 算法，此处预留算法状态列）
+/// 间隔复习卡片（SM-2 算法）
 class ReviewCards extends Table {
   TextColumn get id => text()();
 
   /// 关联题目
   TextColumn get questionId => text()();
 
-  /// 到期时间（FSRS due）
+  /// 到期时间
   DateTimeColumn get due => dateTime()();
 
-  /// FSRS 状态：0 new / 1 learning / 2 review / 3 relearning
+  /// SM-2 评分档：0 new / 1 learning / 2 review / 3 relearning（兼容旧数据）
   IntColumn get state => integer().withDefault(const Constant(0))();
 
-  /// FSRS 学习/再学习阶段步序（review 状态为 null）
+  /// 旧 FSRS 字段（保留兼容旧数据，不再使用）
   IntColumn get step => integer().nullable()();
-
-  /// FSRS 状态参数
   RealColumn get stability => real().withDefault(const Constant(0))();
   RealColumn get difficulty => real().withDefault(const Constant(0))();
+
+  /// SM-2 算法字段
+  RealColumn get easinessFactor => real().withDefault(const Constant(2.5))();
+  IntColumn get intervalDays => integer().withDefault(const Constant(0))();
+
   IntColumn get reps => integer().withDefault(const Constant(0))();
   IntColumn get lapses => integer().withDefault(const Constant(0))();
   DateTimeColumn get lastReviewAt => dateTime().nullable()();
@@ -119,7 +122,7 @@ class ReviewLogs extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get questionId => text()();
 
-  /// FSRS 评分：1 again / 2 hard / 3 good / 4 easy
+  /// SM-2 评分：1=仍错, 3=模糊, 5=已会
   IntColumn get rating => integer()();
   DateTimeColumn get reviewedAt => dateTime()();
   IntColumn get durationMs => integer().nullable()();

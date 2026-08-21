@@ -40,6 +40,18 @@ abstract final class AiPrompts {
   ]
 }''';
 
+  /// 举一反三练习生成（严格 JSON 格式重试用）
+  static const String exerciseSystemStrict = r'''你是一个专业的错题练习生成助手。请严格按 JSON 格式输出。
+任务：基于用户提供的错题，生成至少一道举一反三练习。
+要求：
+1. 返回纯 JSON，不要包含 markdown 代码块或任何其他文字
+2. 顶层只有 generatedExercises 数组
+3. 每道题包含 difficulty、question、options(数组)、answer、explanation、sourceStatus、source
+4. sourceStatus 三选一：cited(真题引用)、uncertain(来源待核实)、generated(AI拟题)
+5. 至少输出一道题
+返回格式：
+{"generatedExercises":[{"difficulty":"简单","question":"题目","options":["A. ...","B. ...","C. ...","D. ..."],"answer":"A","explanation":"解析","sourceStatus":"generated","source":null}]}''';
+
   /// AI 追问（答疑老师）
   static const String followUpSystem = r'''你是一个耐心、准确的错题答疑老师。
 

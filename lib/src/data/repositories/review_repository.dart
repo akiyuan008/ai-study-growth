@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
-import 'package:fsrs/fsrs.dart';
 
 import '../local/app_database.dart';
 import '../services/review_scheduler.dart';
@@ -14,13 +13,13 @@ class DueReviewItem {
   final QuestionRecord question;
 }
 
-/// 复习仓储：FSRS 卡片调度 + 复习日志 + 掌握度联动 + 学习事件
+/// 复习仓储：SM-2 卡片调度 + 复习日志 + 掌握度联动 + 学习事件
 class ReviewRepository {
-  ReviewRepository(this._db, {ReviewScheduler? scheduler})
-      : _scheduler = scheduler ?? ReviewScheduler();
+  ReviewRepository(this._db, {Sm2Scheduler? scheduler})
+      : _scheduler = scheduler ?? Sm2Scheduler();
 
   final AppDatabase _db;
-  final ReviewScheduler _scheduler;
+  final Sm2Scheduler _scheduler;
 
   /// 当前到期的复习卡（按到期时间升序）
   Future<List<DueReviewItem>> dueItems({DateTime? now}) async {
@@ -51,10 +50,11 @@ class ReviewRepository {
     return cards.length;
   }
 
-  /// 评分：跑 FSRS → 回写卡片 → 写日志 → 更新掌握度 → 发学习事件
+  /// 评分：跑 SM-2 → 回写卡片 → 写日志 → 更新掌握度 → 发学习事件
+  /// quality: 1=仍错, 3=模糊, 5=已会
   Future<void> rate({
     required String cardId,
-    required Rating rating,
+    required int quality,
     DateTime? now,
   }) async {
     final at = now ?? DateTime.now();
@@ -66,38 +66,34 @@ class ReviewRepository {
 
     final card = _scheduler.cardFromStorage(
       cardId: row.createdAt.millisecondsSinceEpoch,
-      state: row.state,
-      step: row.step,
-      stability: row.stability,
-      difficulty: row.difficulty,
+      reps: row.reps,
+      easinessFactor: row.easinessFactor,
+      intervalDays: row.intervalDays,
       due: row.due,
       lastReview: row.lastReviewAt,
     );
-    final rated = _scheduler.rate(card, rating, now: at);
+    final rated = _scheduler.rate(card, quality, now: at);
     final updated = rated.card;
-    final lapsed = rating == Rating.again && card.state == State.review;
 
     await (_db.update(_db.reviewCards)..where((t) => t.id.equals(cardId)))
         .write(ReviewCardsCompanion(
-      state: Value(updated.state.value),
-      step: Value(updated.step),
-      stability: Value(updated.stability ?? 0),
-      difficulty: Value(updated.difficulty ?? 0),
+      easinessFactor: Value(updated.easinessFactor),
+      intervalDays: Value(updated.intervalDays),
       due: Value(updated.due.toLocal()),
       lastReviewAt: Value(at),
-      reps: Value(row.reps + 1),
-      lapses: Value(row.lapses + (lapsed ? 1 : 0)),
+      reps: Value(updated.reps),
+      lapses: Value(row.lapses + (quality < 3 ? 1 : 0)),
     ));
 
     await _db.into(_db.reviewLogs).insert(
           ReviewLogsCompanion.insert(
             questionId: row.questionId,
-            rating: rating.value,
+            rating: quality,
             reviewedAt: at,
           ),
         );
 
-    await _updateMastery(row.questionId, updated, row.reps + 1);
+    await _updateMastery(row.questionId, updated, updated.reps);
 
     await _db.into(_db.learningEvents).insert(
           LearningEventsCompanion.insert(
@@ -105,34 +101,31 @@ class ReviewRepository {
             questionId: Value(row.questionId),
             at: at,
             payload: Value(jsonEncode({
-              'rating': rating.name,
-              'state': updated.state.name,
-              'stability': updated.stability,
+              'quality': quality,
+              'easinessFactor': updated.easinessFactor,
+              'intervalDays': updated.intervalDays,
             })),
           ),
         );
   }
 
-  /// 掌握度映射（Part 6.3 标记结果联动）：
-  /// 0 新题 → 1-2 学习中 → 3 已入长期（review 态）
-  /// 4 稳定（S≥21 天）→ 5 掌握/毕业（连续答对达标，不再推荐）
+  /// 掌握度映射（SM-2 版）：
+  /// 0 新题 → 1-2 学习中 → 3 已入长期（reps > 0）
+  /// 4 稳定（intervalDays≥21 天）→ 5 掌握/毕业（intervalDays≥60 且 reps≥3）
   Future<void> _updateMastery(
     String questionId,
-    Card card,
+    Sm2Card card,
     int reps,
   ) async {
-    final stability = card.stability ?? 0;
     final int level;
-    if (card.state == State.review && stability >= 21 && reps >= 3) {
+    if (reps >= 3 && card.intervalDays >= 60) {
       level = 5; // 毕业：进入「已掌握·不再推荐」
-    } else if (card.state == State.review) {
-      if (stability >= 60) {
-        level = 5;
-      } else if (stability >= 21) {
-        level = 4;
-      } else {
-        level = 3;
-      }
+    } else if (card.intervalDays >= 60) {
+      level = 5;
+    } else if (card.intervalDays >= 21) {
+      level = 4;
+    } else if (reps > 0) {
+      level = 3;
     } else {
       level = reps <= 1 ? 1 : 2;
     }

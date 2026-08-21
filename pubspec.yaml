@@ -25,7 +25,6 @@ dependencies:
   flutter_secure_storage: ^9.2.2
 
   # 学习域
-  fsrs: ^2.0.1
   image_picker: ^1.2.3
   image_cropper: ^12.2.1
   camera: ^0.11.0
