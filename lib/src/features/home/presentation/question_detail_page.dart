@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../data/local/app_database.dart';
+import '../../../data/repositories/exam_bank_repository.dart';
 import '../../../data/repositories/question_repository.dart';
 import '../../../design_system/design_system.dart';
 import '../../../domain/models/generated_exercise.dart';
@@ -468,6 +469,32 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
       final db = ref.read(databaseProvider);
       final bankRepo = ref.read(questionBankRepositoryProvider);
 
+      // L0：内置真题库（GAOKAO-Bench 真实高考题，最优先，离线可用）
+      final examItems = <ExerciseItem>[];
+      final subject = widget.question.subject;
+      if (subject.isNotEmpty) {
+        final keywords = <String>[
+          widget.breadcrumb.point,
+          widget.breadcrumb.lesson,
+          widget.breadcrumb.chapter,
+        ].where((k) => k.isNotEmpty).toList();
+        final found = await ExamBankRepository.search(
+          subject: subject,
+          keywords: keywords,
+          excludeStem: widget.question.stem,
+          limit: 2,
+        );
+        examItems.addAll(found.map((q) => ExerciseItem(
+              difficulty: '真题',
+              question: q.stem,
+              options: q.options,
+              answer: q.answer,
+              explanation: q.explanation,
+              sourceLevel: ExerciseSourceLevel.l2Cited,
+              sourceLabel: q.sourceLabel,
+            )));
+      }
+
       // L1：按 point+chapter 检索个人真题库（未用优先）
       final links = await (db.select(db.questionKnowledgeLinks)
             ..where((t) => t.questionId.equals(widget.question.id)))
@@ -491,13 +518,13 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
       }
       await bankRepo.markUsed(usedIds);
 
-      List<ExerciseItem> typed = l1Items;
+      List<ExerciseItem> typed = [...examItems, ...l1Items].take(3).toList();
 
-      // AI 未配置：仅 L1 离线可用 + 解锁引导
+      // AI 未配置：内置真题库 + 个人题库离线可用
       final gateway = await ref.read(aiGatewayProvider.future);
       if (gateway == null) {
         if (typed.isEmpty) {
-          setState(() => _error = '题库里还没有同知识点的真题。配置 AI 服务商后，可解锁 AI 真题引用与拟题。');
+          setState(() => _error = '该科目暂无内置真题，你的题库也没有同知识点题目。配置 AI 服务商后可解锁 AI 拟题。');
         } else {
           await ref
               .read(exerciseRepositoryProvider)

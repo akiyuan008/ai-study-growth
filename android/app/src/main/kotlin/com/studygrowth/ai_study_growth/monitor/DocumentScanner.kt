@@ -363,35 +363,40 @@ object DocumentScanner {
         }
     }
 
-    /** OpenCV 引擎：背景估计→光照压平（原图÷背景×255）→CLAHE */
+    /** OpenCV 引擎（扫描王"魔术色"式）：
+     *  逐通道背景估计→光照压平（纸面变白）→提亮+加对比（文字突显），保留彩色 */
     private fun enhanceOpenCv(srcPath: String, outDir: File): String? {
         return try {
             val src = Imgcodecs.imread(srcPath)
             if (src.empty()) return null
-            val gray = Mat()
-            Imgproc.cvtColor(src, gray, Imgproc.COLOR_BGR2GRAY)
 
-            // 背景估计：大核高斯
-            val bg = Mat()
-            Imgproc.GaussianBlur(gray, bg, Size(0.0, 0.0), 50.0)
+            // 逐通道压平：每通道 ÷ 自身大核高斯背景 × 255
+            val channels = ArrayList<Mat>()
+            Core.split(src, channels)
+            for (i in channels.indices) {
+                val bg = Mat()
+                Imgproc.GaussianBlur(channels[i], bg, Size(0.0, 0.0), 50.0)
+                val flat = Mat()
+                Core.divide(channels[i], bg, flat, 255.0)
+                channels[i].release()
+                channels[i] = flat
+                bg.release()
+            }
+            val flatBgr = Mat()
+            Core.merge(channels, flatBgr)
 
-            // 光照压平
-            val flat = Mat()
-            Core.divide(gray, bg, flat, 255.0)
-
-            // CLAHE 对比度
-            val clahe: CLAHE = Imgproc.createCLAHE(2.0, Size(8.0, 8.0))
+            // 提亮 + 加对比：out = 1.16*x + 6（纸面推向白，笔画推向黑）
             val out = Mat()
-            clahe.apply(flat, out)
-
-            val bgr = Mat()
-            Imgproc.cvtColor(out, bgr, Imgproc.COLOR_GRAY2BGR)
+            flatBgr.convertTo(out, -1, 1.16, 6.0)
 
             outDir.mkdirs()
             val file = File(outDir, "enh_${System.currentTimeMillis()}.jpg")
-            val ok = Imgcodecs.imwrite(file.absolutePath, bgr)
-            src.release(); gray.release(); bg.release()
-            flat.release(); out.release(); bgr.release()
+            val ok = Imgcodecs.imwrite(
+                file.absolutePath, out,
+                Imgcodecs.IMWRITE_JPEG_QUALITY, 92
+            )
+            src.release(); flatBgr.release(); out.release()
+            for (c in channels) c.release()
             if (ok) file.absolutePath else null
         } catch (_: Throwable) {
             null
@@ -422,11 +427,12 @@ object DocumentScanner {
                 i += step
             }
             luma.sort()
-            val lo = luma[(luma.size * 0.02).toInt().coerceAtMost(luma.size - 1)]
-            val hi = luma[(luma.size * 0.98).toInt().coerceAtMost(luma.size - 1)].coerceAtLeast(lo + 20)
+            val lo = luma[(luma.size * 0.01).toInt().coerceAtMost(luma.size - 1)]
+            val hi = luma[(luma.size * 0.99).toInt().coerceAtMost(luma.size - 1)].coerceAtLeast(lo + 20)
 
-            // 对比拉伸系数
+            // 对比拉伸系数 + 亮度提升（纸面推向白，笔画推向黑）
             val scale = 255f / (hi - lo)
+            val brightnessLift = 12f
 
             // 白平衡增益（亮区均值 → 中性灰）
             var rGain = 1f; var gGain = 1f; var bGain = 1f
@@ -441,9 +447,9 @@ object DocumentScanner {
             }
 
             val cm = ColorMatrix(floatArrayOf(
-                scale * rGain, 0f, 0f, 0f, -lo * scale * rGain,
-                0f, scale * gGain, 0f, 0f, -lo * scale * gGain,
-                0f, 0f, scale * bGain, 0f, -lo * scale * bGain,
+                scale * rGain, 0f, 0f, 0f, -lo * scale * rGain + brightnessLift,
+                0f, scale * gGain, 0f, 0f, -lo * scale * gGain + brightnessLift,
+                0f, 0f, scale * bGain, 0f, -lo * scale * bGain + brightnessLift,
                 0f, 0f, 0f, 1f, 0f
             ))
             val paint = Paint().apply { colorFilter = ColorMatrixColorFilter(cm) }

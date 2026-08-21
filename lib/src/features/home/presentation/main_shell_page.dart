@@ -8,6 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../data/services/notification_service.dart';
+import '../../../data/repositories/exam_bank_repository.dart';
 import '../../../data/services/settings_service.dart';
 import '../../../design_system/design_system.dart';
 import '../../capture/presentation/camera_capture_page.dart';
@@ -165,68 +166,10 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
         child: ListView(
           padding: const EdgeInsets.all(GrowthSpacing.lg),
           children: [
-            // ---- 外观（主题三态）----
+            // ===== 常规 =====
+            _GroupLabel(label: '常规'),
             const _AppearanceCard(),
             const SizedBox(height: GrowthSpacing.md),
-
-            // ---- AI 服务商 ----
-            GlassCard(
-              onTap: () => context.push('/settings/ai-provider'),
-              child: Row(
-                children: [
-                  const Icon(Icons.smart_toy_rounded,
-                      color: GrowthColors.primary),
-                  const SizedBox(width: GrowthSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('AI 服务商',
-                            style: Theme.of(context).textTheme.titleLarge),
-                        const SizedBox(height: GrowthSpacing.xs),
-                        Text(
-                          configName ?? '未配置 · 不影响拍题与复习',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded),
-                ],
-              ),
-            ),
-            const SizedBox(height: GrowthSpacing.md),
-
-            // ---- AI 调用日志 ----
-            GlassCard(
-              onTap: () => context.push('/settings/ai-call-log'),
-              child: Row(
-                children: [
-                  const Icon(Icons.receipt_long_rounded,
-                      color: GrowthColors.primary),
-                  const SizedBox(width: GrowthSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('AI 调用日志',
-                            style: Theme.of(context).textTheme.titleLarge),
-                        const SizedBox(height: GrowthSpacing.xs),
-                        Text(
-                          '查看知识点识别等 AI 调用记录',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded),
-                ],
-              ),
-            ),
-            const SizedBox(height: GrowthSpacing.md),
-
-            // ---- 通知设置 ----
-            _GroupLabel(label: '通知'),
             GlassCard(
               child: Column(
                 children: [
@@ -263,7 +206,6 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                               settings.setReviewNotifyTime(newTime).then((_) {
                             if (context.mounted) setState(() {});
                           }));
-                          // 重新按新时间调度
                           unawaited(_scheduleReminder(settings));
                         }
                       },
@@ -273,8 +215,63 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
             ),
             const SizedBox(height: GrowthSpacing.lg),
 
-            // ---- 备份与同步 ----
-            _GroupLabel(label: '备份与同步'),
+            // ===== AI 助手 =====
+            _GroupLabel(label: 'AI 助手'),
+            GlassCard(
+              onTap: () => context.push('/settings/ai-provider'),
+              child: Row(
+                children: [
+                  const Icon(Icons.smart_toy_rounded,
+                      color: GrowthColors.primary),
+                  const SizedBox(width: GrowthSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('AI 服务商',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: GrowthSpacing.xs),
+                        Text(
+                          configName ?? '未配置 · 不影响拍题与复习',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+            ),
+            const SizedBox(height: GrowthSpacing.md),
+            GlassCard(
+              onTap: () => context.push('/settings/ai-call-log'),
+              child: Row(
+                children: [
+                  const Icon(Icons.receipt_long_rounded,
+                      color: GrowthColors.primary),
+                  const SizedBox(width: GrowthSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('AI 调用日志',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: GrowthSpacing.xs),
+                        Text(
+                          '查看知识点识别等 AI 调用记录',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+            ),
+            const SizedBox(height: GrowthSpacing.lg),
+
+            // ===== 数据与同步 =====
+            _GroupLabel(label: '数据与同步'),
             GlassCard(
               onTap: () => context.push('/settings/cloud-sync'),
               child: Row(
@@ -305,7 +302,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
               onTap: () => context.push('/settings/backup'),
               child: Row(
                 children: [
-                  const Icon(Icons.cloud_sync_rounded,
+                  const Icon(Icons.cloud_upload_rounded,
                       color: GrowthColors.primary),
                   const SizedBox(width: GrowthSpacing.md),
                   Expanded(
@@ -326,42 +323,49 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                 ],
               ),
             ),
-            const SizedBox(height: GrowthSpacing.lg),
-
-            _GroupLabel(label: '数据与关于'),
-            const _EngineStatusCard(),
             const SizedBox(height: GrowthSpacing.md),
             GlassCard(
               child: Column(
                 children: [
                   _SettingRow(
                     icon: Icons.backup_rounded,
-                    title: '数据备份导出',
+                    title: '本地数据导出',
                     subtitle: '全库导出为 JSON 文件',
                     onTap: _exportBackup,
                   ),
+                  const _Divider(),
                   _SettingRow(
                     icon: Icons.cleaning_services_rounded,
                     title: '图片缓存清理',
                     subtitle: '删除拍题图片与图片缓存',
                     onTap: _cleanImageCache,
                   ),
-                  const _Divider(),
-                  FutureBuilder<PackageInfo>(
-                    future: PackageInfo.fromPlatform(),
-                    builder: (context, snapshot) {
-                      final version = snapshot.data?.version ?? '0.9.0';
-                      return _SettingRow(
-                        icon: Icons.info_outline_rounded,
-                        title: '关于',
-                        subtitle: '智析录 v$version',
-                        onTap: _onVersionTap,
-                      );
-                    },
-                  ),
                 ],
               ),
             ),
+            const SizedBox(height: GrowthSpacing.lg),
+
+            // ===== 其他 =====
+            _GroupLabel(label: '其他'),
+            const _ExamBankCard(),
+            const SizedBox(height: GrowthSpacing.md),
+            const _EngineStatusCard(),
+            const SizedBox(height: GrowthSpacing.md),
+            GlassCard(
+              child: FutureBuilder<PackageInfo>(
+                future: PackageInfo.fromPlatform(),
+                builder: (context, snapshot) {
+                  final version = snapshot.data?.version ?? '';
+                  return _SettingRow(
+                    icon: Icons.info_outline_rounded,
+                    title: '关于智析录',
+                    subtitle: version.isEmpty ? '版本信息' : '版本 v$version',
+                    onTap: _onVersionTap,
+                  );
+                },
+              ),
+            ),
+
             const SizedBox(height: GrowthSpacing.xl),
           ],
         ),
@@ -589,6 +593,65 @@ class _AppearanceCard extends ConsumerWidget {
 }
 
 /// 增强引擎状态卡（v15：OpenCV 可选，未加载时手动功能仍可用）
+/// 内置真题库信息卡（GAOKAO-Bench 真实高考题）
+class _ExamBankCard extends ConsumerStatefulWidget {
+  const _ExamBankCard();
+
+  @override
+  ConsumerState<_ExamBankCard> createState() => _ExamBankCardState();
+}
+
+class _ExamBankCardState extends ConsumerState<_ExamBankCard> {
+  int _count = 0;
+  int _subjects = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final count = await ExamBankRepository.count();
+    final subjects = await ExamBankRepository.subjects();
+    if (mounted) {
+      setState(() {
+        _count = count;
+        _subjects = subjects.length;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      padding: const EdgeInsets.all(GrowthSpacing.md),
+      child: Row(
+        children: [
+          const Icon(Icons.school_rounded,
+              color: GrowthColors.primary, size: 20),
+          const SizedBox(width: GrowthSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('内置真题库',
+                    style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  _count > 0
+                      ? '$_count 道真实高考题（2010-2022 · $_subjects 科）· 举一反三优先出真题'
+                      : '真实高考题库加载中…',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EngineStatusCard extends ConsumerStatefulWidget {
   const _EngineStatusCard();
 

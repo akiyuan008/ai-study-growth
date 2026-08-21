@@ -73,6 +73,8 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
     ];
     // 进场自动尝试一次文档提取（失败不阻塞，回落手动裁剪）
     _autoCorrect(silent: true);
+    // 进场即增强（不等自动校准结果）：亮度/对比度提升，纸白字黑
+    unawaited(_reEnhance());
   }
 
   Future<void> _autoCorrect({bool silent = false}) async {
