@@ -635,8 +635,7 @@ class _ExamBankCardState extends ConsumerState<_ExamBankCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('内置真题库',
-                    style: Theme.of(context).textTheme.bodyMedium),
+                Text('内置真题库', style: Theme.of(context).textTheme.bodyMedium),
                 Text(
                   _count > 0
                       ? '$_count 道真实高考题（2010-2022 · $_subjects 科）· 举一反三优先出真题'

@@ -524,7 +524,8 @@ class _ExercisePanelState extends ConsumerState<_ExercisePanel> {
       final gateway = await ref.read(aiGatewayProvider.future);
       if (gateway == null) {
         if (typed.isEmpty) {
-          setState(() => _error = '该科目暂无内置真题，你的题库也没有同知识点题目。配置 AI 服务商后可解锁 AI 拟题。');
+          setState(
+              () => _error = '该科目暂无内置真题，你的题库也没有同知识点题目。配置 AI 服务商后可解锁 AI 拟题。');
         } else {
           await ref
               .read(exerciseRepositoryProvider)

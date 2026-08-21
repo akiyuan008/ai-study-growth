@@ -197,8 +197,7 @@ class _NotebookListPageState extends ConsumerState<NotebookListPage> {
                 title: '错题本还是空的',
                 subtitle: '拍下第一道错题，把它变成成长资产',
                 actionLabel: '拍第一道题',
-                onAction: () =>
-                    ref.read(shellTabProvider.notifier).state = 0,
+                onAction: () => ref.read(shellTabProvider.notifier).state = 0,
               );
             }
             final counts = _subjectCounts(all);

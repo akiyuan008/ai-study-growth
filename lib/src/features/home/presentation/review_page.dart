@@ -164,8 +164,7 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
                 title: '太棒了！',
                 subtitle: '没有需要复习的题目',
                 actionLabel: '去拍题',
-                onAction: () =>
-                    ref.read(shellTabProvider.notifier).state = 0,
+                onAction: () => ref.read(shellTabProvider.notifier).state = 0,
               );
             }
             return ListView(

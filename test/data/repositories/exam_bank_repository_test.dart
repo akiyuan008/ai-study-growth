@@ -50,8 +50,8 @@ void main() {
     );
     if (found.isEmpty) return;
     // 至少一道题干或解析含关键词
-    final hit = found.any(
-        (q) => q.stem.contains('卫星') || q.explanation.contains('卫星'));
+    final hit =
+        found.any((q) => q.stem.contains('卫星') || q.explanation.contains('卫星'));
     expect(hit, isTrue);
   });
 }

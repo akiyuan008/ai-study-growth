@@ -25,8 +25,7 @@ class ExamQuestion {
   final String explanation;
 
   /// 展示用出处：如「真题 · 2019 新课标」
-  String get sourceLabel =>
-      '真题 · $year${exam.isNotEmpty ? ' $exam' : ''}';
+  String get sourceLabel => '真题 · $year${exam.isNotEmpty ? ' $exam' : ''}';
 }
 
 /// 内置真题库仓储（assets 懒加载 + 内存缓存）。
@@ -39,7 +38,8 @@ abstract final class ExamBankRepository {
   static Future<List<ExamQuestion>> _load() async {
     if (_cache != null) return _cache!;
     try {
-      final raw = await rootBundle.loadString('assets/exam_bank/exam_bank.json');
+      final raw =
+          await rootBundle.loadString('assets/exam_bank/exam_bank.json');
       final json = jsonDecode(raw) as Map<String, dynamic>;
       final list = (json['questions'] as List? ?? const [])
           .whereType<Map<String, dynamic>>()
@@ -80,10 +80,8 @@ abstract final class ExamBankRepository {
     if (pool.isEmpty) return const [];
 
     // 关键词命中优先，其次随机
-    final kw = keywords
-        .map((k) => k.trim())
-        .where((k) => k.length >= 2)
-        .toList();
+    final kw =
+        keywords.map((k) => k.trim()).where((k) => k.length >= 2).toList();
     int score(ExamQuestion q) {
       var s = 0;
       for (final k in kw) {
