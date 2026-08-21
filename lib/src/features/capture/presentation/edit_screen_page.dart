@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../../core/bridge/scanner_bridge.dart';
+import '../../../core/capture/crop_geometry.dart';
 import '../../../design_system/design_system.dart';
 import 'camera_capture_page.dart';
 
@@ -141,13 +142,22 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
       _busy = true;
       _inlineError = null;
     });
+    // 几何预处理：钳制越界角 + 退化检测（防原生裁剪静默失败）
+    final corners = CropGeometry.clampCorners(_corners);
+    if (!CropGeometry.isValidQuad(corners)) {
+      setState(() {
+        _busy = false;
+        _inlineError = '裁剪框太小，请拉大后再试';
+      });
+      return;
+    }
     final scanner = ref.read(scannerBridgeProvider);
     final result = await scanner.cropByPoints(
       _currentPath,
-      tl: [_corners[0].dx, _corners[0].dy],
-      tr: [_corners[1].dx, _corners[1].dy],
-      br: [_corners[2].dx, _corners[2].dy],
-      bl: [_corners[3].dx, _corners[3].dy],
+      tl: [corners[0].dx, corners[0].dy],
+      tr: [corners[1].dx, corners[1].dy],
+      br: [corners[2].dx, corners[2].dy],
+      bl: [corners[3].dx, corners[3].dy],
     );
     if (!mounted) return;
     setState(() {
@@ -211,13 +221,22 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
         _busy = true;
         _inlineError = null;
       });
+      // 几何预处理：钳制越界角 + 退化检测
+      final corners = CropGeometry.clampCorners(_corners);
+      if (!CropGeometry.isValidQuad(corners)) {
+        setState(() {
+          _busy = false;
+          _inlineError = '裁剪框太小，请拉大后再试';
+        });
+        return;
+      }
       final scanner = ref.read(scannerBridgeProvider);
       final cropped = await scanner.cropByPoints(
         _currentPath,
-        tl: [_corners[0].dx, _corners[0].dy],
-        tr: [_corners[1].dx, _corners[1].dy],
-        br: [_corners[2].dx, _corners[2].dy],
-        bl: [_corners[3].dx, _corners[3].dy],
+        tl: [corners[0].dx, corners[0].dy],
+        tr: [corners[1].dx, corners[1].dy],
+        br: [corners[2].dx, corners[2].dy],
+        bl: [corners[3].dx, corners[3].dy],
       );
       if (!mounted) return;
       setState(() => _busy = false);
