@@ -66,6 +66,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             orElse: () => CaptureSource.camera,
           ),
           roi: _parseRoi(state.uri.queryParameters['roi']),
+          returnCamera: state.uri.queryParameters['returnCamera'] == '1',
         ),
       ),
       GoRoute(

@@ -160,23 +160,36 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
       final enhancedPath = await _enhanceAndSave(image.path, targetPath);
 
       if (_multiPageMode) {
-        // 多页模式：加入队列，继续拍摄
-        setState(() {
-          _sessionQueue.add(CapturedImage(
-            originalPath: image.path,
-            enhancedPath: enhancedPath,
-          ));
-          _stackPulse = true;
-        });
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) setState(() => _stackPulse = false);
-        });
-
+        // 多页模式：拍一张→进裁剪→确认返回继续拍
         // 自动收起引导框
         if (_guideVisible) {
           final prefs = ref.read(sharedPreferencesProvider);
           await prefs.setBool('capture.guide_dismissed', true);
           if (mounted) setState(() => _guideVisible = false);
+        }
+        if (!mounted) return;
+        final editUri = Uri(
+          path: '/capture/edit',
+          queryParameters: {
+            'path': enhancedPath,
+            'source': CaptureSource.camera.name,
+            'roi': _roiQuery,
+            'returnCamera': '1',
+          },
+        );
+        final cropped = await context.push<String>(editUri.toString());
+        if (!mounted) return;
+        if (cropped != null) {
+          setState(() {
+            _sessionQueue.add(CapturedImage(
+              originalPath: image.path,
+              enhancedPath: cropped,
+            ));
+            _stackPulse = true;
+          });
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) setState(() => _stackPulse = false);
+          });
         }
       } else {
         if (!mounted) return;
@@ -229,13 +242,27 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
         await File(file.path).copy(targetPath);
 
         if (_multiPageMode) {
-          setState(() {
-            _sessionQueue.add(CapturedImage(
-              originalPath: file.path,
-              enhancedPath: targetPath,
-            ));
-            _stackPulse = true;
-          });
+          // 多页模式：相册图也进裁剪→确认返回继续
+          if (!mounted) return;
+          final editUri = Uri(
+            path: '/capture/edit',
+            queryParameters: {
+              'path': targetPath,
+              'source': CaptureSource.album.name,
+              'returnCamera': '1',
+            },
+          );
+          final cropped = await context.push<String>(editUri.toString());
+          if (!mounted) return;
+          if (cropped != null) {
+            setState(() {
+              _sessionQueue.add(CapturedImage(
+                originalPath: file.path,
+                enhancedPath: cropped,
+              ));
+              _stackPulse = true;
+            });
+          }
         } else {
           if (!mounted) return;
           final editUri = Uri(
@@ -258,28 +285,95 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
     }
   }
 
-  /// 多页模式：进入保存页（带队列）
-  void _goToSaveFromQueue() {
+  /// 多页模式：队列已逐张裁剪完毕，顺序逐张进保存页
+  Future<void> _goToSaveFromQueue() async {
     if (_sessionQueue.isEmpty) {
       AppToast.info(context, '先拍几张题');
       return;
     }
-    // 取第一张进入编辑流程
-    final first = _sessionQueue.first;
-    final editUri = Uri(
-      path: '/capture/edit',
-      queryParameters: {
-        'path': first.enhancedPath,
-        'source': CaptureSource.camera.name,
-        'roi': _roiQuery,
-      },
-    );
-    context.push(editUri.toString());
+    while (_sessionQueue.isNotEmpty && mounted) {
+      final img = _sessionQueue.first;
+      final saveUri = Uri(
+        path: '/capture/save',
+        queryParameters: {
+          'path': img.enhancedPath,
+          'source': CaptureSource.camera.name,
+          'cropSource': 'manual',
+        },
+      );
+      await context.push(saveUri.toString());
+      if (!mounted) return;
+      // 保存页返回即视为该张处理完毕（保存成功或主动放弃）
+      setState(() => _sessionQueue.removeAt(0));
+    }
   }
 
   /// 多页模式：删除队列中某项
   void _removeFromQueue(int index) {
     setState(() => _sessionQueue.removeAt(index));
+  }
+
+  /// 多页模式：队列管理（预览 / 删除 / 长按重排）
+  void _openQueueManager() {
+    showGrowthSheet<void>(
+      context: context,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheet) => SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('整理队列（长按拖动重排）',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: GrowthSpacing.md),
+              Expanded(
+                child: ReorderableListView(
+                  buildDefaultDragHandles: true,
+                  onReorderItem: (oldIndex, newIndex) {
+                    setSheet(() {
+                      final item = _sessionQueue.removeAt(oldIndex);
+                      _sessionQueue.insert(newIndex, item);
+                    });
+                  },
+                  children: [
+                    for (var i = 0; i < _sessionQueue.length; i++)
+                      ListTile(
+                        key: ValueKey(_sessionQueue[i].enhancedPath),
+                        leading: ClipRRect(
+                          borderRadius:
+                              BorderRadius.circular(GrowthRadii.icon),
+                          child: Image.file(
+                            File(_sessionQueue[i].enhancedPath),
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        title: Text('第 ${i + 1} 张'),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded,
+                              color: GrowthColors.error),
+                          onPressed: () => setSheet(() {
+                            _sessionQueue.removeAt(i);
+                            if (_sessionQueue.isEmpty) {
+                              Navigator.of(sheetContext).pop();
+                            }
+                          }),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              GrowthButton(
+                label: '完成整理',
+                expanded: true,
+                onPressed: () => Navigator.of(sheetContext).pop(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -559,13 +653,24 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
             ],
           ),
 
-          // 多页模式：确认进入保存
+          // 多页模式：整理队列 + 确认进入保存
           if (_multiPageMode && _sessionQueue.isNotEmpty) ...[
             const SizedBox(height: 8),
-            GrowthButton(
-              label: '确认 (${_sessionQueue.length}张)',
-              expanded: true,
-              onPressed: _goToSaveFromQueue,
+            Row(
+              children: [
+                Expanded(
+                  child: GrowthButton(
+                    label: '确认 (${_sessionQueue.length}张)',
+                    onPressed: _goToSaveFromQueue,
+                  ),
+                ),
+                const SizedBox(width: GrowthSpacing.sm),
+                GrowthButton(
+                  label: '整理',
+                  variant: GrowthButtonVariant.secondary,
+                  onPressed: _openQueueManager,
+                ),
+              ],
             ),
           ],
         ],

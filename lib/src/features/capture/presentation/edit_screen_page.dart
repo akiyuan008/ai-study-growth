@@ -19,6 +19,7 @@ class EditScreenPage extends ConsumerStatefulWidget {
     required this.path,
     required this.source,
     this.roi,
+    this.returnCamera = false,
   });
 
   final String path;
@@ -26,6 +27,9 @@ class EditScreenPage extends ConsumerStatefulWidget {
 
   /// 拍照页对准引导框传来的归一化 ROI [x, y, w, h]
   final List<double>? roi;
+
+  /// 多页连拍模式：确认后返回拍照页继续拍（不进保存页）
+  final bool returnCamera;
 
   @override
   ConsumerState<EditScreenPage> createState() => _EditScreenPageState();
@@ -228,6 +232,11 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
 
     final archived = await archiveImage(finalPath);
     if (!mounted) return;
+    if (widget.returnCamera) {
+      // 多页连拍：带裁剪结果返回拍照页继续拍
+      context.pop(archived);
+      return;
+    }
     context.pushReplacement(
       '/capture/save?path=${Uri.encodeComponent(archived)}'
       '&source=${widget.source.name}&cropSource=$cropSource',
@@ -439,7 +448,7 @@ class _EditScreenPageState extends ConsumerState<EditScreenPage> {
             Padding(
               padding: const EdgeInsets.all(GrowthSpacing.lg),
               child: GrowthButton(
-                label: '下一步',
+                label: widget.returnCamera ? '确认，继续拍' : '下一步',
                 expanded: true,
                 onPressed: _busy ? null : _confirm,
               ),
