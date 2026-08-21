@@ -10,6 +10,8 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // flutter_local_notifications 需要 core library desugaring
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -49,6 +51,8 @@ flutter {
 }
 
 dependencies {
-    // OpenCV（Part 2 文档提取：四边形检测 + 透视拉正 + 匀光）
+    // OpenCV（文档提取：四边形检测 + 透视拉正 + 匀光）
     implementation("org.opencv:opencv:4.9.0")
+    // core library desugaring（flutter_local_notifications 必需）
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
