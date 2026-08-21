@@ -393,7 +393,7 @@ object DocumentScanner {
             val file = File(outDir, "enh_${System.currentTimeMillis()}.jpg")
             val ok = Imgcodecs.imwrite(
                 file.absolutePath, out,
-                Imgcodecs.IMWRITE_JPEG_QUALITY, 92
+                intArrayOf(Imgcodecs.IMWRITE_JPEG_QUALITY, 92)
             )
             src.release(); flatBgr.release(); out.release()
             for (c in channels) c.release()
