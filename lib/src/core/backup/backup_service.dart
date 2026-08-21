@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -87,6 +88,18 @@ class BackupStateRepository {
 
   bool get allowCellular => _prefs.getBool(_cellularKey) ?? false;
   Future<void> setAllowCellular(bool v) => _prefs.setBool(_cellularKey, v);
+
+  // ---- 上次备份结果（可见性） ----
+  static const _lastOkKey = 'backup.last_ok';
+  static const _lastMsgKey = 'backup.last_msg';
+
+  String? get lastResultMessage => _prefs.getString(_lastMsgKey);
+  bool? get lastResultOk => _prefs.getBool(_lastOkKey);
+
+  Future<void> setLastResult({required bool ok, required String message}) {
+    _prefs.setBool(_lastOkKey, ok);
+    return _prefs.setString(_lastMsgKey, message);
+  }
 }
 
 /// 备份服务（v15 终版）：
@@ -121,7 +134,10 @@ class BackupService {
   /// - API Key 本体在 secure storage，不入包
   /// - 用户设置了备份密码时加密整个 zip 包
   /// - 未设密码则不入包且恢复后引导重输 API Key
-  Future<Uint8List> buildPackage({required DateTime now}) async {
+  Future<Uint8List> buildPackage({
+    required DateTime now,
+    required bool includeKeys,
+  }) async {
     final dir = await getApplicationDocumentsDirectory();
     final workDir = Directory(p.join(dir.path, 'backup_tmp'))
       ..createSync(recursive: true);
@@ -132,12 +148,14 @@ class BackupService {
     final db = _dbFactory();
     await db.customStatement("VACUUM INTO '${dbCopy.path}'");
 
-    // 2) 从快照中清空 API Key 引用（保留 AI 配置元数据：name/baseUrl/model）
-    //    ai_providers 表中 keyRef 字段置空，但保留其他字段用于恢复后展示
+    // 2) API Key 处理：
+    //    - 设了备份密码（整包加密）→ 密钥加密入包，恢复后自动写回
+    //    - 未设密码 → keyRef 置空，密钥不入包，恢复后引导重输
     final tmpDb = AppDatabase.openFile(dbCopy.path);
-    // 不删除整表！只清除 keyRef 指针
-    await (tmpDb.update(tmpDb.aiProviders))
-        .write(const AiProvidersCompanion(keyRef: Value('')));
+    if (!includeKeys) {
+      await (tmpDb.update(tmpDb.aiProviders))
+          .write(const AiProvidersCompanion(keyRef: Value('')));
+    }
     await tmpDb.close();
 
     // 3) manifest（含 AI 配置摘要，不含任何密钥）
@@ -166,6 +184,26 @@ class BackupService {
     addFile('manifest.json',
         utf8.encode(const JsonEncoder.withIndent('  ').convert(manifest)));
     addFile('study_growth.db', await dbCopy.readAsBytes());
+
+    // 密钥入包（仅在整包加密时）：keyRef → key 映射
+    if (includeKeys) {
+      const vault = FlutterSecureStorage(
+        aOptions: AndroidOptions(encryptedSharedPreferences: true),
+      );
+      final keys = <String, String>{};
+      final providers = await db.select(db.aiProviders).get();
+      for (final pv in providers) {
+        if (pv.keyRef.isEmpty) continue;
+        final key = await vault.read(key: pv.keyRef);
+        if (key != null && key.isNotEmpty) {
+          keys[pv.keyRef] = key;
+        }
+      }
+      if (keys.isNotEmpty) {
+        addFile('ai_keys.json',
+            utf8.encode(const JsonEncoder.withIndent('  ').convert(keys)));
+      }
+    }
 
     for (final img in images) {
       addFile('images/${p.basename(img.path)}', await img.readAsBytes());
@@ -206,13 +244,22 @@ class BackupService {
 
   /// 立即备份（手动/自动共用）
   Future<({bool ok, String message})> backupNow() async {
+    final result = await _backupNowInner();
+    await _state.setLastResult(ok: result.ok, message: result.message);
+    return result;
+  }
+
+  Future<({bool ok, String message})> _backupNowInner() async {
     final config = _state.loadConfig();
     if (config == null) {
       return (ok: false, message: '请先配置备份通道');
     }
     final now = DateTime.now();
     try {
-      final bytes = await buildPackage(now: now);
+      final bytes = await buildPackage(
+        now: now,
+        includeKeys: config.encryptEnabled,
+      );
       final fileName =
           '$_backupPrefix${_stamp(now)}${config.encryptEnabled ? '.zip.enc' : '.zip'}';
 
@@ -281,6 +328,22 @@ class BackupService {
     }
   }
 
+  /// 自动备份（退后台触发）：有脏数据 + 已配置通道 + 满足网络策略
+  Future<void> maybeAutoBackup() async {
+    try {
+      if (!_state.isDirty) return;
+      final config = _state.loadConfig();
+      if (config == null) return;
+      final conn = await Connectivity().checkConnectivity();
+      if (conn.contains(ConnectivityResult.none)) return;
+      final onWifi = conn.contains(ConnectivityResult.wifi);
+      if (!onWifi && !_state.allowCellular) return;
+      await backupNow();
+    } catch (_) {
+      // 静默失败，下次再试
+    }
+  }
+
   /// 云端保留最近 3 个版本
   Future<void> _applyRetention(WebDavClient client) async {
     final files = await client.listFiles(_remoteDir);
@@ -342,10 +405,11 @@ class BackupService {
         bytes = BackupCrypto.decrypt(bytes, password);
       }
 
-      await applyPackage(bytes);
+      final keysRestored = await applyPackage(bytes);
 
-      // 检查是否需要重新输入 API Key
-      final needsReinputApiKey = !config.encryptEnabled;
+      // 密钥未随包恢复 → 引导重输
+      final hasAiConfig = (await _dbFactory().select(_dbFactory().aiProviders).get()).isNotEmpty;
+      final needsReinputApiKey = hasAiConfig && !keysRestored;
 
       return (
         ok: true,
@@ -361,8 +425,9 @@ class BackupService {
     }
   }
 
-  /// 解包并覆盖当前数据（DB 文件 + 图片）
-  Future<void> applyPackage(Uint8List zipBytes) async {
+  /// 解包并覆盖当前数据（DB 文件 + 图片 + 密钥写回）。
+  /// 返回密钥是否随包恢复。
+  Future<bool> applyPackage(Uint8List zipBytes) async {
     final archive = ZipDecoder().decodeBytes(zipBytes);
     final dir = await getApplicationDocumentsDirectory();
 
@@ -390,8 +455,28 @@ class BackupService {
       }
     }
 
-    // 4) 重新打开数据库（holder 会重建实例）
+    // 4) 密钥写回（加密包内 ai_keys.json）
+    var keysRestored = false;
+    for (final f in archive.files) {
+      if (f.name == 'ai_keys.json') {
+        try {
+          final keys = jsonDecode(utf8.decode(f.content as List<int>))
+              as Map<String, dynamic>;
+          const vault = FlutterSecureStorage(
+            aOptions: AndroidOptions(encryptedSharedPreferences: true),
+          );
+          for (final entry in keys.entries) {
+            await vault.write(
+                key: entry.key, value: entry.value.toString());
+          }
+          keysRestored = keys.isNotEmpty;
+        } catch (_) {}
+      }
+    }
+
+    // 5) 重新打开数据库（holder 会重建实例）
     AppDatabaseHolder.reopen();
+    return keysRestored;
   }
 
   String _stamp(DateTime t) =>

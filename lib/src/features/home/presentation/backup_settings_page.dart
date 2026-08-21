@@ -36,6 +36,8 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
   bool _backingUp = false;
   bool _restoring = false;
   DateTime? _lastBackupAt;
+  String? _lastResultMsg;
+  bool? _lastResultOk;
 
   @override
   void initState() {
@@ -56,7 +58,11 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
     }
     _allowCellular = state.allowCellular;
     if (mounted) {
-      setState(() => _lastBackupAt = state.lastBackupAt);
+      setState(() {
+        _lastBackupAt = state.lastBackupAt;
+        _lastResultMsg = state.lastResultMessage;
+        _lastResultOk = state.lastResultOk;
+      });
     }
   }
 
@@ -162,6 +168,8 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
     setState(() {
       _backingUp = false;
       _lastBackupAt = ref.read(backupStateProvider).lastBackupAt;
+      _lastResultMsg = ref.read(backupStateProvider).lastResultMessage;
+      _lastResultOk = ref.read(backupStateProvider).lastResultOk;
     });
     if (result.ok) {
       AppToast.success(context, result.message);
@@ -400,6 +408,34 @@ class _BackupSettingsPageState extends ConsumerState<BackupSettingsPage> {
                         : '上次备份：${DateFormat('yyyy-MM-dd HH:mm').format(_lastBackupAt!)}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
+                  if (_lastResultMsg != null) ...[
+                    const SizedBox(height: GrowthSpacing.xs),
+                    Row(
+                      children: [
+                        Icon(
+                          _lastResultOk == true
+                              ? Icons.check_circle_rounded
+                              : Icons.error_outline_rounded,
+                          size: 14,
+                          color: _lastResultOk == true
+                              ? GrowthColors.success
+                              : GrowthColors.error,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            _lastResultMsg!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _lastResultOk == true
+                                  ? GrowthColors.success
+                                  : GrowthColors.error,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: GrowthSpacing.md),
                   Row(
                     children: [

@@ -69,7 +69,11 @@ class _ShellLifecycleState extends ConsumerState<_ShellLifecycle>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // 回前台：云同步补同步
       unawaited(ref.read(cloudSyncProvider).autoSync());
+    } else if (state == AppLifecycleState.paused) {
+      // 退后台：有脏数据且满足网络策略时自动备份
+      unawaited(ref.read(backupServiceProvider).maybeAutoBackup());
     }
   }
 
