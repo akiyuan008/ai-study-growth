@@ -14,7 +14,6 @@ import '../../data/repositories/exercise_repository.dart';
 import '../../data/repositories/question_bank_repository.dart';
 import '../../data/repositories/question_repository.dart';
 import '../../data/repositories/review_repository.dart';
-import '../../data/services/ai_learning_services.dart';
 import '../../data/services/settings_service.dart';
 
 final aiProviderRepositoryProvider = Provider<AiProviderRepository>((ref) {
@@ -94,18 +93,6 @@ final settingsServiceProvider = Provider<SettingsService>((ref) {
 });
 
 /// AI 复习规划（确定性兜底 + AI 智能重排）
-final aiReviewPlannerProvider = Provider<AiReviewPlanner>((ref) {
-  return AiReviewPlanner(ref.watch(aiProviderRepositoryProvider));
-});
-
-/// 知识点学习路径建议（Part 3.3，NextStep 核心数据源）
-final aiPathAdvisorProvider = Provider<AiPathAdvisor>((ref) {
-  return AiPathAdvisor(
-    ref.watch(aiProviderRepositoryProvider),
-    ref.watch(sharedPreferencesProvider),
-  );
-});
-
 final reviewRepositoryProvider = Provider<ReviewRepository>((ref) {
   return ReviewRepository(ref.watch(databaseProvider));
 });

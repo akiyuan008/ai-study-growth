@@ -46,10 +46,6 @@ abstract final class DataExporter {
           (await db.select(db.reviewLogs).get()).map((r) => r.toJson()),
       'generatedExercises':
           (await db.select(db.generatedExercises).get()).map((r) => r.toJson()),
-      'learningEvents':
-          (await db.select(db.learningEvents).get()).map((r) => r.toJson()),
-      'growthMetrics':
-          (await db.select(db.growthMetrics).get()).map((r) => r.toJson()),
     };
 
     final dir = await getApplicationDocumentsDirectory();

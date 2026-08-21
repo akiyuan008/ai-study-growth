@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:drift/drift.dart';
 
 import '../local/app_database.dart';
@@ -94,24 +92,11 @@ class ReviewRepository {
         );
 
     await _updateMastery(row.questionId, updated, updated.reps);
-
-    await _db.into(_db.learningEvents).insert(
-          LearningEventsCompanion.insert(
-            eventType: 'review_done',
-            questionId: Value(row.questionId),
-            at: at,
-            payload: Value(jsonEncode({
-              'quality': quality,
-              'easinessFactor': updated.easinessFactor,
-              'intervalDays': updated.intervalDays,
-            })),
-          ),
-        );
   }
 
   /// 掌握度映射（SM-2 版）：
   /// 0 新题 → 1-2 学习中 → 3 已入长期（reps > 0）
-  /// 4 稳定（intervalDays≥21 天）→ 5 掌握/毕业（intervalDays≥60 且 reps≥3）
+  /// 4 稳定（intervalDays≥21 天）→ 5 已掌握（intervalDays≥60 且 reps≥3）
   Future<void> _updateMastery(
     String questionId,
     Sm2Card card,
@@ -119,7 +104,7 @@ class ReviewRepository {
   ) async {
     final int level;
     if (reps >= 3 && card.intervalDays >= 60) {
-      level = 5; // 毕业：进入「已掌握·不再推荐」
+      level = 5; // 已掌握
     } else if (card.intervalDays >= 60) {
       level = 5;
     } else if (card.intervalDays >= 21) {

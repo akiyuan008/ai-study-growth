@@ -4,7 +4,6 @@ import 'package:drift/drift.dart' hide Column, Table;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../data/local/app_database.dart';
@@ -81,7 +80,7 @@ final questionDetailProvider = FutureProvider.autoDispose
 
 /// 题目详情页（Part 4.2 重做）：
 /// 原图/题干分段切换、掌握度旗标点按切换、层级面包屑、
-/// 操作仅留举一反三（删除/编辑进溢出菜单）、记忆状态卡
+/// 操作仅留举一反三（删除/编辑进溢出菜单）
 class QuestionDetailPage extends ConsumerStatefulWidget {
   const QuestionDetailPage({super.key, required this.questionId});
 
@@ -415,11 +414,6 @@ class _DetailBody extends ConsumerWidget {
 
         const SizedBox(height: GrowthSpacing.md),
 
-        // 记忆状态卡（Part 4.2）
-        _MemoryStateCard(data: data),
-
-        const SizedBox(height: GrowthSpacing.md),
-
         // 操作仅留举一反三（Part 5 入口守卫）
         GrowthButton(
           label: '举一反三',
@@ -444,144 +438,6 @@ class _DetailBody extends ConsumerWidget {
         height: MediaQuery.of(context).size.height * 0.75,
         child: _ExercisePanel(
             question: data.question, breadcrumb: data.breadcrumb),
-      ),
-    );
-  }
-}
-
-/// 记忆状态卡：第 N 次 / 间隔 / 强度% / 下次日期 / 历史时间线
-class _MemoryStateCard extends StatelessWidget {
-  const _MemoryStateCard({required this.data});
-
-  final QuestionDetailData data;
-
-  List<int> _intervalHistory() {
-    final times = data.logs.map((l) => l.reviewedAt).toList()..sort();
-    final intervals = <int>[];
-    for (var i = 1; i < times.length && i <= 4; i++) {
-      intervals.add(times[i].difference(times[i - 1]).inDays);
-    }
-    return intervals;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final card = data.card;
-    final now = DateTime.now();
-
-    String strengthText = '—';
-    String nextText = '—';
-    if (card != null) {
-      // SM-2 没有 retrievability，用简易保留率
-      final r = card.lastReviewAt == null
-          ? 0.0
-          : (1.0 -
-                  now.difference(card.lastReviewAt!).inDays /
-                      (card.intervalDays > 0 ? card.intervalDays * 2 : 1)
-                          .clamp(1, 365))
-              .clamp(0.0, 1.0);
-      strengthText =
-          card.lastReviewAt == null ? '未开始' : '${(r * 100).round()}%';
-      nextText = card.due.isBefore(now)
-          ? '已到期'
-          : DateFormat('MM-dd HH:mm').format(card.due);
-    }
-
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GrowthSectionHeader(title: '记忆状态'),
-          const SizedBox(height: GrowthSpacing.sm),
-          if (card == null)
-            Text('还没有进入复习计划', style: Theme.of(context).textTheme.bodySmall)
-          else ...[
-            Row(
-              children: [
-                _Stat(label: '第 N 次', value: '${card.reps + 1}'),
-                _Stat(label: '强度', value: strengthText),
-                _Stat(label: '下次', value: nextText),
-              ],
-            ),
-            // 遗忘曲线小图（v13 5.2）
-            if (card.lastReviewAt != null) ...[
-              const SizedBox(height: GrowthSpacing.sm),
-              ForgettingCurveMini(
-                stability: (card.easinessFactor * card.intervalDays).toDouble(),
-                elapsedDays: now.difference(card.lastReviewAt!).inHours / 24,
-                nextDueDays: card.due.difference(now).inDays.toDouble(),
-              ),
-            ],
-            // 间隔历史
-            if (data.logs.length > 1) ...[
-              const SizedBox(height: GrowthSpacing.sm),
-              IntervalHistoryChips(intervals: _intervalHistory()),
-            ],
-            if (data.logs.isNotEmpty) ...[
-              const SizedBox(height: GrowthSpacing.md),
-              Text('复习历史', style: Theme.of(context).textTheme.bodySmall),
-              const SizedBox(height: GrowthSpacing.xs),
-              for (final log in data.logs.take(5))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: GrowthSpacing.xs),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: log.rating >= 3
-                              ? GrowthColors.success
-                              : GrowthColors.warning,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: GrowthSpacing.sm),
-                      Text(
-                        '${DateFormat('MM-dd HH:mm').format(log.reviewedAt)} · '
-                        '${_ratingLabel(log.rating)}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ],
-        ],
-      ),
-    );
-  }
-
-  String _ratingLabel(int rating) => switch (rating) {
-        1 => '仍错',
-        3 => '模糊',
-        5 => '已会',
-        _ => '未知',
-      };
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: GrowthColors.primary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-        ],
       ),
     );
   }

@@ -13,7 +13,6 @@ part 'app_database.g.dart';
 /// 全系统唯一事实源。
 ///
 /// 设计原则（事件溯源 + 实体表混合模型）：
-/// - 行为与成长数据走事件流：[LearningEvents] → [GrowthMetrics] 快照
 /// - 知识资产走实体表：[QuestionRecords] 等，服务错题本业务查询
 /// - 两者通过 question id 关联
 @DriftDatabase(tables: [
@@ -27,9 +26,6 @@ part 'app_database.g.dart';
   ReviewLogs,
   GeneratedExercises,
   AiMessages,
-  // 成长引擎
-  LearningEvents,
-  GrowthMetrics,
   // AI 配置
   AiProviders,
   // AI 调用日志（补钉 A）
@@ -39,7 +35,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -71,6 +67,11 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
                 'ALTER TABLE review_cards ADD COLUMN interval_days INTEGER NOT NULL DEFAULT 0');
           }
+          // v5：删除成长引擎表（成长页/趋势/快照整体下线）
+          if (from < 5) {
+            await customStatement('DROP TABLE IF EXISTS learning_events');
+            await customStatement('DROP TABLE IF EXISTS growth_metrics');
+          }
         },
         beforeOpen: (details) async {
           // 外键约束默认关闭，显式开启保证关联完整性
@@ -94,8 +95,6 @@ class AppDatabase extends _$AppDatabase {
       reviewLogs,
       generatedExercises,
       aiMessages,
-      learningEvents,
-      growthMetrics,
       aiProviders,
       aiCallLogs,
     ];

@@ -23,8 +23,6 @@ void main() {
     expect(await db.select(db.reviewLogs).get(), isEmpty);
     expect(await db.select(db.generatedExercises).get(), isEmpty);
     expect(await db.select(db.aiMessages).get(), isEmpty);
-    expect(await db.select(db.learningEvents).get(), isEmpty);
-    expect(await db.select(db.growthMetrics).get(), isEmpty);
     expect(await db.select(db.aiProviders).get(), isEmpty);
     expect(await db.select(db.analysisJobs).get(), isEmpty);
     expect(await db.select(db.aiCallLogs).get(), isEmpty);
@@ -81,30 +79,6 @@ void main() {
 
     final links = await db.select(db.questionKnowledgeLinks).get();
     expect(links, hasLength(1));
-  });
-
-  test('成长引擎：事件流 + 每日快照', () async {
-    final now = DateTime.now();
-    await db.into(db.learningEvents).insert(
-          LearningEventsCompanion.insert(
-            eventType: 'review_done',
-            questionId: const Value('q-1'),
-            at: now,
-            payload: const Value('{"rating":3}'),
-          ),
-        );
-    await db.into(db.growthMetrics).insert(
-          GrowthMetricsCompanion.insert(
-            date: '2026-08-18',
-            learningScore: const Value(62.5),
-            persistenceScore: const Value(55.0),
-            recoveryScore: const Value(48.0),
-            streak: const Value(3),
-          ),
-        );
-
-    final snapshot = await db.select(db.growthMetrics).getSingle();
-    expect(snapshot.learningScore, closeTo(62.5, 0.001));
   });
 
   test('AI 配置表：密钥不落库，只存 keyRef', () async {

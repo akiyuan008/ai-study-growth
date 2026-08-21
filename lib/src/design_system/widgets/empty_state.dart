@@ -200,41 +200,6 @@ class _SproutPainter extends CustomPainter {
       oldDelegate.base != base || oldDelegate.leaf != leaf;
 }
 
-/// 通用空状态（插画版）：书本 + 嫩芽 + 两行文案
-class GrowthEmptyState extends StatelessWidget {
-  const GrowthEmptyState({
-    super.key,
-    required this.message,
-    this.illustrationSize = 110,
-  });
-
-  final String message;
-  final double illustrationSize;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: GrowthSpacing.xl,
-        // Prompt D1：文案 24px 水平内边距，避免贴边裁切
-        horizontal: GrowthSpacing.lg,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          GrowthSproutIllustration(size: illustrationSize),
-          const SizedBox(height: GrowthSpacing.lg),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// 统一空状态（Part 1.3）：插画 + 主/副文案整体居中，垂直约 40%
 class EmptyState extends StatelessWidget {
   const EmptyState({

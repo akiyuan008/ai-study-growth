@@ -37,7 +37,7 @@ class Sm2RecommendedItem {
   final List<int> intervalHistory;
 }
 
-/// SM-2 推荐引擎（v15 终版）：到期队列 + 理由标签 + 毕业区
+/// SM-2 推荐引擎（终版）：到期队列 + 理由标签
 final reviewRecommendProvider =
     FutureProvider.autoDispose<ReviewRecommendData>((ref) async {
   final db = ref.watch(databaseProvider);
@@ -48,10 +48,7 @@ final reviewRecommendProvider =
         ..orderBy([(t) => OrderingTerm.asc(t.due)]))
       .get();
   if (cards.isEmpty) {
-    return const ReviewRecommendData(
-        items: <Sm2RecommendedItem>[],
-        graduated: [],
-        forecast: [0, 0, 0, 0, 0, 0, 0]);
+    return const ReviewRecommendData(items: <Sm2RecommendedItem>[]);
   }
 
   final qIds = cards.map((c) => c.questionId).toSet().toList();
@@ -100,17 +97,10 @@ final reviewRecommendProvider =
   }
 
   final items = <Sm2RecommendedItem>[];
-  final graduated = <QuestionRecord>[];
 
   for (final card in cards) {
     final q = qById[card.questionId];
     if (q == null) continue;
-
-    // 毕业区：掌握度 5（连续答对达标）
-    if (q.masteryLevel >= 5) {
-      graduated.add(q);
-      continue;
-    }
 
     final sm2Card = scheduler.cardFromStorage(
       cardId: card.createdAt.millisecondsSinceEpoch,
@@ -145,22 +135,7 @@ final reviewRecommendProvider =
   // 按逾期程度排序
   items.sort((a, b) => a.overdueDays.compareTo(b.overdueDays));
 
-  // 7 天到期预测（实时计算）
-  final forecast = List<int>.filled(7, 0);
-  for (final card in cards) {
-    final q = qById[card.questionId];
-    if (q == null || q.masteryLevel >= 5) continue;
-    final days = card.due.difference(now).inDays;
-    if (days >= 0 && days < 7) {
-      forecast[days]++;
-    }
-  }
-
-  return ReviewRecommendData(
-    items: items,
-    graduated: graduated,
-    forecast: forecast,
-  );
+  return ReviewRecommendData(items: items);
 });
 
 /// 复习页（v15 终版）：大图展示题目图片 + 三档标记（仍错/模糊/已会）
@@ -184,7 +159,7 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => EmptyState(title: '加载失败', subtitle: '$e'),
           data: (data) {
-            if (data.items.isEmpty && data.graduated.isEmpty) {
+            if (data.items.isEmpty) {
               return EmptyState(
                 title: '太棒了！',
                 subtitle: '没有需要复习的题目',
@@ -202,14 +177,6 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
                   const SizedBox(height: GrowthSpacing.md),
                   for (final item in data.items) _ReviewCard(item: item),
                   const SizedBox(height: GrowthSpacing.xl),
-                ],
-                // 毕业区
-                if (data.graduated.isNotEmpty) ...[
-                  Text('已毕业 (${data.graduated.length})',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: GrowthSpacing.md),
-                  for (final q in data.graduated.take(5))
-                    _GraduatedCard(question: q),
                 ],
               ],
             );
@@ -383,39 +350,7 @@ class _NextDate extends StatelessWidget {
   }
 }
 
-/// 毕业卡片
-class _GraduatedCard extends StatelessWidget {
-  const _GraduatedCard({required this.question});
-  final QuestionRecord question;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: GrowthSpacing.sm),
-      child: Row(
-        children: [
-          const Icon(Icons.school_rounded,
-              color: GrowthColors.success, size: 18),
-          const SizedBox(width: GrowthSpacing.sm),
-          Expanded(
-            child: Text(
-                question.stem.length > 40
-                    ? '${question.stem.substring(0, 40)}...'
-                    : question.stem,
-                style: Theme.of(context).textTheme.bodySmall),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class ReviewRecommendData {
-  const ReviewRecommendData({
-    required this.items,
-    required this.graduated,
-    required this.forecast,
-  });
+  const ReviewRecommendData({required this.items});
   final List<Sm2RecommendedItem> items;
-  final List<QuestionRecord> graduated;
-  final List<int> forecast;
 }

@@ -1,4 +1,3 @@
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,31 +14,8 @@ class DesignGalleryPage extends ConsumerStatefulWidget {
 }
 
 class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
-  final _rng = Random();
-
-  // 能量环示例数据（P4 起由成长引擎真实供给）
-  List<AbilityArc> _demoArcs = const [
-    AbilityArc(label: '学习', value: 0.72, color: GrowthColors.abilityLearning),
-    AbilityArc(label: '专注', value: 0.58, color: GrowthColors.abilityFocus),
-    AbilityArc(
-        label: '坚持', value: 0.83, color: GrowthColors.abilityPersistence),
-    AbilityArc(label: '恢复', value: 0.36, color: GrowthColors.abilityRecovery),
-  ];
-
   bool _chipSelected = true;
   bool _buttonLoading = false;
-
-  void _shuffleArcs() {
-    setState(() {
-      _demoArcs = _demoArcs
-          .map((a) => AbilityArc(
-                label: a.label,
-                value: 0.15 + _rng.nextDouble() * 0.8,
-                color: a.color,
-              ))
-          .toList();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -177,33 +153,6 @@ class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
             child: GrowthTextField(
               label: '给 AI 助教留言',
               hint: '例如：今天想先复习物理错题…',
-            ),
-          ),
-          _section('成长能量环'),
-          GrowthCard(
-            child: Column(
-              children: [
-                EnergyRing(arcs: _demoArcs),
-                const SizedBox(height: GrowthSpacing.md),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    for (final arc in _demoArcs)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: GrowthSpacing.sm),
-                        child: AbilityDot(label: arc.label, color: arc.color),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: GrowthSpacing.md),
-                GrowthButton(
-                  label: '模拟一次能力涨落',
-                  variant: GrowthButtonVariant.secondary,
-                  icon: Icons.autorenew_rounded,
-                  onPressed: _shuffleArcs,
-                ),
-              ],
             ),
           ),
           const SizedBox(height: GrowthSpacing.xl),

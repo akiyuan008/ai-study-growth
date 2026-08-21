@@ -277,17 +277,6 @@ class _QuestionSavePageState extends ConsumerState<QuestionSavePage> {
             ),
           );
 
-      // 学习事件
-      await db.into(db.learningEvents).insert(
-            LearningEventsCompanion.insert(
-              eventType: 'question_saved',
-              questionId: Value(qid),
-              at: now,
-              payload: Value(
-                  '{"source":"${widget.source.name}","cropSource":"${widget.cropSource}"}'),
-            ),
-          );
-
       await ref.read(backupStateProvider).markDirty();
       // 云同步：标脏 + 联网时后台补同步（静默）
       await ref.read(cloudSyncProvider).markDirty();

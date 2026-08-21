@@ -87,10 +87,6 @@ void main() {
         .getSingle();
     expect(q.masteryLevel, greaterThanOrEqualTo(1));
 
-    // 学习事件
-    final events = await db.select(db.learningEvents).get();
-    expect(events, hasLength(1));
-    expect(events.first.eventType, 'review_done');
   });
 
   test('评分 仍错(1)：间隔打回 1 天、lapses+1、reps 归零', () async {
