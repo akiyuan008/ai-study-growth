@@ -13,10 +13,10 @@ class GlassNavItem {
   final String label;
 }
 
-/// GlassNavBar v3 —— 五槽 dock + 中央相机键（Part 2 v13）。
+/// GlassNavBar v4 —— 三 Tab + 中央相机键 dock（终版 IA）。
 ///
-/// - 成长 | 错题本 | 中央相机键 | 复习 | 设置
-/// - 相机键嵌入 dock（托架切口），非悬浮
+/// - 错题本 | 中央相机键 | 复习 | 设置（items 数量自适应，相机键居中）
+/// - 相机键嵌入 dock，非悬浮
 /// - 半透明玻璃 + 背景模糊，无 Material 默认灰底/elevation
 class GlassNavBar extends StatelessWidget {
   const GlassNavBar({
@@ -27,7 +27,7 @@ class GlassNavBar extends StatelessWidget {
     required this.onCameraTap,
   });
 
-  /// 4 个常规项（成长/错题本/复习/设置），相机键在中间固定
+  /// 常规项（相机键在中间固定，左右自动分配）
   final List<GlassNavItem> items;
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
@@ -41,8 +41,9 @@ class GlassNavBar extends StatelessWidget {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final navColor = isLight ? GrowthColors.glassLight : GrowthColors.glassDark;
 
-    // items[0]=成长, items[1]=错题本, items[2]=复习, items[3]=设置
-    // dock 布局: 成长 | 错题本 | [相机键] | 复习 | 设置
+    // 相机键居中：左侧 items.length ~/ 2 项，其余在右
+    // 3 项 → 错题本 | [相机] | 复习 | 设置
+    final leftCount = items.length ~/ 2;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -68,40 +69,24 @@ class GlassNavBar extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    // 成长 (index 0)
-                    Expanded(
-                      child: _NavButton(
-                        item: items[0],
-                        selected: selectedIndex == 0,
-                        onTap: () => onDestinationSelected(0),
+                    for (var i = 0; i < leftCount; i++)
+                      Expanded(
+                        child: _NavButton(
+                          item: items[i],
+                          selected: selectedIndex == i,
+                          onTap: () => onDestinationSelected(i),
+                        ),
                       ),
-                    ),
-                    // 错题本 (index 1)
-                    Expanded(
-                      child: _NavButton(
-                        item: items[1],
-                        selected: selectedIndex == 1,
-                        onTap: () => onDestinationSelected(1),
-                      ),
-                    ),
-                    // 中央相机键 (嵌入 dock，托架切口)
+                    // 中央相机键（嵌入 dock）
                     _CameraButton(onTap: onCameraTap),
-                    // 复习 (index 2 in provider = 3rd tab)
-                    Expanded(
-                      child: _NavButton(
-                        item: items[2],
-                        selected: selectedIndex == 2,
-                        onTap: () => onDestinationSelected(2),
+                    for (var i = leftCount; i < items.length; i++)
+                      Expanded(
+                        child: _NavButton(
+                          item: items[i],
+                          selected: selectedIndex == i,
+                          onTap: () => onDestinationSelected(i),
+                        ),
                       ),
-                    ),
-                    // 设置 (index 3 in provider = 4th tab)
-                    Expanded(
-                      child: _NavButton(
-                        item: items[3],
-                        selected: selectedIndex == 3,
-                        onTap: () => onDestinationSelected(3),
-                      ),
-                    ),
                   ],
                 ),
               ),

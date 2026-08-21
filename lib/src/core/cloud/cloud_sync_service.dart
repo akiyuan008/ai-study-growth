@@ -49,9 +49,9 @@ class CloudSyncService {
   bool get isDirty => _prefs.getBool(_dirtyKey) ?? true;
   Future<void> markDirty() => _prefs.setBool(_dirtyKey, true);
 
-  /// 自动同步：已登录 + 有脏数据 + 在线 → 静默同步；失败不打扰用户
+  /// 自动同步：有脏数据 + 在线 → 自动登录并静默同步；失败不打扰用户
   Future<void> autoSync() async {
-    if (!isSignedIn || !isDirty) return;
+    if (!isDirty) return;
     try {
       final conn = await Connectivity().checkConnectivity();
       if (conn.contains(ConnectivityResult.none)) return;
@@ -64,38 +64,107 @@ class CloudSyncService {
 
   bool get isSignedIn => _client.auth.currentSession != null;
   String? get _uid => _client.auth.currentUser?.id;
-  String? get userEmail => _client.auth.currentUser?.email;
 
-  // ==================== 认证 ====================
+  // ==================== 认证（单用户共享账号，全自动） ====================
 
-  /// 匿名一键登录（个人设备场景；后续可绑邮箱换机）
-  Future<({bool ok, String message})> signInAnonymously() async {
+  /// 确保已登录共享账号：启动/同步前自动调用，用户无感知。
+  /// 会话过期时 supabase_flutter 会自动刷新；彻底失效时重新密码登录。
+  Future<bool> ensureSignedIn() async {
     try {
-      if (isSignedIn) return (ok: true, message: '已开启云同步');
-      await _client.auth.signInAnonymously();
-      return (ok: true, message: '已开启云同步');
-    } on AuthException catch (e) {
-      return (ok: false, message: '开启失败：${_humanize(e.message)}');
-    } catch (e) {
-      return (ok: false, message: '开启失败：网络异常，请检查网络后重试');
+      if (isSignedIn) return true;
+      await _client.auth.signInWithPassword(
+        email: SupabaseConfig.sharedEmail,
+        password: SupabaseConfig.sharedPassword,
+      );
+      return isSignedIn;
+    } catch (_) {
+      return false;
     }
   }
 
-  Future<void> signOut() async {
-    await _client.auth.signOut();
+  // ==================== 删除墓碑（数据完整性） ====================
+
+  static const _tombstoneKey = 'cloud.tombstone.questions';
+
+  /// 记录本地已删除的题目（下次同步时同步删除云端对应数据）
+  Future<void> recordQuestionDeleted(String questionId) async {
+    final list = _prefs.getStringList(_tombstoneKey) ?? [];
+    if (!list.contains(questionId)) {
+      list.add(questionId);
+      await _prefs.setStringList(_tombstoneKey, list);
+    }
+    await markDirty();
+  }
+
+  Future<void> _applyTombstones(String uid) async {
+    final list = _prefs.getStringList(_tombstoneKey) ?? [];
+    if (list.isEmpty) return;
+    // 云端级联删除：题目 + 复习卡 + 关联 + 日志
+    await _client
+        .from('question_records')
+        .delete()
+        .eq('user_id', uid)
+        .inFilter('id', list);
+    await _client
+        .from('review_cards')
+        .delete()
+        .eq('user_id', uid)
+        .inFilter('question_id', list);
+    await _client
+        .from('question_knowledge_links')
+        .delete()
+        .eq('user_id', uid)
+        .inFilter('question_id', list);
+    await _client
+        .from('review_logs')
+        .delete()
+        .eq('user_id', uid)
+        .inFilter('question_id', list);
+    await _prefs.remove(_tombstoneKey);
+  }
+
+  /// 孤儿图片清理：云端题目都不再引用的图片删掉（删除传播的兜底）
+  Future<void> _cleanOrphanImages(String uid) async {
+    try {
+      final remote = await _client
+          .from('question_records')
+          .select('image_path')
+          .eq('user_id', uid);
+      final referenced = remote
+          .map((r) => (r['image_path'] ?? '').toString())
+          .where((s) => s.isNotEmpty)
+          .toSet();
+      final files = await _client.storage
+          .from(SupabaseConfig.imagesBucket)
+          .list(path: uid);
+      final orphans = files
+          .map((f) => f.name)
+          .where((name) => !referenced.contains(name))
+          .toList();
+      if (orphans.isNotEmpty) {
+        await _client.storage
+            .from(SupabaseConfig.imagesBucket)
+            .remove([for (final o in orphans) '$uid/$o']);
+      }
+    } catch (_) {
+      // 清理失败不影响同步主流程
+    }
   }
 
   // ==================== 同步 ====================
 
-  /// 全量双向同步
+  /// 全量双向同步（单用户：自动登录 → 墓碑删除 → 推送 → 拉取 → 清理）
   Future<SyncResult> syncNow() async {
-    final uid = _uid;
-    if (uid == null) {
-      return const SyncResult(ok: false, message: '请先开启云同步');
+    if (!await ensureSignedIn()) {
+      return const SyncResult(ok: false, message: '云同步暂不可用：网络异常或未配置');
     }
+    final uid = _uid!;
     try {
       var pushed = 0;
       var pulled = 0;
+
+      // 删除传播：本地删过的题目，云端同步删
+      await _applyTombstones(uid);
 
       // 顺序有依赖：先知识点，再题目，再关联/复习数据
       pushed += await _pushKnowledgePoints(uid);
@@ -119,6 +188,9 @@ class CloudSyncService {
 
       pushed += await _pushQuestionBank(uid);
       pulled += await _pullQuestionBank(uid);
+
+      // 孤儿图片清理（删除兜底）
+      await _cleanOrphanImages(uid);
 
       await _writeSyncState(uid, pushed, pulled);
 

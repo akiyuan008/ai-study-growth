@@ -119,6 +119,8 @@ class _QuestionDetailPageState extends ConsumerState<QuestionDetailPage> {
     );
     if (ok != true || !mounted) return;
     await ref.read(questionRepositoryProvider).delete(widget.questionId);
+    // 云同步墓碑：下次同步时云端同步删除该题及其复习数据
+    await ref.read(cloudSyncProvider).recordQuestionDeleted(widget.questionId);
     if (mounted) {
       AppToast.success(context, '已删除');
       context.pop();

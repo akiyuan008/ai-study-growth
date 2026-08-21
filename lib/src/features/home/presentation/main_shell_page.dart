@@ -277,14 +277,9 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                         Text('云同步',
                             style: Theme.of(context).textTheme.titleLarge),
                         const SizedBox(height: GrowthSpacing.xs),
-                        Consumer(
-                          builder: (context, ref, _) {
-                            final on = ref.watch(cloudSyncProvider).isSignedIn;
-                            return Text(
-                              on ? 'Supabase 已开启 · 换机可恢复' : '未开启 · 一键同步错题与进度',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            );
-                          },
+                        Text(
+                          '错题与进度自动同步 · 换机可恢复',
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
                     ),

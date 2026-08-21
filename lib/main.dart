@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +20,8 @@ Future<void> main() async {
       anonKey: SupabaseConfig.anonKey,
     );
   } catch (_) {}
+  // 单用户模式：后台自动登录共享账号（不阻塞启动，失败联网时重试）
+  unawaited(_autoSignIn());
   // 数据库走 holder（云备份恢复时可重建实例）
   runApp(
     ProviderScope(
@@ -27,4 +31,14 @@ Future<void> main() async {
       child: const AiStudyGrowthApp(),
     ),
   );
+}
+
+/// 启动后台自动登录（单用户共享账号）
+Future<void> _autoSignIn() async {
+  try {
+    await Supabase.instance.client.auth.signInWithPassword(
+      email: SupabaseConfig.sharedEmail,
+      password: SupabaseConfig.sharedPassword,
+    );
+  } catch (_) {}
 }

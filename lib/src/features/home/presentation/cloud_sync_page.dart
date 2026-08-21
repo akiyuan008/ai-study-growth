@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../design_system/design_system.dart';
 import '../../learning/learning_providers.dart';
 
-/// 云同步页（Supabase）：一键开启 / 手动同步 / 状态可见
+/// 云同步页（单用户模式）：安装即自动同步，本页只看状态与手动触发
 class CloudSyncPage extends ConsumerStatefulWidget {
   const CloudSyncPage({super.key});
 
@@ -16,33 +16,24 @@ class CloudSyncPage extends ConsumerStatefulWidget {
 class _CloudSyncPageState extends ConsumerState<CloudSyncPage> {
   bool _busy = false;
   String? _lastSyncDisplay;
+  bool _online = false;
 
   @override
   void initState() {
     super.initState();
-    _loadLastSync();
+    _hydrate();
   }
 
-  Future<void> _loadLastSync() async {
+  Future<void> _hydrate() async {
     final prefs = ref.read(sharedPreferencesProvider);
     final ts = prefs.getString('cloud.last_sync_at');
-    if (ts != null && mounted) {
-      setState(() => _lastSyncDisplay = ts);
-    }
-  }
-
-  Future<void> _enable() async {
-    setState(() => _busy = true);
-    final result = await ref.read(cloudSyncProvider).signInAnonymously();
+    final sync = ref.read(cloudSyncProvider);
+    final online = await sync.ensureSignedIn();
     if (!mounted) return;
-    setState(() => _busy = false);
-    if (result.ok) {
-      AppToast.success(context, result.message);
-      // 开启后立即同步一次
-      await _sync();
-    } else {
-      AppToast.error(context, result.message);
-    }
+    setState(() {
+      _lastSyncDisplay = ts;
+      _online = online;
+    });
   }
 
   Future<void> _sync() async {
@@ -56,34 +47,18 @@ class _CloudSyncPageState extends ConsumerState<CloudSyncPage> {
           .read(sharedPreferencesProvider)
           .setString('cloud.last_sync_at', stamp);
       if (!mounted) return;
-      setState(() => _lastSyncDisplay = stamp);
+      setState(() {
+        _lastSyncDisplay = stamp;
+        _online = true;
+      });
       AppToast.success(context, result.message);
     } else {
       AppToast.error(context, result.message);
     }
   }
 
-  Future<void> _signOut() async {
-    final ok = await showGrowthDialog(
-      context: context,
-      title: '关闭云同步？',
-      message: '关闭后不再上传新数据。本地数据不受影响，云端已备份的数据保留。',
-      confirmLabel: '关闭',
-      destructive: true,
-    );
-    if (ok != true || !mounted) return;
-    await ref.read(cloudSyncProvider).signOut();
-    if (mounted) {
-      setState(() {});
-      AppToast.info(context, '已关闭云同步');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final sync = ref.watch(cloudSyncProvider);
-    final signedIn = sync.isSignedIn;
-
     return Scaffold(
       appBar: growthAppBar(context, title: '云同步', showBack: true),
       body: GrowthBackground(
@@ -95,10 +70,10 @@ class _CloudSyncPageState extends ConsumerState<CloudSyncPage> {
               child: Row(
                 children: [
                   Icon(
-                    signedIn
+                    _online
                         ? Icons.cloud_done_rounded
                         : Icons.cloud_off_rounded,
-                    color: signedIn ? GrowthColors.success : GrowthColors.gray4,
+                    color: _online ? GrowthColors.success : GrowthColors.gray4,
                     size: 28,
                   ),
                   const SizedBox(width: GrowthSpacing.md),
@@ -107,16 +82,16 @@ class _CloudSyncPageState extends ConsumerState<CloudSyncPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          signedIn ? '云同步已开启' : '云同步未开启',
+                          _online ? '云同步正常' : '云同步暂不可用',
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: GrowthSpacing.xs),
                         Text(
-                          signedIn
+                          _online
                               ? (_lastSyncDisplay != null
                                   ? '上次同步：$_lastSyncDisplay'
-                                  : '数据将加密隔离存储在你的专属空间')
-                              : '错题、复习进度与图片将同步到云端，换机可恢复',
+                                  : '数据实时守护中')
+                              : '检查网络后会自动恢复，本地数据不受影响',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -127,41 +102,20 @@ class _CloudSyncPageState extends ConsumerState<CloudSyncPage> {
             ),
             const SizedBox(height: GrowthSpacing.lg),
 
-            if (!signedIn) ...[
-              GrowthButton(
-                label: _busy ? '正在开启…' : '一键开启云同步',
-                icon: Icons.cloud_upload_rounded,
-                expanded: true,
-                onPressed: _busy ? null : _enable,
-              ),
-              const SizedBox(height: GrowthSpacing.md),
-              _ExplainCard(items: const [
-                '免注册：本设备获得专属匿名身份，数据仅你可见',
-                '同步内容：错题、知识点、复习进度、举一反三、题目图片',
-                'AI 密钥等敏感配置不参与云同步，仅保存在本机',
-                '离线时全功能照常使用，联网后可手动或自动补同步',
-              ]),
-            ] else ...[
-              GrowthButton(
-                label: _busy ? '正在同步…' : '立即同步',
-                icon: Icons.sync_rounded,
-                expanded: true,
-                onPressed: _busy ? null : _sync,
-              ),
-              const SizedBox(height: GrowthSpacing.md),
-              GrowthButton(
-                label: '关闭云同步',
-                icon: Icons.cloud_off_rounded,
-                variant: GrowthButtonVariant.secondary,
-                expanded: true,
-                onPressed: _busy ? null : _signOut,
-              ),
-              const SizedBox(height: GrowthSpacing.md),
-              _ExplainCard(items: const [
-                '拍题保存、复习评分后联网时会自动补同步',
-                '也可随时点「立即同步」手动触发',
-              ]),
-            ],
+            GrowthButton(
+              label: _busy ? '正在同步…' : '立即同步',
+              icon: Icons.sync_rounded,
+              expanded: true,
+              onPressed: _busy ? null : _sync,
+            ),
+            const SizedBox(height: GrowthSpacing.md),
+            _ExplainCard(items: const [
+              '安装即用：错题、知识点、复习进度、举一反三、题目图片自动同步到云端',
+              '拍题保存、复习评分后联网时自动补同步，回到前台也会补同步',
+              '删除的题目会从云端一并清除，两端数据保持一致',
+              '换机或重装：登录同一账号的数据自动拉回',
+              'AI 密钥等敏感配置不参与云同步，仅保存在本机',
+            ]),
             const SizedBox(height: GrowthSpacing.xl),
           ],
         ),
